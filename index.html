@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="img/logo-colegio.png">
+  <link rel="apple-touch-icon" href="img/logo-colegio.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Permissions-Policy" content="camera=*, microphone=*">
+<title>AsistenciaQR — Sistema Escolar</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="compat.js"></script>
+<script src="db_supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     SIDEBAR MÓVIL
+═══════════════════════════════════════ -->
+<div id="msb-overlay" onclick="msbCollapse()"></div>
+
+<div id="mobile-sidebar">
+  <!-- Header -->
+  <div class="msb-header" onclick="msbToggleHeader()">
+    <div class="msb-logo">
+      <img src="" id="msb-logo-img" alt="">
+    </div>
+    <div class="msb-info">
+      <div class="msb-school" id="msb-school-name">Institución Educativa "SANTO DOMINGO DE GUZMAN"</div>
+      <div class="msb-user" id="msb-user-name">—</div>
+      <div class="msb-role" id="msb-user-role">—</div>
+    </div>
+  </div>
+
+  <div class="msb-nav" id="msb-nav">
+
+    <!-- Inicio -->
+    <button class="msb-item active" id="msb-btn-inicio" onclick="msbGoInicio()">
+      <div class="msb-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
+      <span class="msb-label">Inicio</span>
+    </button>
+
+    <!-- Asistencia -->
+    <button class="msb-item" id="msb-btn-asistencia" onclick="msbToggleSub('asistencia')">
+      <div class="msb-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 11 12 14 22 4"/>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+      </div>
+      <span class="msb-label">Asistencia</span>
+      <span class="msb-arrow">›</span>
+    </button>
+    <div class="msb-sub" id="msb-sub-asistencia">
+      <button class="msb-subitem" onclick="msbPickSub(this,'scan','asistencia','📷 Escanear QR')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Escanear QR</span>
+      </button>
+      <button class="msb-subitem" onclick="msbPickSub(this,'registro','asistencia','📋 Registro del día')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Registro del día</span>
+      </button>
+      <button class="msb-subitem" onclick="msbPickSub(this,'reportes','asistencia','📊 Reportes')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Reportes</span>
+      </button>
+    </div>
+
+    <!-- Aula -->
+    <button class="msb-item" id="msb-btn-aula" onclick="msbToggleSub('aula')">
+      <div class="msb-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
+      <span class="msb-label">Aula</span>
+      <span class="msb-arrow">›</span>
+    </button>
+    <div class="msb-sub" id="msb-sub-aula">
+      <button class="msb-subitem" onclick="msbPickSub(this,'alumnos','aula','👥 Alumnos')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Alumnos</span>
+      </button>
+      <button class="msb-subitem" id="msb-sub-usuarios" onclick="msbPickSub(this,'usuarios','aula','👤 Usuarios')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Usuarios</span>
+      </button>
+      <button class="msb-subitem" onclick="msbPickSub(this,'incidentes','aula','🚨 Incidentes')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Incidentes</span>
+      </button>
+    </div>
+
+    <!-- Comunicación -->
+    <button class="msb-item" id="msb-btn-comunicacion" onclick="msbToggleSub('comunicacion')">
+      <div class="msb-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </div>
+      <span class="msb-label">Comunicación</span>
+      <span class="msb-arrow">›</span>
+    </button>
+    <div class="msb-sub" id="msb-sub-comunicacion">
+      <button class="msb-subitem" onclick="msbPickSub(this,'mensajes','comunicacion','💬 Mensajes')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Mensajes</span>
+      </button>
+    </div>
+
+    <!-- Configuración -->
+    <button class="msb-item" id="msb-btn-config" onclick="msbPickDirect(this,'config','⚙️ Configuración')">
+      <div class="msb-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </div>
+      <span class="msb-label">Configuración</span>
+    </button>
+
+  </div>
+
+  <!-- Footer logout -->
+  <div class="msb-footer">
+    <button class="msb-logout" onclick="msbExpand();doLogout&&doLogout()">
+      <div class="msb-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </div>
+      <span class="msb-label">Cerrar sesión</span>
+    </button>
+  </div>
+</div>
+
+<!-- Mini topbar móvil -->
+<div id="mobile-topbar" style="display:none;">
+  <span id="mobile-topbar-title">🏠 Inicio</span>
+  <div id="mobile-topbar-right"></div>
+</div>
+
+<!-- LOGIN SCREEN -->
+<!-- Aviso inactividad -->
+<div id="inact-warning" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;background:#1e293b;border:2px solid #f59e0b;border-radius:14px;padding:14px 22px;color:#fff;font-family:sans-serif;font-size:0.88rem;display:none;align-items:center;gap:14px;box-shadow:0 8px 32px rgba(0,0,0,0.45);max-width:360px;width:92%;">
+  <span>⏱️ Tu sesión cerrará en <strong>2 min</strong> por inactividad.</span>
+  <button onclick="resetInactTimer()" style="background:#f59e0b;border:none;border-radius:8px;padding:6px 14px;color:#000;font-weight:700;cursor:pointer;font-size:0.83rem;white-space:nowrap;">Seguir activo</button>
+</div>
+
+<!-- SPLASH SCREEN -->
+<div id="splash-screen">
+  <div class="splash-logo-wrap">
+    <div class="splash-ring"></div>
+    <div class="splash-ring-2"></div>
+    <img id="splash-img" src="img/logo-colegio.png" class="splash-logo-img" style="display:block;" onerror="this.style.display='none';document.getElementById('splash-initials').style.display='flex'">
+    <div id="splash-initials" class="splash-logo-initials" style="display:none;">QR</div>
+  </div>
+  <div id="splash-prefijo" class="splash-sub" style="margin-bottom:2px;font-size:0.75rem;letter-spacing:0.05em;text-transform:none;opacity:0.8;"></div>
+  <div class="splash-colegio" id="splash-nombre"></div>
+  <div class="splash-frase" id="splash-frase" style="margin-bottom:16px;"></div>
+  <div class="splash-sub">Sistema de Asistencia Escolar</div>
+  <div class="splash-progress-wrap">
+    <div class="splash-progress-track">
+      <div class="splash-progress-bar" id="splash-bar"></div>
+    </div>
+  </div>
+  <div class="splash-year" id="splash-year"></div>
+</div>
+
+<div id="login-screen">
+  <div class="login-wrap">
+    <!-- IZQUIERDA: formulario -->
+    <div class="login-left">
+      <!-- Logo -->
+      <div id="login-logo-colegio" style="text-align:center;margin-bottom:10px;display:block;">
+        <img id="login-img-colegio" src="img/logo-colegio.png" style="height:80px;object-fit:contain;" onerror="this.style.display='none';var c=document.getElementById('login-logo-circle');if(c)c.style.display='flex';">
+      </div>
+      <div style="width:64px;height:64px;border-radius:50%;background:#C9A84C;display:none;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#0D1A3A;margin-bottom:12px;flex-shrink:0;" id="login-logo-circle">SJM</div>
+      <div style="color:#fff;font-size:0.95rem;font-weight:500;text-align:center;line-height:1.3;margin-bottom:4px;word-break:break-word;max-width:240px;" id="login-titulo-colegio"></div>
+      <div id="login-eslogan-colegio" style="color:rgba(255,255,255,0.25);font-size:0.63rem;font-style:italic;text-align:center;margin-bottom:6px;min-height:0;"></div>
+      <div style="color:#B0C4E8;font-size:0.68rem;text-align:center;margin-bottom:16px;" id="login-sub-colegio">Sistema de Gestión Escolar</div>
+      <div style="width:36px;height:1px;background:rgba(201,168,76,0.4);margin-bottom:18px;"></div>
+
+      <!-- Tabs -->
+      <div class="ln-tab-row">
+        <button class="ln-tab active" id="tab-login-personal" onclick="switchLoginTab('personal')">🏫 Personal</button>
+        <button class="ln-tab" id="tab-login-apoderado" onclick="switchLoginTab('apoderado')">👨‍👩‍👧 Apoderado</button>
+      </div>
+
+      <div class="login-error" id="login-error" style="width:100%;margin-bottom:10px;"></div>
+
+      <!-- PANEL PERSONAL -->
+      <div id="panel-login-personal" style="width:100%;">
+        <label class="ln-label">Correo electrónico</label>
+        <input class="ln-input" type="email" id="login-email" placeholder="usuario@colegio.pe" onkeydown="if(event.key==='Enter' && window.doLogin) window.doLogin()">
+        <label class="ln-label">Contraseña</label>
+        <div style="position:relative;width:100%;margin-bottom:12px;">
+          <input class="ln-input" type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter' && window.doLogin) window.doLogin()" style="margin-bottom:0;padding-right:40px;width:100%;">
+          <button type="button" onclick="if(window.togglePass) window.togglePass()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.4);font-size:1rem;padding:4px;" id="btn-toggle-pass">👁</button>
+        </div>
+        <button class="ln-btn" onclick="if(window.doLogin) window.doLogin()" id="btn-login">INGRESAR</button>
+      </div>
+
+      <!-- PANEL APODERADO -->
+      <div id="panel-login-apoderado" style="display:none;width:100%;">
+        <label class="ln-label">DNI del alumno</label>
+        <input class="ln-input" type="text" id="login-dni-apoderado" placeholder="Ej: 74512389" maxlength="8" inputmode="numeric" onkeydown="if(event.key==='Enter') window.doLoginApoderado && window.doLoginApoderado()">
+        <label class="ln-label">Contraseña</label>
+        <div style="position:relative;width:100%;margin-bottom:12px;">
+          <input class="ln-input" type="password" id="login-pass-apoderado" placeholder="Primera vez: tu DNI" onkeydown="if(event.key==='Enter') window.doLoginApoderado && window.doLoginApoderado()" style="margin-bottom:0;padding-right:40px;width:100%;">
+          <button type="button" onclick="togglePassApoderado()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:rgba(255,255,255,0.4);font-size:1rem;padding:4px;">👁</button>
+        </div>
+        <button class="ln-btn" onclick="window.doLoginApoderado && window.doLoginApoderado()" id="btn-login-apoderado" style="background:#3b82f6;color:#fff;">INGRESAR</button>
+      </div>
+
+      <div id="login-loading" style="text-align:center;color:#B0C4E8;font-size:0.82rem;margin-top:10px;display:none;">⏳ Verificando...</div>
+      <div class="ln-forgot">¿Olvidó su contraseña?</div>
+    </div>
+
+    <!-- DERECHA: banner -->
+    <div class="login-right-banner" id="login-banner">
+      <div style="position:absolute;top:14px;right:14px;background:rgba(201,168,76,0.15);border:0.5px solid rgba(201,168,76,0.5);color:#C9A84C;font-size:0.68rem;padding:3px 10px;border-radius:12px;z-index:2;" id="banner-year-tag">Año Escolar 2026</div>
+
+      <div class="banner-slide active" id="bslide-0">
+        <div class="banner-img"></div>
+        <div class="banner-overlay"></div>
+      </div>
+
+      <div class="banner-slide" id="bslide-1">
+        <div class="banner-img"></div>
+        <div class="banner-overlay"></div>
+      </div>
+
+      <div class="banner-slide" id="bslide-2">
+        <div class="banner-img"></div>
+        <div class="banner-overlay"></div>
+      </div>
+
+      <div class="banner-slide" id="bslide-3">
+        <div class="banner-img"></div>
+        <div class="banner-overlay"></div>
+      </div>
+
+      <div class="banner-slide" id="bslide-4">
+        <div class="banner-img"></div>
+        <div class="banner-overlay"></div>
+      </div>
+
+      <div class="banner-dots">
+        <div class="b-dot active" onclick="goBannerSlide(0)"></div>
+        <div class="b-dot" onclick="goBannerSlide(1)"></div>
+        <div class="b-dot" onclick="goBannerSlide(2)"></div>
+        <div class="b-dot" onclick="goBannerSlide(3)"></div>
+        <div class="b-dot" onclick="goBannerSlide(4)"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Cambiar contraseña obligatorio (primer ingreso apoderado) -->
+<div id="modal-cambiar-pass" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px;width:100%;max-width:400px;box-shadow:0 24px 64px rgba(0,0,0,0.5);">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:2.5rem;margin-bottom:8px;">🔐</div>
+      <div style="font-size:1.1rem;font-weight:800;color:var(--text);">Cambiar contraseña</div>
+      <div style="font-size:0.82rem;color:var(--muted);margin-top:6px;">Por seguridad debes crear una nueva contraseña antes de continuar</div>
+    </div>
+    <div id="cambiar-pass-error" style="display:none;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:var(--danger);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.83rem;"></div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Nueva contraseña</label>
+      <input type="password" id="nueva-pass-1" placeholder="Mínimo 6 caracteres" style="width:100%;">
+    </div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Confirmar contraseña</label>
+      <input type="password" id="nueva-pass-2" placeholder="Repite la contraseña" style="width:100%;">
+    </div>
+    <!-- Confirmar teléfono -->
+    <div class="form-group" style="margin-bottom:22px;">
+      <label>Confirmar número de WhatsApp</label>
+      <input type="tel" id="nueva-pass-telefono" placeholder="Ej: 987654321" inputmode="numeric" style="width:100%;">
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">Se usará para recuperar tu contraseña si la olvidas</div>
+    </div>
+    <button class="btn btn-primary" onclick="confirmarCambioPass()" style="width:100%;justify-content:center;padding:12px;">
+      Guardar y continuar
+    </button>
+  </div>
+</div>
+
+
+
+<!-- MODAL: Cambiar contraseña (personal) -->
+<div id="modal-cambiar-pass-personal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:380px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="font-size:1rem;font-weight:800;color:var(--text);">Cambiar contraseña</div>
+      <button onclick="document.getElementById('modal-cambiar-pass-personal').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">✕</button>
+    </div>
+    <div id="err-pass-personal" style="display:none;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:var(--danger);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.83rem;"></div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Contraseña actual</label>
+      <input type="password" id="pass-actual" placeholder="Tu contraseña actual" style="width:100%;">
+    </div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Nueva contraseña</label>
+      <input type="password" id="pass-nueva-1" placeholder="Mínimo 6 caracteres" style="width:100%;">
+    </div>
+    <div class="form-group" style="margin-bottom:22px;">
+      <label>Confirmar nueva contraseña</label>
+      <input type="password" id="pass-nueva-2" placeholder="Repite la contraseña" style="width:100%;">
+    </div>
+    <button class="btn btn-primary" onclick="cambiarPassPersonal()" style="width:100%;justify-content:center;padding:12px;">
+      Guardar contraseña
+    </button>
+  </div>
+</div>
+
+<!-- MODAL: Mis datos (personal) -->
+<div id="modal-mis-datos" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:380px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="font-size:1rem;font-weight:800;color:var(--text);">Mis datos</div>
+      <button onclick="document.getElementById('modal-mis-datos').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">✕</button>
+    </div>
+    <div id="err-mis-datos" style="display:none;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:var(--danger);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.83rem;"></div>
+    <div id="ok-mis-datos" style="display:none;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:var(--success);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.83rem;"></div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Nombre completo</label>
+      <input type="text" id="datos-nombre" placeholder="Tu nombre" style="width:100%;">
+    </div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Teléfono / WhatsApp</label>
+      <input type="tel" id="datos-telefono" placeholder="Ej: 987654321" inputmode="numeric" style="width:100%;">
+    </div>
+    <div class="form-group" style="margin-bottom:22px;">
+      <label>Correo electrónico</label>
+      <input type="email" id="datos-email" placeholder="correo@ejemplo.com" style="width:100%;" disabled style="opacity:0.6;">
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">El correo no se puede cambiar desde aquí</div>
+    </div>
+    <button class="btn btn-primary" onclick="guardarMisDatos()" style="width:100%;justify-content:center;padding:12px;">
+      Guardar cambios
+    </button>
+  </div>
+</div>
+
+<header id="app-header" style="display:none;">
+  <!-- IZQUIERDA: logo + menú -->
+  <div style="display:flex;align-items:center;gap:0;flex:1;min-width:0;">
+    <div style="display:flex;align-items:center;gap:10px;padding-right:16px;flex-shrink:0;">
+      <img id="header-logo-img" src="img/logo-colegio.png" style="width:40px;height:40px;object-fit:contain;flex-shrink:0;" alt="Insignia">
+      <div style="display:flex;flex-direction:column;justify-content:center;line-height:1.1;">
+        <div class="logo" id="header-nombre-txt" style="font-size:0.75rem;white-space:nowrap;max-width:220px;"></div>
+        <div id="header-eslogan-txt" style="font-size:0.58rem;color:rgba(255,255,255,0.45);font-style:italic;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;margin-top:1px;"></div>
+      </div>
+    </div>
+  </div>
+  <!-- DERECHA: año + iniciales -->
+  <div style="display:flex;align-items:center;gap:10px;position:relative;flex-shrink:0;">
+    <span style="color:#C9A84C;font-size:11px;font-weight:500;border:0.5px solid rgba(201,168,76,0.4);padding:2px 8px;border-radius:4px;" id="year-badge">2026</span>
+    <span id="user-name-display" style="display:none;"></span>
+    <span id="user-rol-badge" style="display:none;"></span>
+    <span id="btn-logout" style="display:none;"></span>
+    <div id="avatar-btn" onclick="toggleUserMenu(event)" style="width:34px;height:34px;border-radius:50%;background:#7B1535;border:1.5px solid rgba(255,255,255,0.25);display:none;align-items:center;justify-content:center;cursor:pointer;font-size:11px;font-weight:700;color:#fff;user-select:none;flex-shrink:0;" title="Mi cuenta">
+      <span id="avatar-initials">?</span>
+    </div>
+    </div>
+  </div>
+</header>
+<nav class="nav-tabs" id="nav-tabs" style="background:#0D1A3A;position:sticky;top:52px;z-index:599;display:none;">
+    <!-- Inicio -->
+    <button class="nav-tab active" id="tab-inicio" onclick="showSection('inicio');setActiveTab('tab-inicio')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      Inicio
+    </button>
+    <!-- Asistencia -->
+    <button class="nav-tab" id="tab-asistencia" onmouseenter="openNavDrop('drop-asistencia',this)" onclick="openNavDrop('drop-asistencia',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Asistencia
+      <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      <div class="nav-dropdown" id="drop-asistencia">
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('scan');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Escanear QR</div>
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('registro');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Registro del día</div>
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('reportes');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Reportes</div>
+      </div>
+    </button>
+    <!-- Aula -->
+    <button class="nav-tab" id="tab-aula" onmouseenter="openNavDrop('drop-aula',this)" onclick="openNavDrop('drop-aula',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      Aula
+      <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      <div class="nav-dropdown" id="drop-aula">
+        <div class="nav-drop-item" id="tab-alumnos" onclick="event.stopPropagation();showSection('alumnos');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Alumnos</div>
+        <div class="nav-drop-item" id="tab-usuarios" onclick="event.stopPropagation();showSection('usuarios');closeNavDrops()" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Usuarios</div>
+        <div class="nav-drop-sep"></div>
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('incidentes');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Incidentes</div>
+      </div>
+    </button>
+    <!-- Comunicación -->
+    <button class="nav-tab" id="tab-comunicacion" onmouseenter="openNavDrop('drop-comunicacion',this)" onclick="openNavDrop('drop-comunicacion',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Comunicación
+      <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      <div class="nav-dropdown" id="drop-comunicacion">
+        <div class="nav-drop-item" style="opacity:0.45;cursor:not-allowed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Mensajería <span style="font-size:9px;color:#C9A84C;margin-left:4px;">Próx.</span></div>
+        <div class="nav-drop-item" style="opacity:0.45;cursor:not-allowed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Agenda <span style="font-size:9px;color:#C9A84C;margin-left:4px;">Próx.</span></div>
+        <div class="nav-drop-item" style="opacity:0.45;cursor:not-allowed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>Comunicados <span style="font-size:9px;color:#C9A84C;margin-left:4px;">Próx.</span></div>
+      </div>
+    </button>
+    <!-- Configuración -->
+    <button class="nav-tab" id="tab-config" onmouseenter="openNavDrop('drop-config',this)" onclick="openNavDrop('drop-config',this)" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4"/></svg>
+      Configuración
+      <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      <div class="nav-dropdown" id="drop-config">
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('config');closeNavDrops();if(typeof onShowConfig==='function')onShowConfig();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>General</div>
+      </div>
+    </button>
+    <!-- Tabs ocultos para compatibilidad con aplicarPermisos -->
+    <button id="tab-scan" style="display:none;"></button>
+    <button id="tab-registro" style="display:none;"></button>
+    <button id="tab-reportes" style="display:none;"></button>
+    <button id="tab-incidentes" style="display:none;"></button>
+</nav>
+
+<!-- DROPDOWN USUARIO (fuera del nav, funciona en desktop y móvil) -->
+<div id="user-dropdown-menu" onclick="event.stopPropagation()" style="display:none;position:fixed;width:220px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.3);z-index:9999;overflow:hidden;">
+  <div style="background:#7B1535;padding:14px;text-align:center;">
+    <div style="width:40px;height:40px;border-radius:50%;background:#9B2045;border:2px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;margin:0 auto 8px;" id="avatar-initials-menu">?</div>
+    <div style="color:#fff;font-size:12px;font-weight:600;" id="menu-user-name"></div>
+    <div style="color:rgba(255,255,255,0.55);font-size:11px;margin-top:2px;" id="menu-user-rol"></div>
+  </div>
+  <div onclick="abrirMisDatos();closeUserMenu();" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--text);border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+    Mis datos
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+  </div>
+  <div onclick="document.getElementById('modal-cambiar-pass-personal').style.display='flex';closeUserMenu();" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--text);border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+    Cambiar contraseña
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+  </div>
+  <div onclick="doLogout();closeUserMenu();" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--danger);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+    Cerrar sesión
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+  </div>
+</div>
+
+<!-- BOTTOM NAV MOBILE -->
+<div class="bottom-nav" id="bottom-nav" style="display:none;">
+  <div class="bottom-nav-inner" id="bottom-nav-inner">
+    <!-- Se genera dinámicamente según rol -->
+  </div>
+</div>
+
+<main id="app-main" style="display:none;">
+
+  <!-- ===== INICIO (DASHBOARD) ===== -->
+  <div class="section active" id="sec-inicio">
+    <div style="padding:20px;max-width:900px;margin:0 auto;">
+      <!-- Bienvenida -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:1.3rem;font-weight:700;color:var(--text);" id="inicio-bienvenida">Bienvenido</div>
+        <div style="font-size:0.85rem;color:var(--muted);margin-top:2px;" id="inicio-fecha"></div>
+      </div>
+      <!-- KPIs -->
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px;">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
+          <div style="font-size:1.8rem;font-weight:800;color:#378ADD;" id="inicio-kpi-total">—</div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-top:4px;">Total alumnos</div>
+          <div style="font-size:0.72rem;color:#378ADD;margin-top:3px;" id="inicio-kpi-aulas">— aulas</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
+          <div style="font-size:1.8rem;font-weight:800;color:#16a34a;" id="inicio-kpi-presentes">—</div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-top:4px;">Presentes hoy</div>
+          <div style="font-size:0.72rem;color:#16a34a;margin-top:3px;" id="inicio-kpi-pct">— % asistencia</div>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
+          <div style="font-size:1.8rem;font-weight:800;color:#dc2626;" id="inicio-kpi-ausentes">—</div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-top:4px;">Ausentes hoy</div>
+          <div style="font-size:0.72rem;color:#dc2626;margin-top:3px;" id="inicio-kpi-aus-pct">— % del total</div>
+        </div>
+      </div>
+      <!-- Grid 2 columnas -->
+      <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:14px;">
+        <!-- Asistencia por nivel -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
+          <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Asistencia por nivel — hoy</div>
+          <div id="inicio-niveles-bars"></div>
+        </div>
+        <!-- Últimos ingresos -->
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
+          <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Últimos ingresos</div>
+          <div id="inicio-ultimos-ingresos"><div style="color:var(--muted);font-size:0.82rem;text-align:center;padding:16px;">Cargando...</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCAN ===== -->
+  <div class="section" id="sec-scan">
+
+    <!-- FILA SUPERIOR: controles + stats (desktop) -->
+    <div class="scan-top-bar">
+      <!-- Botones de cámara -->
+      <div class="scan-controls">
+        <button class="btn btn-primary" id="btn-start-scan" onclick="startScanner()">
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4"/></svg>
+          Iniciar Cámara
+        </button>
+        <button class="btn btn-ghost" id="btn-stop-scan" onclick="stopScanner()" disabled>
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6v4H9z"/></svg>
+          Detener
+        </button>
+      </div>
+      <!-- Stats compactas (solo desktop) -->
+      <div class="stats-inline-bar">
+        <div class="sib-card blue">
+          <span class="sib-num" id="stat-total">0</span>
+          <span class="sib-label">Alumnos</span>
+        </div>
+        <div class="sib-card green">
+          <span class="sib-num" id="stat-hoy">0</span>
+          <span class="sib-label">Ingresos hoy</span>
+        </div>
+        <div class="sib-card yellow">
+          <span class="sib-num" id="stat-tarde">0</span>
+          <span class="sib-label">Tardanzas</span>
+        </div>
+        <div class="sib-card red">
+          <span class="sib-num" id="stat-ausentes">0</span>
+          <span class="sib-label">Ausentes</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- LAYOUT PRINCIPAL: cámara | tarjeta alumno -->
+    <div class="scanner-layout">
+
+      <!-- COLUMNA IZQUIERDA: cámara + manual -->
+      <div class="scan-col-left">
+        <div id="qr-reader">
+          <div class="result-empty" id="cam-placeholder" style="height:100%;min-height:200px;">
+            <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9V5a2 2 0 012-2h4M3 15v4a2 2 0 002 2h4m6-18h4a2 2 0 012 2v4m0 6v4a2 2 0 01-2 2h-4"/></svg>
+            Presiona "Iniciar Cámara" para escanear
+          </div>
+          <video id="qr-video" autoplay playsinline muted style="display:none;width:100%;border-radius:12px;"></video>
+          <canvas id="qr-canvas" style="display:none;"></canvas>
+          <div class="qr-frame-overlay" id="qr-frame-overlay" style="display:none;">
+            <div class="qr-frame">
+              <div class="corner tl"></div>
+              <div class="corner tr"></div>
+              <div class="corner bl"></div>
+              <div class="corner br"></div>
+            </div>
+          </div>
+        </div>
+        <div class="scan-status" id="scan-status">Cámara inactiva</div>
+        <div class="manual-input">
+          <div class="form-group">
+            <label>O ingresa ID manualmente</label>
+            <input type="text" id="manual-id" placeholder="Ej: 12345678" maxlength="8"
+              oninput="this.value=this.value.replace(/\D/g,'')"
+              onkeydown="if(event.key==='Enter') manualRegister()"
+              onfocus="_pausarEscaner()"
+              onblur="_reanudarEscaner()">
+          </div>
+          <button class="btn btn-ghost" onclick="manualRegister()">Registrar</button>
+        </div>
+      </div>
+
+      <!-- COLUMNA DERECHA: tarjeta alumno -->
+      <div class="result-box" id="result-box" style="position:relative;">
+
+        <!-- OVERLAY RESULTADO AUTOMÁTICO -->
+        <div id="scan-result-overlay">
+          <!-- contenido dinámico por JS -->
+        </div>
+        <div class="result-empty" id="result-empty">
+          <div class="result-empty-icon">🪪</div>
+          <div>
+            <div class="result-empty-title">Sin alumno registrado</div>
+            <div class="result-empty-sub">Escanea un código QR o ingresa el ID manualmente</div>
+          </div>
+        </div>
+        <div class="result-student" id="result-student">
+          <div class="student-row">
+            <div class="student-avatar" id="stu-avatar">?</div>
+            <div class="student-info">
+              <div class="student-name" id="stu-name">—</div>
+              <div class="student-meta" id="stu-meta">—</div>
+            </div>
+          </div>
+          <div id="stu-badge-wrap"></div>
+          <div class="info-grid">
+            <div class="info-item"><label>ID</label><span id="stu-id">—</span></div>
+            <div class="info-item"><label>Grado</label><span id="stu-grade">—</span></div>
+            <div class="info-item"><label>Hora</label><span id="stu-time">—</span></div>
+            <div class="info-item"><label>Tipo</label><span id="stu-type">—</span></div>
+          </div>
+          <div class="btn-action-group" style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-success" onclick="confirmRegister('INGRESO')">✔ Confirmar Ingreso</button>
+            <button class="btn btn-ghost"   onclick="confirmRegister('SALIDA')">🚪 Registrar Salida</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BARRA BOTONES FIJA (solo móvil) -->
+    <div id="scan-action-bar" style="display:none;">
+      <button class="btn btn-success" onclick="confirmRegister('INGRESO')" style="flex:1;justify-content:center;font-size:1rem;padding:14px;">✔ Ingreso</button>
+      <button class="btn btn-ghost"   onclick="confirmRegister('SALIDA')"  style="flex:1;justify-content:center;font-size:1rem;padding:14px;">🚪 Salida</button>
+    </div>
+
+    <!-- STATS MÓVIL (ocultas en desktop — reemplazadas por stats-inline-bar) -->
+    <div class="stats-row stats-row-mobile">
+      <div class="stat-card blue"><div class="stat-num" id="stat-total-m">0</div><div class="stat-label">Alumnos</div></div>
+      <div class="stat-card green"><div class="stat-num" id="stat-hoy-m">0</div><div class="stat-label">Ingresos hoy</div></div>
+      <div class="stat-card yellow"><div class="stat-num" id="stat-tarde-m">0</div><div class="stat-label">Tardanzas</div></div>
+      <div class="stat-card red"><div class="stat-num" id="stat-ausentes-m">0</div><div class="stat-label">Ausentes</div></div>
+    </div>
+  </div>
+
+  <!-- ===== ALUMNOS ===== -->
+  <div class="section" id="sec-alumnos">
+    <div class="page-title">Gestión de Alumnos</div>
+    <div class="page-sub">Agrega, edita o genera QR para cada alumno</div>
+
+    <!-- Filtros -->
+    <div class="card" style="padding:16px 20px;margin-bottom:16px;">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="form-group" style="min-width:120px;">
+          <label>Nivel</label>
+          <select id="fa-nivel" onchange="onNivelChangeAlumnos()">
+            <option value="" disabled selected>-- Nivel --</option>
+          </select>
+        </div>
+        <div class="form-group" style="min-width:120px;">
+          <label>Grado</label>
+          <select id="fa-grado" onchange="onGradoChangeAlumnos()" disabled style="opacity:0.45;cursor:not-allowed;">
+            <option value="" disabled selected>-- Grado --</option>
+          </select>
+        </div>
+        <div class="form-group" style="min-width:100px;">
+          <label>Sección</label>
+          <select id="fa-seccion" onchange="onSeccionChangeAlumnos()" disabled style="opacity:0.45;cursor:not-allowed;">
+            <option value="" disabled selected>-- Sección --</option>
+          </select>
+        </div>
+        <div class="search-wrap" style="flex:1;min-width:180px;margin:0;">
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#64748b"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35"/></svg>
+          <input type="text" id="search-alumnos" placeholder="Buscar por nombre o DNI..." oninput="onSearchAlumnos()">
+        </div>
+        <button class="btn btn-ghost" onclick="limpiarFiltrosAlumnos()" style="align-self:flex-end;">✕ Limpiar</button>
+      </div>
+    </div>
+    <!-- Contador + acciones -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <span id="alumnos-count" style="color:var(--muted);font-size:0.85rem;"></span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-primary" id="btn-nuevo-alumno" onclick="openModalAlumno()">+ Nuevo Alumno</button>
+        <button class="btn btn-ghost" id="btn-importar-excel" onclick="importExcel()">📊 Importar Excel</button>
+        <button class="btn btn-ghost" onclick="exportPDFAlumnos()">🖨 Exportar PDF</button>
+        <!-- Toggle modo carnets -->
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:0.82rem;color:var(--text);user-select:none;" title="Activar modo impresión de carnets">
+          <input type="checkbox" id="toggle-modo-carnets" onchange="toggleModoCarnets(this.checked)" style="width:15px;height:15px;cursor:pointer;">
+          🖨 Modo Carnets
+        </label>
+        <button class="btn btn-ghost" onclick="imprimirCarnetsMasivo()" id="btn-imprimir-carnets" style="background:var(--navy,#1a2b5e);color:#fff;border-color:#1a2b5e;display:none;" disabled>🖨 Imprimir Carnets</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre completo</th>
+              <th>Grado</th>
+              <th>Sección</th>
+              <th>Nivel</th>
+              <th>Acciones</th>
+              <th id="th-chk-all" style="display:none;"><input type="checkbox" id="chk-all" onclick="toggleSelectAll(this)" title="Seleccionar todos"></th>
+            </tr>
+          </thead>
+          <tbody id="alumnos-tbody"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="alumnos-empty" style="display:none;">
+        <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0"/></svg>
+        <p>No hay alumnos registrados aún</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== REGISTRO ===== -->
+  <div class="section" id="sec-registro">
+    <div class="page-title">Registro de Asistencia</div>
+    <div class="page-sub">Historial de ingresos y salidas</div>
+
+    <!-- Filtros -->
+    <div class="card" style="margin-bottom:16px;padding:16px 20px;">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+        <div class="form-group" style="min-width:140px;">
+          <label>Desde</label>
+          <select id="reg-mes-select" onchange="onRegMesChange()" style="min-width:140px;">
+            <!-- poblado por JS -->
+          </select>
+          <input type="date" id="filter-desde" onchange="validarRangoFecha();renderRegistro()">
+        </div>
+        <div class="form-group" style="min-width:140px;">
+          <label>Hasta</label>
+          <input type="date" id="filter-hasta" onchange="validarRangoFecha();renderRegistro()">
+        </div>
+        <div class="form-group" style="min-width:120px;">
+          <label>Nivel</label>
+          <select id="filter-nivel" onchange="onNivelChangeRegistro()">
+            <option value="" disabled selected>-- Nivel --</option>
+          </select>
+        </div>
+        <div class="form-group" style="min-width:120px;">
+          <label>Grado</label>
+          <select id="filter-grado" onchange="onGradoChangeRegistro()" disabled style="opacity:0.45;cursor:not-allowed;">
+            <option value="" disabled selected>-- Grado --</option>
+          </select>
+        </div>
+        <div class="form-group" style="min-width:100px;">
+          <label>Sección</label>
+          <select id="filter-seccion" onchange="onSeccionChangeRegistro()" disabled style="opacity:0.45;cursor:not-allowed;">
+            <option value="" disabled selected>-- Sección --</option>
+          </select>
+        </div>
+        <div class="form-group" style="min-width:110px;">
+          <label>Tipo</label>
+          <select id="filter-tipo" onchange="renderRegistro()">
+            <option value="" disabled selected>-- Tipo --</option>
+            <option value="TODOS">Todos</option>
+            <option value="INGRESO">Ingreso</option>
+            <option value="SALIDA">Salida</option>
+            <option value="AUSENTE">Ausente</option>
+          </select>
+        </div>
+        <div class="search-wrap" style="flex:1;min-width:160px;margin:0;">
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#64748b"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35"/></svg>
+          <input type="text" id="filter-search" placeholder="Buscar nombre o DNI..." oninput="onSearchRegistro()">
+        </div>
+        <button class="btn btn-ghost" onclick="limpiarFiltrosRegistro()" style="align-self:flex-end;">✕ Limpiar</button>
+      </div>
+    </div>
+
+    <!-- Contador + acciones -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <span id="registro-count" style="color:var(--muted);font-size:0.85rem;"></span>
+      <div style="display:flex;gap:8px;">
+
+        <button class="btn btn-ghost" onclick="exportXLSX()">📊 Exportar Excel</button>
+        <button class="btn btn-ghost" onclick="exportPDFRegistro()">📄 Exportar PDF</button>
+        <button class="btn btn-danger" onclick="clearToday()">🗑 Limpiar hoy</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>DNI</th>
+              <th>Nombre</th>
+              <th>Grado</th>
+              <th>Nivel</th>
+              <th>Ingreso</th>
+              <th>Estado Ingreso</th>
+              <th>Salida</th>
+            </tr>
+          </thead>
+          <tbody id="registro-tbody"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="registro-empty" style="display:block;">
+        <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z"/></svg>
+        <p>Selecciona una fecha u otro filtro para ver los registros</p>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===== CONFIGURACION ===== -->
+  <div class="section" id="sec-config">
+    <!-- Encabezado del colegio -->
+    <div style="display:flex;align-items:center;gap:18px;padding:14px 0 18px 0;border-bottom:1px solid rgba(255,255,255,0.08);margin-bottom:20px;">
+      <img id="cfg-school-logo" src="img/logo-colegio.png" style="width:72px;height:72px;object-fit:contain;flex-shrink:0;">
+      <div>
+        <div style="font-family:var(--font-display);font-size:1.05rem;font-weight:700;color:#fff;line-height:1.2;" id="cfg-school-nombre"></div>
+        <div style="font-size:0.76rem;color:rgba(255,255,255,0.45);font-style:italic;margin-top:3px;" id="cfg-school-eslogan"></div>
+        <div style="font-size:0.7rem;color:var(--accent);margin-top:5px;">Año escolar <span id="cfg-school-anio"></span></div>
+      </div>
+    </div>
+    <div class="page-title">Configuración</div>
+    <div class="page-sub">Ajustes generales del sistema escolar</div>
+
+    <!-- Imágenes del banner de login -->
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🖼 Imágenes del Banner</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Sube hasta 5 imágenes para el banner de la pantalla de login. <strong style="color:var(--text);">Dimensión recomendada: 1200 × 700 px</strong> (proporción 16:9 horizontal). El sistema recortará automáticamente los bordes blancos y ajustará el tamaño.</div>
+      <div id="banner-imgs-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;"></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <label style="cursor:pointer;">
+          <input type="file" id="banner-img-input" accept="image/*" multiple style="display:none;" onchange="cargarImagenesBanner(this)">
+          <span class="btn btn-ghost" style="font-size:0.82rem;">📁 Seleccionar imágenes</span>
+        </label>
+        <button class="btn btn-primary" onclick="guardarImagenesBanner()" style="font-size:0.82rem;">💾 Guardar imágenes</button>
+        <span id="banner-imgs-status" style="font-size:0.78rem;color:var(--muted);"></span>
+      </div>
+    </div>
+
+    <!-- Inputs ocultos para compatibilidad -->
+    <input type="hidden" id="cfg-nombre-colegio">
+    <input type="hidden" id="cfg-anio">
+    <input type="hidden" id="cfg-telefono-colegio">
+    <input type="hidden" id="cfg-direccion-colegio">
+    <input type="hidden" id="cfg-email-colegio">
+    <input type="hidden" id="cfg-horario-colegio">
+    <input type="hidden" id="cfg-logo-input">
+    <input type="hidden" id="cfg-eslogan-colegio">
+    <span style="display:none;" id="cfg-logo-placeholder"></span>
+    <button style="display:none;" id="cfg-logo-eliminar-btn"></button>
+    <div style="display:none;" id="cfg-logo-status"></div>
+    <img id="cfg-logo-preview" src="" style="display:none!important;">
+    <div style="display:none;" id="cfg-nombre-display"></div>
+    <div style="display:none;" id="cfg-anio-display"></div>
+
+    <!-- Niveles y horarios -->
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🕐 Horarios de Ingreso y Salida por Nivel</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Define las ventanas horarias para controlar ingresos, tardanzas y salidas por nivel</div>
+      <div id="cfg-niveles-list"></div>
+      <button class="btn btn-primary" onclick="guardarHorarios()" style="margin-top:12px;">💾 Guardar horarios</button>
+    </div>
+
+    <!-- Grados por nivel -->
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🎓 Grados por Nivel</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Define qué grados corresponden a cada nivel</div>
+      <div id="cfg-grados-list"></div>
+      <button class="btn btn-primary" onclick="guardarGrados()" style="margin-top:12px;">💾 Guardar grados</button>
+    </div>
+
+    <!-- Secciones -->
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">📋 Secciones disponibles</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Secciones que aparecerán al registrar alumnos</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <span style="font-size:0.85rem;color:var(--muted);">Secciones:</span>
+        <input type="text" id="cfg-secciones" placeholder="A, B, C, D, E" style="flex:1;min-width:200px;">
+      </div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;">Separadas por coma. Ej: A, B, C, D</div>
+      <button class="btn btn-primary" onclick="guardarSecciones()" style="margin-top:12px;">💾 Guardar secciones</button>
+    </div>
+
+    <!-- Botón Configuraciones Avanzadas -->
+    <div style="margin-top:8px;text-align:center;">
+      <button class="btn" onclick="abrirConfigAvanzada()" style="background:rgba(100,116,139,0.12);border:1px solid var(--border);color:var(--muted);font-size:0.85rem;gap:8px;padding:10px 20px;">
+        ⚙️ Configuraciones Avanzadas
+      </button>
+    </div>
+
+    <!-- Modal contraseña Configuraciones Avanzadas -->
+    <div id="modal-cfg-adv-pass" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;align-items:center;justify-content:center;">
+      <div style="background:var(--surface);border-radius:16px;padding:28px 24px;width:90%;max-width:360px;border:1px solid var(--border);box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+        <div style="font-weight:700;font-size:1rem;margin-bottom:6px;">🔒 Configuraciones Avanzadas</div>
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:18px;">Ingresa la contraseña para acceder a esta sección</div>
+        <input type="password" id="cfg-adv-pass-input" placeholder="Contraseña" style="width:100%;margin-bottom:10px;" onkeydown="if(event.key==='Enter')verificarPassCfgAdv()">
+        <div id="cfg-adv-pass-err" style="display:none;color:#ef4444;font-size:0.8rem;margin-bottom:12px;padding:8px 10px;background:rgba(239,68,68,0.08);border-radius:8px;">Contraseña incorrecta</div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-primary" onclick="verificarPassCfgAdv()">Ingresar</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('modal-cfg-adv-pass').style.display='none'">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Configuraciones Avanzadas (oculto hasta verificar contraseña) -->
+    <div id="panel-cfg-avanzada" style="display:none;margin-top:24px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:14px 18px;background:rgba(100,116,139,0.1);border-radius:12px;border:1px solid var(--border);">
+        <div style="font-weight:700;font-size:0.95rem;color:var(--text);">⚙️ Configuraciones Avanzadas</div>
+        <button class="btn btn-ghost" onclick="cerrarConfigAvanzada()" style="font-size:0.8rem;padding:6px 14px;">✕ Cerrar</button>
+      </div>
+
+      <!-- WhatsApp Factiliza -->
+      <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+        <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">📱 WhatsApp — Factiliza</div>
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Configura tu API para enviar mensajes automáticos a los apoderados</div>
+        <div class="form-grid">
+          <div class="form-group form-full">
+            <label>Token Factiliza</label>
+            <input type="password" id="factiliza-token" placeholder="eyJhbGci..." autocomplete="off">
+          </div>
+          <div class="form-group form-full">
+            <label>Nombre de instancia</label>
+            <input type="text" id="factiliza-instancia" placeholder="NTE5NzI4OTgzODk=">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="guardarFactiliza()">💾 Guardar</button>
+          <button class="btn btn-ghost" onclick="probarFactiliza()">🧪 Probar conexión</button>
+        </div>
+      </div>
+
+      <!-- Cuentas Apoderados -->
+      <div class="card" style="margin-bottom:20px;padding:20px 24px;border:1px solid rgba(245,158,11,0.3);">
+        <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:#f59e0b;">👨‍👩‍👧 Cuentas de Apoderados</div>
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Los apoderados ingresan con el DNI del alumno como usuario y contraseña inicial. Usa este botón para crear o actualizar las cuentas de todos los alumnos existentes.</div>
+        <div id="apo-bulk-status" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.83rem;"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="crearCuentasApoderadosMasivo()" style="background:#f59e0b;border-color:#f59e0b;">
+            👥 Crear cuentas para todos los alumnos
+          </button>
+        </div>
+        <div style="margin-top:10px;font-size:0.78rem;color:var(--muted);">⚠️ Si ya existe una cuenta no se modifica. Solo crea las que faltan.</div>
+      </div>
+
+      <!-- Zona de peligro -->
+      <div class="card" style="margin-bottom:20px;padding:20px 24px;border:2px solid rgba(239,68,68,0.5);">
+        <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:6px;color:#ef4444;">&#9888;&#65039; Zona de Peligro &mdash; Resetear Sistema</div>
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">
+          Borra <strong style="color:var(--text);">permanentemente</strong> todos los datos del sistema:<br>
+          alumnos, registros de asistencia, incidentes, cuentas de apoderados y usuarios del personal.<br>
+          <strong style="color:#ef4444;">Solo se conserva el usuario administrador principal.</strong><br>
+          Esta accion no se puede deshacer.
+        </div>
+        <div id="reset-status" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.83rem;"></div>
+        <button class="btn" onclick="resetearTodoElSistema()" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.5);color:#ef4444;font-weight:700;">
+          &#128465;&#65039; Borrar todos los datos
+        </button>
+      </div>
+
+      <!-- Cuentas de apoderado huérfanas -->
+      <div class="card" style="margin-bottom:20px;padding:20px 24px;border:1px solid rgba(245,158,11,0.3);">
+        <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:#f59e0b;">👻 Cuentas de apoderado huérfanas</div>
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:14px;">Cuentas de Firebase Auth de apoderados cuyos alumnos ya no existen. Deben borrarse manualmente desde la consola de Firebase.</div>
+        <button class="btn" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);margin-bottom:12px;" onclick="verificarCuentasHuerfanas()">🔍 Verificar cuentas huérfanas</button>
+        <div id="huerfanas-result" style="font-size:0.82rem;color:var(--muted);"></div>
+        <div style="margin-top:12px;font-size:0.78rem;color:var(--muted);background:rgba(245,158,11,0.08);border-radius:8px;padding:10px 14px;">
+          <strong style="color:#f59e0b;">¿Cómo borrarlas?</strong><br>
+          1. Ve a <a href="https://console.firebase.google.com/project/asistencia-qr-a3346/authentication/users" target="_blank" style="color:#60a5fa;">Firebase Console → Authentication</a><br>
+          2. Busca los emails con formato <code>dni@apo.marello.pe</code><br>
+          3. Elimina los que correspondan a alumnos ya borrados
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== USUARIOS ===== -->
+  <div class="section" id="sec-usuarios">
+    <div class="page-title">Gestión de Usuarios</div>
+    <div class="page-sub">Crea y administra los accesos al sistema</div>
+
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+      <button class="btn btn-primary" onclick="openModalUsuario()">+ Nuevo Usuario</button>
+    </div>
+
+    <div class="card" style="padding:0;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Correo</th>
+              <th>Rol</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="usuarios-tbody">
+            <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px;">Cargando usuarios...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Usuario -->
+  <div class="modal-bg" id="modal-usuario">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:440px;">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-usuario-title">Nuevo Usuario</div>
+        <button class="modal-close" onclick="closeModal('modal-usuario')">✕</button>
+      </div>
+      <div class="form-group">
+        <label>Nombre completo</label>
+        <input type="text" id="u-nombre" placeholder="Ej: Juan Pérez">
+      </div>
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="u-email" placeholder="usuario@colegio.com">
+      </div>
+      <div class="form-group">
+        <label>Teléfono / WhatsApp</label>
+        <input type="text" id="u-telefono" placeholder="Ej: 987654321" maxlength="9" inputmode="numeric">
+      </div>
+      <div class="form-group" id="u-pass-group">
+        <label id="u-pass-label">Contraseña</label>
+        <div style="position:relative;">
+          <input type="password" id="u-pass" placeholder="Mínimo 6 caracteres" style="padding-right:44px;width:100%;box-sizing:border-box;">
+          <button type="button" onclick="toggleUsuarioPass()" id="btn-toggle-upass" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1.1rem;padding:4px;">👁</button>
+        </div>
+        <div id="u-pass-note" style="font-size:0.75rem;color:var(--muted);margin-top:4px;display:none;">
+          Deja vacío para no cambiar la contraseña actual
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Rol / Permisos</label>
+        <select id="u-rol" onchange="togglePrivilegios()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:var(--font-body);font-size:0.88rem;width:100%;display:block;-webkit-appearance:menulist;appearance:menulist;cursor:pointer;">
+          <option value="portero">🚪 Solo Escanear</option>
+          <option value="profesor">📋 Alumnos, Registro</option>
+          <option value="coordinador">📊 Alumnos, Registro, Reportes, Incidentes</option>
+          <option value="director">🏫 Alumnos, Registro, Reportes, Incidentes, Usuarios</option>
+          <option value="admin">⚙️ Acceso Total</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Cargo</label>
+        <select id="u-cargo-select" onchange="toggleCargoCustum()">
+          <option value="">Seleccionar...</option>
+          <option value="Docente de aula">Docente de aula</option>
+          <option value="Docente de área">Docente de área</option>
+          <option value="Auxiliar">Auxiliar</option>
+          <option value="Psicólogo">Psicólogo</option>
+          <option value="Subdirector">Subdirector</option>
+          <option value="Director">Director</option>
+          <option value="otro">Otro (especificar)...</option>
+        </select>
+        <input type="text" id="u-cargo-custom" placeholder="Escribe el cargo..." style="display:none;margin-top:6px;">
+        <input type="hidden" id="u-cargo">
+      </div>
+      <!-- Solo visible si rol = profesor -->
+      <div id="u-privilegios-group" style="display:none;">
+        <hr class="divider">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <div>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;">
+              <input type="checkbox" id="u-restringir" onchange="toggleBtnConfigurar()" style="accent-color:var(--accent);width:16px;height:16px;">
+              Restringir acceso por grados/secciones
+            </label>
+            <div id="u-privilegios-resumen" style="font-size:0.75rem;color:var(--muted);margin-top:4px;padding-left:24px;"></div>
+          </div>
+          <button class="btn btn-ghost" id="btn-configurar-privilegios" onclick="abrirModalPrivilegios()" style="padding:6px 12px;font-size:0.8rem;" disabled>⚙ Configurar</button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn btn-primary" onclick="saveUsuario()" style="flex:1;justify-content:center;">Guardar</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-usuario')" style="flex:1;justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ===== INCIDENTES ===== -->
+  <div class="section" id="sec-incidentes">
+    <div class="page-title">🚨 Reporte de Incidentes</div>
+    <div class="page-sub">Documenta incidentes y genera reportes en PDF</div>
+
+    <!-- Botón nuevo + filtros historial -->
+    <div class="card" style="padding:14px 18px;margin-bottom:16px;">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;">
+        <button class="btn btn-primary" onclick="abrirModalIncidente()" style="background:linear-gradient(135deg,#ef4444,#f97316);align-self:flex-end;">
+          + Nuevo Reporte
+        </button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="form-group" style="min-width:150px;margin:0;">
+            <label>Fecha exacta</label>
+            <select id="inc-filter-mes" onchange="renderIncidentes()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:0.85rem;width:100%;">
+              <!-- poblado por JS -->
+            </select>
+            <input type="date" id="inc-filter-fecha" onchange="limpiarFiltroAlumnoInc();renderIncidentes()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:0.85rem;width:100%;">
+          </div>
+          <div class="form-group" style="min-width:180px;margin:0;">
+            <label>Todos los reportes de un alumno</label>
+            <input type="text" id="inc-filter-search" placeholder="Nombre o DNI..." oninput="limpiarFiltroFechaInc();renderIncidentes()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:0.85rem;width:100%;">
+          </div>
+          <button class="btn btn-ghost" onclick="limpiarFiltrosIncidentes()" style="align-self:flex-end;padding:7px 14px;">✕ Limpiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla historial -->
+    <div class="card" style="padding:0;">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>DNI</th>
+              <th>Alumno</th>
+              <th>Grado</th>
+              <th>Tipo</th>
+              <th>Severidad</th>
+              <th>Responsable</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="incidentes-tbody"></tbody>
+        </table>
+      </div>
+      <div class="empty-state" id="incidentes-empty" style="display:block;">
+        <svg width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+        <p>No hay reportes de incidentes</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL INCIDENTE ===== -->
+  <div class="modal-bg" id="modal-incidente">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:560px;">
+      <div class="modal-header">
+        <div class="modal-title">🚨 Nuevo Reporte de Incidente</div>
+        <button class="modal-close" onclick="closeModal('modal-incidente')">✕</button>
+      </div>
+
+      <!-- Layout: en PC usa dos columnas (inc-body-pc), en celular es bloque normal -->
+      <div class="inc-body-pc">
+
+        <!-- COLUMNA IZQUIERDA (en PC) / bloque normal (en celular) -->
+        <div class="inc-col-left">
+
+          <!-- Buscar alumno -->
+          <div class="form-group" style="margin-bottom:10px;">
+            <label>Buscar alumno por DNI o nombre</label>
+            <input type="text" id="inc-buscar" placeholder="Ej: 12345678 o Juan..." oninput="buscarAlumnoIncidente(this.value)">
+          </div>
+          <div id="inc-alumno-resultado" style="margin-bottom:14px;"></div>
+          <input type="hidden" id="inc-alumno-id">
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Fecha</label>
+              <input type="date" id="inc-fecha">
+            </div>
+            <div class="form-group">
+              <label>Hora</label>
+              <input type="time" id="inc-hora">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>Tipo de incidente</label>
+            <select id="inc-tipo">
+              <option value="">Seleccionar...</option>
+              <option>Conducta</option>
+              <option>Tardanza reiterada</option>
+              <option>Accidente</option>
+              <option>Conflicto entre alumnos</option>
+              <option>Daño material</option>
+              <option>Otro</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>Severidad</label>
+            <div style="display:flex;gap:10px;margin-top:4px;">
+              <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:0.82rem;font-weight:600;">
+                <input type="radio" name="inc-sev" value="Leve" style="accent-color:#10b981;"> 🟢 Leve
+              </label>
+              <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:0.82rem;font-weight:600;">
+                <input type="radio" name="inc-sev" value="Moderado" checked style="accent-color:#f59e0b;"> 🟡 Moderado
+              </label>
+              <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:0.82rem;font-weight:600;">
+                <input type="radio" name="inc-sev" value="Grave" style="accent-color:#ef4444;"> 🔴 Grave
+              </label>
+            </div>
+          </div>
+
+        </div>
+        <!-- FIN COLUMNA IZQUIERDA -->
+
+        <!-- COLUMNA DERECHA (en PC) / bloque normal (en celular) -->
+        <div class="inc-col-right">
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>Descripción del incidente *</label>
+            <textarea id="inc-descripcion" placeholder="Describe detalladamente lo ocurrido..." style="min-height:90px;"></textarea>
+          </div>
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>Medidas tomadas</label>
+            <textarea id="inc-medidas" placeholder="¿Qué acciones se tomaron?" style="min-height:60px;"></textarea>
+          </div>
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>Evidencia fotográfica <span style="color:var(--muted);font-weight:400;">(opcional — máx. 4 fotos)</span></label>
+            <input type="file" id="inc-foto" accept="image/*" multiple onchange="previewIncFotos(this)" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px;color:var(--text);font-size:0.85rem;">
+            <div id="inc-foto-preview" style="display:none;margin-top:10px;">
+              <div id="inc-foto-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;"></div>
+              <div style="margin-top:6px;font-size:0.78rem;color:var(--muted);" id="inc-foto-count"></div>
+            </div>
+            <input type="hidden" id="inc-foto-data">
+          </div>
+
+        </div>
+        <!-- FIN COLUMNA DERECHA -->
+
+      </div>
+      <!-- FIN inc-body-pc -->
+
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn btn-primary" onclick="guardarIncidente()" style="flex:1;justify-content:center;background:linear-gradient(135deg,#ef4444,#f97316);">🖨️ Guardar y Generar PDF</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-incidente')" style="justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== REPORTES ===== -->
+  <div class="section" id="sec-reportes">
+    <div class="page-title">Reportes y Estadísticas</div>
+    <div class="page-sub">Vista detallada por nivel, aula y alumno</div>
+
+    <!-- Filtros en cascada -->
+    <div class="card" style="padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Período:</label>
+        <select id="rep-mes-select" onchange="onRepMesChange()"></select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Día:</label>
+        <input type="date" id="rep-dia-select" onchange="renderReportes()"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:4px 8px;font-family:var(--font-body);font-size:0.82rem;">
+      </div>
+      <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);">Nivel:</label>
+        <select id="rep-nivel" onchange="onRepNivelChange()">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);">Grado:</label>
+        <select id="rep-grado" onchange="onRepGradoChange()" disabled style="opacity:0.45;">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);">Sección:</label>
+        <select id="rep-seccion" onchange="renderReportes()" disabled style="opacity:0.45;">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
+      <div style="flex:1;min-width:150px;">
+        <input type="text" id="rep-search" placeholder="Buscar alumno..." oninput="onRepSearchChange()"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-family:var(--font-body);font-size:0.82rem;">
+      </div>
+      <button class="btn btn-ghost" onclick="limpiarFiltrosReportes()" style="font-size:0.78rem;padding:5px 10px;">✕ Limpiar</button>
+      <div id="rep-anio-btn-wrap" style="display:none;">
+        <button class="btn btn-ghost" onclick="cargarReportesAnio()" style="font-size:0.8rem;padding:6px 14px;">📅 Año completo</button>
+      </div>
+      <button class="btn btn-ghost" onclick="exportarReportePDF()" style="font-size:0.78rem;padding:5px 12px;border-color:var(--accent2);color:var(--accent2);">⬇ PDF</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="stats-row" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:14px;">
+      <div class="stat-card blue"><div class="stat-num" id="rep-total">0</div><div class="stat-label">Alumnos</div></div>
+      <div class="stat-card green"><div class="stat-num" id="rep-puntual">0</div><div class="stat-label">Puntuales</div></div>
+      <div class="stat-card yellow"><div class="stat-num" id="rep-tardanzas">0</div><div class="stat-label">Tardanzas</div></div>
+      <div class="stat-card red"><div class="stat-num" id="rep-faltas">0</div><div class="stat-label">Ausencias</div></div>
+      <div class="stat-card"><div class="stat-num" id="rep-hoy">0</div><div class="stat-label" id="rep-hoy-label">Presentes hoy</div></div>
+    </div>
+
+    <!-- Gráficos -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+      <!-- Barras apiladas por día -->
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Asistencia por día del mes</div>
+        <div id="chart-barras-dia" style="overflow-x:auto;"></div>
+      </div>
+      <!-- Dona distribución -->
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--accent2)"></span>Distribución P / T / A</div>
+        <div id="chart-dona" style="display:flex;align-items:center;justify-content:center;gap:20px;padding:8px 0;"></div>
+      </div>
+    </div>
+
+    <!-- Mapa de calor (solo visible sin filtro de alumno) -->
+    <div class="card" id="card-heatmap" style="margin-bottom:14px;">
+      <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Mapa de calor — asistencia por aula y día</div>
+      <div id="chart-heatmap" style="overflow-x:auto;"></div>
+    </div>
+
+    <!-- Rankings -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Top tardanzas</div>
+        <div id="top-tardanzas"></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--danger)"></span>Top ausencias</div>
+        <div id="top-ausencias"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- MODAL ALUMNO -->
+<div class="modal-bg" id="modal-alumno">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-title-text">Nuevo Alumno</span>
+      <button class="btn btn-ghost" onclick="closeModal('modal-alumno')" style="padding:5px 10px;">✕</button>
+    </div>
+    <!-- ── DATOS DEL ESTUDIANTE ── -->
+    <fieldset style="border:1px solid var(--border);border-radius:10px;padding:14px 16px 10px;margin-bottom:14px;">
+      <legend style="font-size:0.78rem;font-weight:700;color:var(--accent);padding:0 8px;letter-spacing:0.04em;">DATOS DEL ESTUDIANTE</legend>
+      <div class="form-grid alum-estudiante-grid" style="margin:0;">
+        <div class="form-group form-full alum-span-full alum-campo-principal">
+          <label>DNI del alumno * <span style="color:var(--muted);font-weight:400;">(será usado como ID — 8 dígitos)</span></label>
+          <input type="text" id="f-id" placeholder="Ej: 12345678" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'')">
+        </div>
+        <div class="form-group form-full alum-span-full alum-campo-principal">
+          <label>Nombres *</label>
+          <input type="text" id="f-nombres" placeholder="Ej: Juan Carlos">
+        </div>
+        <div class="form-group form-full alum-span-full alum-campo-principal">
+          <label>Apellidos *</label>
+          <input type="text" id="f-apellidos" placeholder="Ej: García López">
+        </div>
+        <div class="form-group">
+          <label>Nivel</label>
+          <select id="f-turno" onchange="cargarGradosPorNivel()">
+            <option value="">Seleccionar</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Grado *</label>
+          <select id="f-grado">
+            <option value="">Seleccionar</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Sección</label>
+          <select id="f-seccion">
+            <option value="">Seleccionar</option>
+          </select>
+        </div>
+        <div class="form-group form-full alum-span-full">
+          <label>Foto del alumno</label>
+          <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+            <div id="foto-preview-wrap" style="width:80px;height:80px;border-radius:50%;background:var(--surface2);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+              <span id="foto-preview-placeholder" style="font-size:1.8rem;">📷</span>
+              <img id="foto-preview-img" src="" style="width:100%;height:100%;object-fit:cover;display:none;border-radius:50%;">
+            </div>
+            <div style="flex:1;min-width:180px;">
+              <input type="text" id="f-foto-url" placeholder="URL de imagen (https://...)" oninput="previewFotoUrl(this.value)" style="margin-bottom:8px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="color:var(--muted);font-size:0.78rem;">o sube desde tu PC:</span>
+                <input type="file" id="f-foto-file" accept="image/*" onchange="previewFotoFile(this)" style="font-size:0.78rem;">
+              </div>
+            </div>
+          </div>
+          <input type="hidden" id="f-foto-data">
+        </div>
+      </div>
+    </fieldset>
+
+    <!-- ── APODERADOS: 2 columnas en PC ── -->
+    <div class="alum-apoderados-grid">
+
+      <!-- ── DATOS DEL APODERADO ── -->
+      <fieldset style="border:1px solid var(--border);border-radius:10px;padding:14px 16px 10px;margin-bottom:4px;">
+        <legend style="font-size:0.78rem;font-weight:700;color:var(--accent);padding:0 8px;letter-spacing:0.04em;">APODERADO 1</legend>
+        <div class="form-grid" style="margin:0;">
+          <div class="form-group form-full">
+            <label>Nombres</label>
+            <input type="text" id="f-apoderado-nombres" placeholder="Ej: María Rosa">
+          </div>
+          <div class="form-group form-full">
+            <label>Apellidos</label>
+            <input type="text" id="f-apoderado-apellidos" placeholder="Ej: García López">
+          </div>
+          <div class="form-group form-full">
+            <label>Celular / WhatsApp</label>
+            <input type="text" id="f-telefono" placeholder="+51 999 000 000">
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- ── DATOS DEL SEGUNDO APODERADO ── -->
+      <fieldset style="border:1px solid var(--border);border-radius:10px;padding:14px 16px 10px;margin-bottom:4px;">
+        <legend style="font-size:0.78rem;font-weight:700;color:#f59e0b;padding:0 8px;letter-spacing:0.04em;">APODERADO 2 <span style="font-weight:400;font-size:0.72rem;opacity:0.7;">(opcional)</span></legend>
+        <div class="form-grid" style="margin:0;">
+          <div class="form-group form-full">
+            <label>Nombres</label>
+            <input type="text" id="f-apoderado2-nombres" placeholder="Ej: Juan Carlos">
+          </div>
+          <div class="form-group form-full">
+            <label>Apellidos</label>
+            <input type="text" id="f-apoderado2-apellidos" placeholder="Ej: Pérez Díaz">
+          </div>
+          <div class="form-group form-full">
+            <label>Celular / WhatsApp</label>
+            <input type="text" id="f-telefono2" placeholder="+51 999 000 000">
+          </div>
+        </div>
+      </fieldset>
+
+    </div><!-- fin alum-apoderados-grid -->
+
+    <hr class="divider">
+    <div style="display:flex;justify-content:flex-end;gap:10px;">
+      <button class="btn btn-ghost" onclick="closeModal('modal-alumno')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveAlumno()">Guardar Alumno</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL QR -->
+<div class="modal-bg" id="modal-qr">
+  <div class="modal" style="max-width:320px;">
+    <div class="modal-title">
+      <span>Carnet del Alumno</span>
+      <button class="btn btn-ghost" onclick="closeModal('modal-qr')" style="padding:5px 10px;">✕</button>
+    </div>
+    <!-- CARNET VISUAL — 56x86mm proporcional en pantalla -->
+    <div style="display:flex;justify-content:center;padding:8px 0 4px;">
+    <div id="carnet-print" style="
+      width:228px; height:368px;
+      border-radius:10px; overflow:hidden;
+      display:flex; flex-direction:column;
+      border:4px solid #c9a84c;
+      box-shadow:0 6px 24px #0006;
+      font-family:helvetica,arial,sans-serif;
+    ">
+      <!-- HEADER -->
+      <div style="background:#0d1a3a;padding:4px 8px 4px 6px;display:flex;flex-direction:row;align-items:center;gap:6px;border-bottom:3px solid #c9a84c;height:48px;flex-shrink:0;">
+        <img id="carnet-logo" src="" style="width:38px;height:38px;object-fit:contain;flex-shrink:0;">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;">
+          <div id="carnet-prefijo" style="color:#b0c4e8;font-size:7px;text-align:center;"></div>
+          <div id="carnet-school" style="color:#fff;font-weight:bold;font-size:10px;text-align:center;white-space:normal;line-height:1.2;word-break:break-word;max-width:140px;"></div>
+        </div>
+      </div>
+      <!-- BODY -->
+      <div style="flex:1;background:#fff;display:flex;flex-direction:column;align-items:center;padding:8px 6px 4px 6px;gap:4px;position:relative;overflow:hidden;">
+        <!-- marca de agua -->
+        <div style="position:absolute;inset:0;background-image:var(--wm);background-size:52%;background-repeat:no-repeat;background-position:center;opacity:0.06;pointer-events:none;"></div>
+        <!-- VIGENCIA vertical borde izquierdo -->
+        <div id="carnet-vigencia" style="position:absolute;left:5px;top:50%;transform:translateX(-50%) translateY(-50%) rotate(-90deg);color:#111;font-size:8px;font-weight:bold;letter-spacing:0.8px;white-space:nowrap;z-index:2;"></div>
+        <!-- foto anillo dorado -->
+        <div style="width:64px;height:64px;border-radius:50%;background:#c9a84c;display:flex;align-items:center;justify-content:center;flex-shrink:0;z-index:1;">
+          <div style="width:55px;height:55px;border-radius:50%;background:#1e3264;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+            <img id="carnet-foto" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+            <span id="carnet-initials" style="color:#fff;font-weight:bold;font-size:18px;"></span>
+          </div>
+        </div>
+        <!-- nombre más grande -->
+        <div id="carnet-name" style="color:#0d1a3a;font-weight:bold;font-size:12px;text-align:center;line-height:1.35;z-index:1;word-break:break-word;max-width:200px;padding:0 4px;"></div>
+        <!-- separador dorado -->
+        <div style="width:78%;height:2px;background:#c9a84c;flex-shrink:0;z-index:1;"></div>
+        <!-- DNI centrado grande -->
+        <div style="display:flex;flex-direction:column;align-items:center;z-index:1;">
+          <div style="color:#111;font-size:9.5px;font-weight:bold;letter-spacing:1px;">DNI</div>
+          <div id="carnet-dni" style="color:#0d1a3a;font-size:13px;font-weight:bold;letter-spacing:2px;margin-top:1px;"></div>
+        </div>
+        <!-- QR -->
+        <div style="background:#fff;border:1.5px solid #ccc;border-radius:5px;padding:3px;z-index:1;flex-shrink:0;">
+          <img id="carnet-qr" src="" alt="QR" style="width:90px;height:90px;display:block;">
+        </div>
+        <div style="color:#999;font-size:5px;text-align:center;z-index:1;letter-spacing:0.3px;">ESCANEA PARA REGISTRAR ASISTENCIA</div>
+      </div>
+      <!-- FOOTER una sola línea -->
+      <div style="background:#0d1a3a;border-top:3px solid #c9a84c;height:32px;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0 4px;">
+        <div id="carnet-grade" style="color:#c9a84c;font-size:10px;font-weight:bold;white-space:nowrap;"></div>
+      </div>
+    </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="printCarnet()">🖨 Imprimir Carnet</button>
+      <button class="btn btn-ghost" onclick="downloadCarnet()">💾 Guardar imagen</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- INPUT CSV oculto -->
+<input type="file" id="excel-input" accept=".xlsx,.xls" style="display:none" onchange="handleExcel(event)">
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script>
+
+
+  <!-- ===== MODAL PRIVILEGIOS PROFESOR ===== -->
+  <div class="modal-bg" id="modal-privilegios">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;">
+      <div class="modal-header">
+        <div class="modal-title">📚 Grados y Secciones asignados</div>
+        <button class="modal-close" onclick="closeModal('modal-privilegios')">✕</button>
+      </div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">
+        Marca los grados que dicta y las secciones correspondientes a cada uno. Solo verá los alumnos de los grados y secciones que marques.
+      </div>
+      <div id="u-niveles-checks" style="max-height:60vh;overflow-y:auto;"></div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn btn-primary" onclick="savePrivilegios()" style="flex:1;justify-content:c

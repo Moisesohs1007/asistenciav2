@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" type="image/png" href="img/logo-colegio.png">
+  <link rel="apple-touch-icon" href="img/logo-colegio.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Portal Apoderado</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  
+<link rel="stylesheet" href="css/portal.css">
+</head>
+<body>
+
+<!-- APP CONTENT: oculto hasta confirmar sesión -->
+<div id="apo-app" style="display:block;">
+
+<!-- HEADER -->
+<header id="apo-header" style="background:#0D1A3A;padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:600;border-bottom:0.5px solid rgba(255,255,255,0.1);overflow:visible;">
+  <!-- IZQUIERDA: foto alumno + nombre -->
+  <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+    <div style="width:34px;height:34px;border-radius:50%;background:#185FA5;overflow:hidden;border:2px solid rgba(255,255,255,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;position:relative;" id="apo-foto-wrap">
+      <img id="apo-foto-header" src="" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;" onerror="this.style.display='none';document.getElementById('apo-inicial-header').style.display='flex'">
+      <span id="apo-inicial-header" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:11px;font-weight:700;color:#fff;letter-spacing:0.5px;"></span>
+    </div>
+    <div style="min-width:0;">
+      <div id="apo-nombre-header" style="font-weight:500;color:#fff;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+      <div id="apo-grado-header" style="color:#B0C4E8;font-size:0.72rem;"></div>
+    </div>
+  </div>
+  <!-- DERECHA: insignia + iniciales apoderado + menú -->
+  <div style="display:flex;align-items:center;gap:10px;position:relative;flex-shrink:0;">
+    <img src="img/logo-colegio.png" style="width:32px;height:32px;object-fit:contain;" alt="Insignia">
+    <div id="apo-avatar-btn" onclick="toggleApoMenu(event)" style="width:30px;height:30px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;font-weight:700;color:#0D1A3A;user-select:none;flex-shrink:0;" title="Mi cuenta">
+      <span id="apo-avatar-initials">?</span>
+    </div>
+  </div>
+</header>
+
+<!-- MENÚ AVATAR APODERADO (fuera del header, position fixed funciona en desktop y móvil) -->
+<div id="apo-user-menu" onclick="event.stopPropagation()" style="display:none;position:fixed;width:220px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:9999;overflow:hidden;">
+  <div style="background:#0D1A3A;padding:14px;text-align:center;">
+    <div style="width:40px;height:40px;border-radius:50%;background:#C9A84C;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#0D1A3A;margin:0 auto 8px;" id="apo-avatar-initials-menu">?</div>
+    <div style="color:#fff;font-size:12px;font-weight:600;" id="apo-menu-nombre"></div>
+    <div style="color:rgba(255,255,255,0.55);font-size:11px;margin-top:2px;">Apoderado</div>
+  </div>
+  <div onclick="abrirApoMisDatos();closeApoMenu();" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--text);border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+    Mis datos
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+  </div>
+  <div onclick="document.getElementById('modal-apo-pass').style.display='flex';closeApoMenu();" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--text);border-bottom:1px solid var(--border);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+    Cambiar contraseña
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+  </div>
+  <div onclick="if(!confirm('Cerrar sesion?'))return;try{sessionStorage.removeItem('asmqr_apo_lastTab');sessionStorage.removeItem('asmqr_haySession');}catch(e){}auth.signOut().then(function(){window.location.href='index.html?splash=1';});" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;font-size:12px;color:var(--danger);" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
+    Cerrar sesión
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+  </div>
+</div>
+
+<!-- NAV TABS — igual estructura que index.html -->
+<nav id="apo-nav-tabs" style="background:#0D1A3A;display:flex;align-items:center;overflow:visible;padding:0 6px;border-bottom:0.5px solid rgba(255,255,255,0.08);position:sticky;top:52px;z-index:599;">
+  
+
+  <button class="apo-nav-tab active" id="apo-tab-inicio" onclick="showTab('resumen');setApoTabActive('inicio')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+    Inicio
+  </button>
+
+  <button class="apo-nav-tab" id="apo-tab-asistencia" onmouseenter="openApoDropdown('apo-drop-asistencia',this)" onclick="openApoDropdown('apo-drop-asistencia',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    Asistencia
+    <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    <div class="apo-nav-dropdown" id="apo-drop-asistencia">
+      <div class="apo-drop-item" id="apo-drop-resumen" onclick="event.stopPropagation();showTab('resumen');setApoTabActive('asistencia','resumen')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>Resumen
+      </div>
+      <div class="apo-drop-item" id="apo-drop-historial" onclick="event.stopPropagation();showTab('historial');setApoTabActive('asistencia','historial')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Historial
+      </div>
+    </div>
+  </button>
+
+  <button class="apo-nav-tab" id="apo-tab-academico" onmouseenter="openApoDropdown('apo-drop-academico',this)" onclick="openApoDropdown('apo-drop-academico',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+    Académico
+    <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    <div class="apo-nav-dropdown" id="apo-drop-academico">
+      <div class="apo-drop-item" id="apo-drop-incidentes" onclick="event.stopPropagation();showTab('incidentes');setApoTabActive('academico','incidentes')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Incidencias
+      </div>
+    </div>
+  </button>
+
+  <button class="apo-nav-tab" id="apo-tab-comunicacion" onmouseenter="openApoDropdown('apo-drop-comunicacion',this)" onclick="openApoDropdown('apo-drop-comunicacion',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    Comunicación
+    <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    <div class="apo-nav-dropdown" id="apo-drop-comunicacion">
+      <div class="apo-drop-item" id="apo-drop-comunicados" onclick="event.stopPropagation();showTab('comunicados');setApoTabActive('comunicacion','comunicados')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>Comunicados
+      </div>
+    </div>
+  </button>
+
+  <button class="apo-nav-tab" id="apo-tab-cuenta" onmouseenter="openApoDropdown('apo-drop-cuenta',this)" onclick="openApoDropdown('apo-drop-cuenta',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+    Mi cuenta
+    <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    <div class="apo-nav-dropdown" id="apo-drop-cuenta">
+      <div class="apo-drop-item" id="apo-drop-carnet" onclick="event.stopPropagation();showTab('carnet');setApoTabActive('cuenta','carnet')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>Carnet
+      </div>
+      <div class="apo-drop-item" id="apo-drop-contacto" onclick="event.stopPropagation();showTab('contacto');setApoTabActive('cuenta','contacto')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13"/></svg>Contacto
+      </div>
+    </div>
+  </button>
+</nav>
+
+<!-- OVERLAY SIDEBAR MÓVIL -->
+<div id="apo-msb-overlay" onclick="apoMsbCollapse()"></div>
+
+<!-- SIDEBAR MÓVIL APODERADO -->
+<div id="apo-mobile-sidebar">
+  <div class="apo-msb-header" onclick="apoMsbToggleHeader()">
+    <div class="apo-msb-foto">
+      <img id="apo-msb-foto-img" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;">
+      <span id="apo-msb-inicial" style="color:#fff;font-size:13px;font-weight:700;"></span>
+    </div>
+    <div class="apo-msb-info">
+      <div class="apo-msb-student-name" id="apo-msb-nombre">—</div>
+      <div class="apo-msb-student-grade" id="apo-msb-grado">—</div>
+    </div>
+  </div>
+  <div class="apo-msb-nav">
+    <button class="apo-msb-item active" id="apo-msb-btn-inicio" onclick="apoMsbPickDirect(this,'resumen','🏠 Inicio')">
+      <div class="apo-msb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+      <span class="apo-msb-label">Inicio</span>
+    </button>
+    <button class="apo-msb-item" id="apo-msb-btn-asistencia" onclick="apoMsbToggleSub('asistencia')">
+      <div class="apo-msb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+      <span class="apo-msb-label">Asistencia</span>
+      <span class="apo-msb-arrow" id="apo-msb-arrow-asistencia">›</span>
+    </button>
+    <div class="apo-msb-sub" id="apo-msb-sub-asistencia">
+      <button class="apo-msb-subitem" onclick="apoMsbPickSub(this,'resumen','asistencia','📋 Resumen')"><div class="apo-msb-dot"></div><span class="apo-msb-sublabel">Resumen</span></button>
+      <button class="apo-msb-subitem" onclick="apoMsbPickSub(this,'historial','asistencia','📅 Historial')"><div class="apo-msb-dot"></div><span class="apo-msb-sublabel">Historial</span></button>
+    </div>
+    <button class="apo-msb-item" id="apo-msb-btn-academico" onclick="apoMsbToggleSub('academico')">
+      <div class="apo-msb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+      <span class="apo-msb-label">Académico</span>
+      <span class="apo-msb-arrow" id="apo-msb-arrow-academico">›</span>
+    </button>
+    <div class="apo-msb-sub" id="apo-msb-sub-academico">
+      <button class="apo-msb-subitem" onclick="apoMsbPickSub(this,'incidentes','academico','🚨 Incidencias')"><div class="apo-msb-dot"></div><span class="apo-msb-sublabel">Incidencias</span></button>
+    </div>
+    <button class="apo-msb-item" id="apo-msb-btn-comunicacion" onclick="apoMsbToggleSub('comunicacion')">
+      <div class="apo-msb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+      <span class="apo-msb-label">Comunicación</span>
+      <span class="apo-msb-arrow" id="apo-msb-arrow-comunicacion">›</span>
+    </button>
+    <div class="apo-msb-sub" id="apo-msb-sub-comunicacion">
+      <button class="apo-msb-subitem" onclick="apoMsbPickSub(this,'comunicados','comunicacion','💬 Comunicados')"><div class="apo-msb-dot"></div><span class="apo-msb-sublabel">Comunicados</span></button>
+    </div>
+    <button class="apo-msb-item" id="apo-msb-btn-cuenta" onclick="apoMsbToggleSub('cuenta')">
+      <div class="apo-msb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
+      <span class="apo-msb-label">Mi cuenta</span>
+      <span class="apo-msb-arrow" id="apo-msb-arrow-cuenta">›</span>
+    </button>
+    <div class="apo-msb-sub" id="apo-msb-sub-cuenta">
+      <button class="apo-msb-subitem" onclick="apoMsbPickSub(this,'carnet','cuenta','🪪 Carnet')"><div class="apo-msb-dot"></div><span class="apo-msb-sublabel">Carnet</span></button>
+      <button class="apo-msb-subitem" onclick="apoMsbPickSub(this,'contacto','cuenta','📞 Contacto')"><div class="apo-msb-dot"></div><span class="apo-msb-sublabel">Contacto</span></button>
+    </div>
+  </div>
+  <div class="apo-msb-footer">
+    <button class="apo-msb-logout" onclick="if(!confirm('¿Cerrar sesión?'))return;try{sessionStorage.removeItem('asmqr_apo_lastTab');sessionStorage.removeItem('asmqr_haySession');}catch(e){}auth.signOut().then(function(){window.location.href='index.html?splash=1';});">
+      <div class="apo-msb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
+      <span class="apo-msb-label">Cerrar sesión</span>
+    </button>
+  </div>
+</div>
+
+<!-- TOPBAR MÓVIL APODERADO -->
+<div id="apo-mobile-topbar" style="display:none;">
+  <span id="apo-topbar-title">🏠 Inicio</span>
+  <div id="apo-topbar-right"></div>
+</div>
+
+<!-- CONTENIDO -->
+<div id="apo-main-content" style="max-width:680px;margin-left:auto;margin-right:auto;padding:16px;">
+
+  <!-- RESUMEN -->
+  <div id="panel-resumen">
+    <div class="card" style="padding:18px;display:flex;gap:14px;align-items:center;margin-bottom:12px;">
+      <div style="width:60px;height:60px;border-radius:50%;background:#185FA5;overflow:hidden;flex-shrink:0;border:3px solid var(--accent);display:flex;align-items:center;justify-content:center;position:relative;" id="apo-foto-card-wrap">
+        <img id="apo-foto-card" src="" style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0;" onerror="this.style.display='none';document.getElementById('apo-inicial-card').style.display='flex'">
+        <span id="apo-inicial-card" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:16px;font-weight:700;color:#fff;letter-spacing:0.5px;"></span>
+      </div>
+      <div>
+        <div id="apo-nombre-card" style="font-weight:800;font-size:1rem;"></div>
+        <div id="apo-grado-card"  style="color:var(--muted);font-size:0.82rem;margin-top:2px;"></div>
+        <div id="apo-dni-card"    style="color:var(--muted);font-size:0.76rem;margin-top:2px;"></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <span style="font-size:0.82rem;color:var(--muted);">Resumen de</span>
+      <span id="lbl-mes-resumen" style="font-size:0.86rem;font-weight:700;color:var(--accent);text-transform:capitalize;"></span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);border-radius:12px;padding:14px;text-align:center;">
+        <div id="kpi-puntual"  style="font-size:1.9rem;font-weight:900;color:#10b981;">0</div>
+        <div style="font-size:0.7rem;color:#10b981;margin-top:2px;">Puntual</div>
+      </div>
+      <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:14px;text-align:center;">
+        <div id="kpi-tardanza" style="font-size:1.9rem;font-weight:900;color:#f59e0b;">0</div>
+        <div style="font-size:0.7rem;color:#f59e0b;margin-top:2px;">Tardanza</div>
+      </div>
+      <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:12px;padding:14px;text-align:center;">
+        <div id="kpi-ausente"  style="font-size:1.9rem;font-weight:900;color:#ef4444;">0</div>
+        <div style="font-size:0.7rem;color:#ef4444;margin-top:2px;">Ausente</div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:0.86rem;">Últimos 5 días</div>
+      <div id="lista-ultimos"><div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div></div>
+    </div>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div id="panel-historial" style="display:none;">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <select id="sel-mes-hist"  onchange="onMesChange('hist')" style="flex:1;min-width:130px;"></select>
+      <select id="sel-tipo-hist" onchange="renderHistorial()" style="flex:1;min-width:130px;">
+        <option value="">Todos los estados</option>
+        <option value="Puntual">Puntuales</option>
+        <option value="Tardanza">Tardanzas</option>
+        <option value="Ausente">Ausentes</option>
+      </select>
+    </div>
+    <div id="lista-historial"><div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div></div>
+  </div>
+
+  <!-- INCIDENTES -->
+  <div id="panel-incidentes" style="display:none;">
+    <div id="lista-incidentes"><div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div></div>
+  </div>
+
+  <!-- CARNET -->
+  <div id="panel-carnet" style="display:none;text-align:center;">
+    <p style="font-size:0.83rem;color:var(--muted);margin-bottom:16px;">Muestra este QR al portero para registrar ingreso o salida</p>
+    <div id="carnet-visual" style="display:inline-block;background:linear-gradient(145deg,#0d1a3a,#1a2b5e);border-radius:18px;padding:22px;max-width:250px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+      <div style="text-align:center;margin-bottom:8px;"><img src="img/logo-colegio.png" style="width:68px;height:68px;object-fit:contain;" alt="Insignia"></div>
+      <div id="carnet-colegio" style="text-align:center;margin-bottom:10px;line-height:1.3;"></div>
+      <div style="width:76px;height:76px;border-radius:50%;background:#334155;overflow:hidden;margin:0 auto 10px;border:3px solid #c9a84c;">
+        <img id="carnet-foto" src="" crossorigin="anonymous" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML='<div style=\'display:flex;align-items:center;justify-content:center;height:100%;font-size:1.8rem;color:#c9a84c;\'>&#128100;</div>'">
+      </div>
+      <div id="carnet-nombre" style="color:#fff;font-weight:800;font-size:0.86rem;text-align:center;margin-bottom:3px;"></div>
+      <div id="carnet-grado"  style="color:#c9a84c;font-size:0.7rem;text-align:center;margin-bottom:12px;"></div>
+      <div style="background:#fff;border-radius:8px;padding:6px;margin:0 auto;width:fit-content;">
+        <img id="carnet-qr" src="" crossorigin="anonymous" style="width:130px;height:130px;display:block;">
+      </div>
+      <div id="carnet-dni"  style="color:rgba(255,255,255,0.45);font-size:0.66rem;text-align:center;margin-top:8px;letter-spacing:1px;"></div>
+      <div id="carnet-year" style="color:rgba(255,255,255,0.35);font-size:0.63rem;text-align:center;margin-top:2px;"></div>
+    </div>
+    <div style="margin-top:14px;">
+      <button class="btn-login-apo" onclick="compartirCarnet()" style="max-width:250px;margin:14px auto 0;background:linear-gradient(135deg,#0d1a3a,#1a2b5e);box-shadow:0 4px 16px rgba(0,0,0,0.4);">📤 Compartir imagen</button>
+    </div>
+  </div>
+
+  <!-- COMUNICADOS -->
+  <div id="panel-comunicados" style="display:none;">
+    <div class="card" style="padding:48px 20px;text-align:center;">
+      <div style="font-size:2.8rem;margin-bottom:10px;">&#128226;</div>
+      <div style="font-weight:700;font-size:0.95rem;margin-bottom:6px;">Comunicados del colegio</div>
+      <div style="color:var(--muted);font-size:0.83rem;">Proximamente podras ver aqui los comunicados y circulares</div>
+      <div style="display:inline-block;margin-top:14px;padding:5px 14px;border-radius:20px;background:rgba(99,102,241,0.12);color:#818cf8;border:1px solid rgba(99,102,241,0.3);font-size:0.76rem;font-weight:600;">Proximamente</div>
+    </div>
+  </div>
+
+  <!-- CONTACTO -->
+  <div id="panel-contacto" style="display:none;">
+    <div id="contenido-contacto"><div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div></div>
+  </div>
+
+</div>
+
+<!-- MODAL: Mis datos apoderado -->
+<div id="modal-apo-datos" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:380px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="font-size:1rem;font-weight:800;color:var(--text);">Mis datos</div>
+      <button onclick="document.getElementById('modal-apo-datos').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">✕</button>
+    </div>
+    <div id="err-apo-datos" style="display:none;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:var(--danger);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.83rem;"></div>
+    <div id="ok-apo-datos" style="display:none;background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:#10b981;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.83rem;"></div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Nombres</label>
+      <input type="text" id="apo-datos-nombres" placeholder="Tus nombres" style="width:100%;">
+    </div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Apellidos</label>
+      <input type="text" id="apo-datos-apellidos" placeholder="Tus apellidos" style="width:100%;">
+    </div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Teléfono / WhatsApp</label>
+      <input type="tel" id="apo-datos-telefono" placeholder="Ej: 987654321" inputmode="numeric" style="width:100%;">
+    </div>
+    <div class="form-group" style="margin-bottom:22px;">
+      <label>Correo electrónico <span style="color:var(--muted);font-weight:400;">(opcional)</span></label>
+      <input type="email" id="apo-datos-email" placeholder="correo@ejemplo.com" style="width:100%;">
+    </div>
+    <button class="btn-primary" onclick="guardarApoMisDatos()" style="width:100%;padding:12px;border-radius:10px;background:var(--accent);color:#fff;border:none;font-weight:700;cursor:pointer;font-size:0.9rem;">
+      Guardar cambios
+    </button>
+  </div>
+</div>
+
+<!-- MODAL: Cambiar contraseña apoderado -->
+<div id="modal-apo-pass" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:100%;max-width:380px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="font-size:1rem;font-weight:800;color:var(--text);">Cambiar contraseña</div>
+      <button onclick="document.getElementById('modal-apo-pass').style.display='none'" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">✕</button>
+    </div>
+    <div id="err-apo-pass" style="display:none;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:var(--danger);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:0.83rem;"></div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Contraseña actual</label>
+      <input type="password" id="apo-pass-actual" placeholder="Tu contraseña actual" style="width:100%;">
+    </div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Nueva contraseña</label>
+      <input type="password" id="apo-pass-nueva-1" placeholder="Mínimo 6 caracteres" style="width:100%;">
+    </div>
+    <div class="form-group" style="margin-bottom:22px;">
+      <label>Confirmar nueva contraseña</label>
+      <input type="password" id="apo-pass-nueva-2" placeholder="Repite la contraseña" style="width:100%;">
+    </div>
+    <button class="btn-primary" onclick="cambiarApoPass()" style="width:100%;padding:12px;border-radius:10px;background:var(--accent);color:#fff;border:none;font-weight:700;cursor:pointer;font-size:0.9rem;">
+      Guardar contraseña
+    </button>
+  </div>
+</div>
+
+</div><!-- /apo-app -->
+
+<!-- MODAL: Primer ingreso / Registro apoderado -->
+<div id="modal-cambiar-pass" class="modal-overlay">
+  <div class="modal-box" style="max-height:90vh;overflow-y:auto;">
+    <div style="text-align:center;margin-bottom:18px;">
+      <div style="font-size:2.2rem;margin-bottom:8px;">👋</div>
+      <div style="font-size:1rem;font-weight:800;">Bienvenido</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-top:6px;">Crea tu contraseña y completa tus datos</div>
+    </div>
+    <div id="err-cambiar-pass" style="display:none;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);color:var(--danger);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:0.82rem;"></div>
+
+    <div style="font-size:0.75rem;font-weight:700;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Nueva contraseña</div>
+    <div class="form-group">
+      <label>Contraseña <span style="color:var(--danger);">*</span></label>
+      <input type="password" id="inp-nueva-pass" placeholder="Mínimo 6 caracteres">
+    </div>
+    <div class="form-group">
+      <label>Confirmar contraseña <span style="color:var(--danger);">*</span></label>
+      <input type="password" id="inp-confirmar-pass" placeholder="Repite la contraseña">
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+
+    <div style="font-size:0.75rem;font-weight:700;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Apoderado 1</div>
+    <div class="form-group">
+      <label>Nombres <span style="color:var(--danger);">*</span></label>
+      <input type="text" id="inp-apo-nombres" placeholder="Ej: María Rosa">
+    </div>
+    <div class="form-group">
+      <label>Apellidos <span style="color:var(--danger);">*</span></label>
+      <input type="text" id="inp-apo-apellidos" placeholder="Ej: García López">
+    </div>
+    <div class="form-group">
+      <label>Celular / WhatsApp <span style="color:var(--danger);">*</span></label>
+      <input type="tel" id="inp-telefono" placeholder="Ej: 987654321" inputmode="numeric" maxlength="9">
+    </div>
+    <div class="form-group">
+      <label>Correo electrónico <span style="color:var(--muted);font-weight:400;">(opcional)</span></label>
+      <input type="email" id="inp-apo-correo" placeholder="tu@correo.com">
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+
+    <div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">Apoderado 2 <span style="font-weight:400;">(opcional)</span></div>
+    <div class="form-group">
+      <label>Nombres</label>
+      <input type="text" id="inp-apo2-nombres" placeholder="Ej: Juan Carlos">
+    </div>
+    <div class="form-group">
+      <label>Apellidos</label>
+      <input type="text" id="inp-apo2-apellidos" placeholder="Ej: Pérez Díaz">
+    </div>
+    <div class="form-group">
+      <label>Celular / WhatsApp</label>
+      <input type="tel" id="inp-apo2-telefono" placeholder="Ej: 987654321" inputmode="numeric" maxlength="9">
+    </div>
+    <div class="form-group" style="margin-bottom:20px;">
+      <label>Correo electrónico <span style="color:var(--muted);font-weight:400;">(opcional)</span></label>
+      <input type="email" id="inp-apo2-correo" placeholder="tu@correo.com">
+    </div>
+
+    <button class="btn-login-apo" id="btn-guardar-pass">Guardar y continuar</button>
+    <button id="btn-cancelar-pass" style="width:100%;margin-top:10px;padding:10px;background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.85rem;" onclick="cancelarPrimerIngreso()">
+      Cancelar — Cerrar sesión
+    </button>
+  </div>
+</div>
+
+<!-- jsPDF para descarga incidentes -->
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<!-- html2canvas para carnet -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="compat.js"></script>
+<script src="db_supabase.js"></script>
+
+<script src="js/portal.js"></script>
+</body>
+</html>
