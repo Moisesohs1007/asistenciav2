@@ -665,7 +665,6 @@ auth.onAuthStateChanged(async user => {
     await inicializarFiltros();
     await actualizarTodosLosFiltros();
     updateStats();
-    getFactilizaConfig(); // Precargar config WhatsApp en cache (sin await, en paralelo)
     iniciarAlumnosListener(); // Listener en tiempo real para alumnos — sincroniza importación Excel entre dispositivos
     iniciarConfigListener(); // Listener en tiempo real para config — sincroniza horarios entre dispositivos
     initSessionControl();   // Iniciar control de sesión duplicada
@@ -3248,9 +3247,6 @@ async function guardarFactiliza() {
   if(!token || !instancia) { toast('Completa token e instancia','warning'); return; }
   try {
     await db.collection('config').doc('factiliza').set({ token, instancia });
-    _factilizaCache = { token, instancia }; // Refrescar cache
-    localStorage.setItem('factiliza_token', token);
-    localStorage.setItem('factiliza_instancia', instancia);
     toast('✅ Configuración WhatsApp guardada','success');
   } catch(e) { toast('Error al guardar: '+e.message,'error'); }
 }
@@ -3260,10 +3256,8 @@ async function probarFactiliza() {
   const instancia = document.getElementById('factiliza-instancia').value.trim();
   if(!token || !instancia) { toast('Completa token e instancia primero','warning'); return; }
   try {
-    await db.collection('config').doc('factiliza').set({ token, instancia });
-  } catch(e) {}
-  localStorage.setItem('factiliza_token', token);
-  localStorage.setItem('factiliza_instancia', instancia);
+    await guardarFactiliza();
+  } catch(e) { toast('Error al guardar: '+e.message,'error'); return; }
   toast('Enviando mensaje de prueba...','info');
   const cfg = await getConfig();
   const msg = `✅ *Conexión exitosa*\n${_waEncabezado()}\n\nLa integración WhatsApp está funcionando correctamente. 🎉${_waPie()}`;
@@ -3287,80 +3281,35 @@ function _waPie() {
 // ============================================================
 // WHATSAPP — FACTILIZA
 // ============================================================
-// Cache en memoria para config Factiliza (se carga una vez al inicio)
-let _factilizaCache     = null;
-let _factilizaCacheTime = 0;
-const _FACTILIZA_TTL    = 60 * 60 * 1000; // 1 hora — si el token cambia, refresca automático
-
-async function getFactilizaConfig() {
-  if(_factilizaCache && (Date.now() - _factilizaCacheTime) < _FACTILIZA_TTL) return _factilizaCache;
-  try {
-    const snap = await db.collection('config').doc('factiliza').get();
-    if(snap.exists) {
-      _factilizaCache     = { token: snap.data().token, instancia: snap.data().instancia };
-      _factilizaCacheTime = Date.now();
-      return _factilizaCache;
-    }
-  } catch(e) { console.warn('Error cargando config Factiliza:', e); }
-  // Fallback localStorage
-  const token = localStorage.getItem('factiliza_token');
-  const instancia = localStorage.getItem('factiliza_instancia');
-  if(token && instancia) {
-    _factilizaCache     = { token, instancia };
-    _factilizaCacheTime = Date.now();
-    return _factilizaCache;
-  }
-  return null;
-}
-
 async function sendWhatsApp(telefono, mensaje, imageUrl = null) {
-  const cfg = await getFactilizaConfig();
-  let token     = cfg?.token;
-  let instancia = cfg?.instancia;
-  console.log('📱 sendWhatsApp - token:', token ? '✅ presente' : '❌ vacío');
-  console.log('📱 sendWhatsApp - instancia:', instancia || '❌ vacía');
-  console.log('📱 sendWhatsApp - teléfono raw:', telefono);
-  if(!token || !instancia) {
-    console.warn('❌ Factiliza no configurado');
-    toast('WhatsApp: token o instancia no configurado','warning');
-    return false;
-  }
   let num = telefono.replace(/[^0-9]/g, '');
   if(num.startsWith('0')) num = num.substring(1);
   if(num.length === 9) num = '51' + num;
-  console.log('📱 sendWhatsApp - número formateado:', num);
   if(!num || num.length < 10) {
-    console.warn('❌ Teléfono inválido:', telefono);
     toast('WhatsApp: número de teléfono inválido','warning');
     return false;
   }
   try {
-    const imgUrl = 'https://moisesohs1007.github.io/asistencia-qr/img/logo-colegio.png';
-    const resImg = await fetch(`https://apiwsp.factiliza.com/v1/message/sendimage/${instancia}`, {
+    const { data: { session } } = await _sb.auth.getSession();
+    const jwt = session?.access_token;
+    if(!jwt) { toast('Inicia sesión para enviar WhatsApp','warning'); return false; }
+    const baseImg = imageUrl || new URL(COLEGIO_LOGO || 'img/logo-colegio.png', window.location.href).href;
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/enviar-whatsapp`, {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number: num, url: imgUrl, caption: mensaje })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwt}`,
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({ telefono: num, mensaje, urlImagen: baseImg })
     });
-    if(resImg.ok) {
-      console.log('📱 Imagen enviada OK');
-      return true;
+    const body = await res.json().catch(() => ({}));
+    if(!res.ok) {
+      toast('❌ WhatsApp no enviado: ' + (body.error || ('HTTP ' + res.status)), 'warning');
+      return false;
     }
-    // Imagen falló (404 u otro) — intentar solo texto
-    console.warn('📱 Imagen falló HTTP', resImg.status, '— enviando texto...');
-    const res = await fetch(`https://apiwsp.factiliza.com/v1/message/sendtext/${instancia}`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number: num, text: mensaje })
-    });
-    const txtBody = await res.text();
-    console.log('📱 Respuesta texto Factiliza:', txtBody);
-    if(res.ok) return true;
-    let jsonOk = false;
-    if(txtBody) { try { const d = JSON.parse(txtBody); jsonOk = d.success===true||d.success==='true'||d.status==='success'; } catch(e){} }
-    if(!jsonOk) toast('❌ WhatsApp no enviado: ' + (txtBody||'HTTP '+res.status), 'warning');
-    return jsonOk;
+    return true;
   } catch(e) {
-    console.error('❌ Error WhatsApp fetch:', e);
     toast('❌ Error conexión WhatsApp: ' + e.message, 'error');
     return false;
   }
@@ -6959,5 +6908,3 @@ async function resetearTodoElSistema() {
     toast('Error: ' + e.message, 'error');
   }
 }
-
-

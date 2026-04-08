@@ -82,14 +82,18 @@ const _CONFIG_FIELD_MAP = {
 
 async function _getConfig(docId) {
   if (docId === 'alumnos_ts') return { exists: false, data: () => ({}) };
-  const { data, error } = await _sb.from('colegios').select('*').eq('id', COLEGIO_ID).single();
-  if (error || !data) return { exists: false, data: () => ({}) };
   if (docId === 'factiliza') {
     return {
-      exists: !!(data.factiliza_token || data.factiliza_instancia),
-      data: () => ({ token: data.factiliza_token || '', instancia: data.factiliza_instancia || '' })
+      exists: false,
+      data: () => ({ token: '', instancia: '' })
     };
   }
+  const { data, error } = await _sb
+    .from('colegios')
+    .select('id,nombre,anio,eslogan,logo_url,apo_domain,niveles,grados,secciones,banner_imagenes')
+    .eq('id', COLEGIO_ID)
+    .single();
+  if (error || !data) return { exists: false, data: () => ({}) };
   // general: devuelve todo el colegio como config
   return {
     exists: true,

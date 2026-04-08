@@ -51,6 +51,61 @@ CREATE POLICY "colegios_read" ON colegios FOR SELECT
 CREATE POLICY "colegios_write" ON colegios FOR ALL
   USING (id = auth_colegio_id() AND is_admin());
 
+CREATE OR REPLACE FUNCTION get_colegio_public(p_colegio_id TEXT)
+RETURNS TABLE (
+  id TEXT,
+  nombre TEXT,
+  anio TEXT,
+  eslogan TEXT,
+  logo_url TEXT,
+  apo_domain TEXT,
+  niveles JSONB,
+  grados JSONB,
+  secciones JSONB,
+  banner_imagenes JSONB
+)
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    c.id,
+    c.nombre,
+    c.anio,
+    c.eslogan,
+    c.logo_url,
+    c.apo_domain,
+    c.niveles,
+    c.grados,
+    c.secciones,
+    c.banner_imagenes
+  FROM colegios c
+  WHERE c.id = p_colegio_id
+  LIMIT 1
+$$;
+
+GRANT EXECUTE ON FUNCTION get_colegio_public(TEXT) TO anon, authenticated;
+
+CREATE OR REPLACE FUNCTION set_whatsapp_config(p_colegio_id TEXT, p_token TEXT, p_instancia TEXT)
+RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF COALESCE(auth.jwt() -> 'app_metadata' ->> 'rol', '') <> 'admin' THEN
+    RAISE EXCEPTION 'No permitido';
+  END IF;
+  IF COALESCE(auth.jwt() -> 'app_metadata' ->> 'colegio_id', '') <> p_colegio_id THEN
+    RAISE EXCEPTION 'No permitido';
+  END IF;
+  UPDATE colegios
+  SET factiliza_token = p_token,
+      factiliza_instancia = p_instancia
+  WHERE id = p_colegio_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION set_whatsapp_config(TEXT, TEXT, TEXT) TO authenticated;
+
 -- 3. POLÍTICA ESTRICTA EN TABLA REGISTROS
 -- Apoderados solo pueden ver sus propios registros (donde alumno_id coincide con su metadata)
 -- Nunca pueden listar todos los registros
