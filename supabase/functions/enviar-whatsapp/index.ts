@@ -1,28 +1,13 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const ALLOWED_ORIGINS = new Set([
-  'http://localhost:8000',
-  'http://127.0.0.1:8000',
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'https://moisesohs1007.github.io',
-]);
-
-function corsHeadersFor(req: Request) {
-  const origin = req.headers.get('Origin') || '';
-  const allowOrigin = ALLOWED_ORIGINS.has(origin) ? origin : 'null';
-  return {
-    'Access-Control-Allow-Origin': allowOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Vary': 'Origin',
-  };
-}
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
 
 serve(async (req) => {
-  const corsHeaders = corsHeadersFor(req);
-
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -146,34 +131,53 @@ serve(async (req) => {
       });
     }
 
-    let responseFactiliza;
+    const instanciaSafe = encodeURIComponent(String(instancia || '').trim());
+    const factilizaBase = 'https://apiwsp.factiliza.com';
+    const factilizaHeaders = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${tokenFactiliza}`,
+    };
 
-    if (urlImagen) {
-      responseFactiliza = await fetch(`https://apiwsp.factiliza.com/v1/message/sendimage/${instancia}`, {
+    async function sendFactiliza() {
+      if (urlImagen) {
+        const resNew = await fetch(`${factilizaBase}/api/v1/message/sendMedia/${instanciaSafe}`, {
+          method: 'POST',
+          headers: factilizaHeaders,
+          body: JSON.stringify({ number: num, mediatype: 'image', media: urlImagen, caption: mensaje }),
+        });
+        if (resNew.status !== 404) return resNew;
+        return await fetch(`${factilizaBase}/v1/message/sendimage/${instanciaSafe}`, {
+          method: 'POST',
+          headers: factilizaHeaders,
+          body: JSON.stringify({ number: num, url: urlImagen, caption: mensaje }),
+        });
+      }
+
+      const resNew = await fetch(`${factilizaBase}/api/v1/message/sendText/${instanciaSafe}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${tokenFactiliza}`
-        },
-        body: JSON.stringify({ number: num, url: urlImagen, caption: mensaje })
+        headers: factilizaHeaders,
+        body: JSON.stringify({ number: num, text: mensaje, numero: num, texto: mensaje }),
       });
-    } else {
-      responseFactiliza = await fetch(`https://apiwsp.factiliza.com/v1/message/sendtext/${instancia}`, {
+      if (resNew.status !== 404) return resNew;
+      return await fetch(`${factilizaBase}/v1/message/sendtext/${instanciaSafe}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${tokenFactiliza}`
-        },
-        body: JSON.stringify({ number: num, text: mensaje })
+        headers: factilizaHeaders,
+        body: JSON.stringify({ number: num, text: mensaje }),
       });
     }
 
+    const responseFactiliza = await sendFactiliza();
+
     const txt = await responseFactiliza.text();
-    let dataFactiliza: any = null;
-    try { dataFactiliza = txt ? JSON.parse(txt) : null; } catch (e) { dataFactiliza = { raw: txt }; }
+    let dataFactiliza: any = { raw: txt ?? '' };
+    try { dataFactiliza = txt ? JSON.parse(txt) : { raw: '' }; } catch (e) {}
 
     if (!responseFactiliza.ok) {
-      return new Response(JSON.stringify({ error: 'Fallo al enviar en Factiliza', details: dataFactiliza }), {
+      return new Response(JSON.stringify({
+        error: 'Fallo al enviar en Factiliza',
+        factilizaStatus: responseFactiliza.status,
+        details: dataFactiliza,
+      }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

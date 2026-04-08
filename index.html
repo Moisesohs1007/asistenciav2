@@ -9052,8 +9052,7 @@ async function guardarIncidente() {
       const contactos = alumnoData.telefono2
         ? `👨‍👩‍👧 *Apoderados notificados:*\n• ${nombre1}: ${alumnoData.telefono}\n• ${nombre2}: ${alumnoData.telefono2}`
         : `👤 *Apoderado notificado:* ${nombre1}: ${alumnoData.telefono}`;
-      const linkImagen = imgLinkApo ? `\n\n🖼️ *Ver reporte:* ${imgLinkApo}\n_(disponible 7 días)_` : '';
-      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${enc}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.${linkImagen}\n\n${contactos}\n📞 Para más información contacte a la dirección del colegio.${pie}`;
+      const msg = `🚨 *REPORTE DE INCIDENCIA*\n${enc}\n\n👤 *Alumno:* ${incidente.alumnoNombre}\n🏫 *Grado:* ${incidente.grado} ${incidente.seccion} — ${incidente.turno}\n📋 *Tipo:* ${incidente.tipo}\n${sevEmoji} *Severidad:* ${incidente.severidad}\n📅 *Fecha:* ${incidente.fecha} ${incidente.hora}\n\n📝 El colegio ha registrado un incidente con su hijo/a. Por favor comuníquese con la institución a la brevedad.\n\n${contactos}\n📞 Para más información contacte a la dirección del colegio.${pie}`;
       const enviado = await sendWhatsApp(alumnoData.telefono, msg, imgLinkApo);
       if(alumnoData.telefono2) sendWhatsApp(alumnoData.telefono2, msg, imgLinkApo);
       if(enviado) toast('✅ WhatsApp enviado al apoderado' + (alumnoData.telefono2 ? 's' : '') + (imgLinkApo ? ' con imagen ✅' : ''), 'success');
