@@ -643,7 +643,11 @@
   #sec-scan .student-name {
     font-family: var(--font-display);
     font-size: 1.25rem; font-weight: 800;
-    line-height: 1.2; word-break: break-word;
+    line-height: 1.22;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    text-align: center;
+    padding: 0 6px;
   }
   #sec-scan .student-meta {
     font-size: 0.84rem; color: var(--muted);
@@ -907,6 +911,57 @@
     max-height: 90vh;
     overflow-y: auto;
   }
+
+  .niveles-pies {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .nivel-pie {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 170px;
+    flex: 1 1 170px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+  .nivel-pie-ring {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: conic-gradient(var(--c) calc(var(--p) * 1%), rgba(255,255,255,0.08) 0);
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+  .nivel-pie-center {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: grid;
+    place-items: center;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--text);
+    font-family: var(--font-display);
+  }
+  .nivel-pie-label { min-width: 0; }
+  .nivel-pie-title {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--text);
+    font-family: var(--font-display);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .nivel-pie-sub { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
   .modal-title {
     font-family: var(--font-display);
     font-size: 1.2rem;

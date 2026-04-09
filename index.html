@@ -2108,6 +2108,7 @@
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
           <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Asistencia por nivel — hoy</div>
           <div id="inicio-niveles-bars"></div>
+          <div id="inicio-niveles-pies" class="niveles-pies" style="margin-top:12px;"></div>
         </div>
         <!-- Últimos ingresos -->
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
@@ -2736,7 +2737,7 @@
     <div class="modal" onclick="event.stopPropagation()" style="max-width:560px;">
       <div class="modal-header">
         <div class="modal-title">🚨 Nuevo Reporte de Incidente</div>
-        <button class="modal-close" onclick="closeModal('modal-incidente')">✕</button>
+        <button class="modal-close" onclick="closeModal('modal-incidente'); limpiarFiltrosIncidentes();">✕</button>
       </div>
 
       <!-- Layout: en PC usa dos columnas (inc-body-pc), en celular es bloque normal -->
@@ -2826,7 +2827,7 @@
 
       <div style="display:flex;gap:10px;margin-top:20px;">
         <button class="btn btn-primary" onclick="guardarIncidente()" style="flex:1;justify-content:center;background:linear-gradient(135deg,#ef4444,#f97316);">🖨️ Guardar y Generar PDF</button>
-        <button class="btn btn-ghost" onclick="closeModal('modal-incidente')" style="justify-content:center;">Cancelar</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-incidente'); limpiarFiltrosIncidentes();" style="justify-content:center;">Cancelar</button>
       </div>
     </div>
   </div>
@@ -4114,6 +4115,7 @@ async function cargarDashboardInicio() {
     const cfg = await getConfig();
     const niveles = (cfg.niveles||[]).map(n=>n.nombre);
     const barsEl = document.getElementById('inicio-niveles-bars');
+    const piesEl = document.getElementById('inicio-niveles-pies');
     if(barsEl && niveles.length) {
       const colors = ['#378ADD','#16a34a','#854F0B','#534AB7'];
       barsEl.innerHTML = niveles.map((niv,i) => {
@@ -4126,6 +4128,24 @@ async function cargarDashboardInicio() {
           '<div style="flex:1;height:7px;background:var(--surface2);border-radius:4px;overflow:hidden;">' +
           '<div style="height:100%;border-radius:4px;background:' + col + ';width:' + pNiv + '%;"></div></div>' +
           '<div style="font-size:0.75rem;color:' + col + ';width:32px;text-align:right;">' + pNiv + '%</div></div>';
+      }).join('');
+    }
+    if(piesEl && niveles.length) {
+      const colors = ['#378ADD','#16a34a','#f59e0b','#8b5cf6'];
+      piesEl.innerHTML = niveles.map((niv,i) => {
+        const alNiv = alumnos.filter(a=>a.turno===niv);
+        const presNiv = new Set(regsHoy.filter(r=>r.tipo==='INGRESO'&&r.turno===niv).map(r=>r.alumnoId)).size;
+        const pNiv = alNiv.length ? Math.round(presNiv/alNiv.length*100) : 0;
+        const col = colors[i % colors.length];
+        return `<div class="nivel-pie">
+          <div class="nivel-pie-ring" style="--p:${pNiv};--c:${col};">
+            <div class="nivel-pie-center">${pNiv}%</div>
+          </div>
+          <div class="nivel-pie-label">
+            <div class="nivel-pie-title">${niv}</div>
+            <div class="nivel-pie-sub">${presNiv}/${alNiv.length}</div>
+          </div>
+        </div>`;
       }).join('');
     }
 
@@ -4751,7 +4771,6 @@ async function openModalAlumno(id) {
     fSecc.innerHTML = '<option value="">Seleccionar</option>';
     _disableSelect('f-seccion');
     
-    // Primero poblar el select de nivel con opciones de config
     const cfgTemp = await getConfig();
     const fTurno = document.getElementById('f-turno');
     fTurno.innerHTML = '<option value="">Seleccionar</option>';
@@ -5322,22 +5341,24 @@ function onSeccionChangeRegistro() {
   renderRegistro();
 }
 
-// Al escribir en BUSCADOR → limpiar nivel/grado/sección y repoblar a estado inicial
-async function onSearchRegistro() {
+let _searchRegistroTimer = null;
+function onSearchRegistro() {
   const q = document.getElementById('filter-search').value;
-  if(q.trim()) {
-    document.getElementById('filter-nivel').value   = '';
-    document.getElementById('filter-grado').value   = '';
-    document.getElementById('filter-seccion').value = '';
-    await poblarFiltroGrado('filter-grado', null);
-    await poblarFiltroSeccion('filter-seccion', null);
-    _disableSelect('filter-grado');
-    _disableSelect('filter-seccion');
-  } else {
-    // Campo vacío → rehabilitar grado
-    _enableSelect('filter-grado');
-  }
-  renderRegistro();
+  if(_searchRegistroTimer) clearTimeout(_searchRegistroTimer);
+  _searchRegistroTimer = setTimeout(async () => {
+    if(q.trim()) {
+      document.getElementById('filter-nivel').value   = '';
+      document.getElementById('filter-grado').value   = '';
+      document.getElementById('filter-seccion').value = '';
+      await poblarFiltroGrado('filter-grado', null);
+      await poblarFiltroSeccion('filter-seccion', null);
+      _disableSelect('filter-grado');
+      _disableSelect('filter-seccion');
+    } else {
+      _enableSelect('filter-grado');
+    }
+    renderRegistro();
+  }, 220);
 }
 
 async function renderRegistro() {
@@ -5441,11 +5462,12 @@ async function renderRegistro() {
       })();
 
       // Alumnos que coinciden con la búsqueda
-      const todosAlumnos = await DB.getAlumnos();
-      const alumnosFiltrados = todosAlumnos.filter(a =>
-        (a.nombre||'').toLowerCase().includes(q.trim()) ||
-        (a.id||'').toLowerCase().includes(q.trim())
-      );
+      const todosAlumnos = await getAlumnosFiltrados();
+      const qn = q.trim();
+      const alumnosFiltrados = todosAlumnos.filter(a => {
+        const nombre = ((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || (a.nombre||'');
+        return (nombre||'').toLowerCase().includes(qn) || (a.id||'').toLowerCase().includes(qn);
+      });
 
       const fechasHabiles = [];
       let cur = new Date(rangoDesde + 'T12:00:00');
@@ -5456,14 +5478,18 @@ async function renderRegistro() {
         cur.setDate(cur.getDate() + 1);
       }
 
-      alumnosFiltrados.forEach(a => {
-        fechasHabiles.forEach(fecha => {
-          const key = a.id + '_' + fecha;
-          if(!grupos[key]) {
-            filas.push({ alumnoId: a.id, nombre: ((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || a.nombre || '', grado: a.grado, seccion: a.seccion, turno: a.turno||'-', fecha, ingreso: null, salida: null, estadoIngreso: 'Sin registro' });
-          }
+      if(alumnosFiltrados.length * fechasHabiles.length <= 2500) {
+        alumnosFiltrados.forEach(a => {
+          fechasHabiles.forEach(fecha => {
+            const key = a.id + '_' + fecha;
+            if(!grupos[key]) {
+              filas.push({ alumnoId: a.id, nombre: ((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || a.nombre || '', grado: a.grado, seccion: a.seccion, turno: a.turno||'-', fecha, ingreso: null, salida: null, estadoIngreso: 'Sin registro' });
+            }
+          });
         });
-      });
+      } else {
+        toast('Rango grande: reduce fechas para mostrar "Sin registro"','warning');
+      }
     }
 
     // 3b. Si hay filtro de nivel/grado (sin búsqueda por texto), agregar "Sin registro"
@@ -5494,14 +5520,18 @@ async function renderRegistro() {
         cur.setDate(cur.getDate() + 1);
       }
 
-      alumnosFilt.forEach(a => {
-        fechasHabiles.forEach(fecha => {
-          const key = a.id + '_' + fecha;
-          if(!grupos[key]) {
-            filas.push({ alumnoId: a.id, nombre: ((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || a.nombre || '', grado: a.grado, seccion: a.seccion, turno: a.turno||'-', fecha, ingreso: null, salida: null, estadoIngreso: 'Sin registro' });
-          }
+      if(alumnosFilt.length * fechasHabiles.length <= 2500) {
+        alumnosFilt.forEach(a => {
+          fechasHabiles.forEach(fecha => {
+            const key = a.id + '_' + fecha;
+            if(!grupos[key]) {
+              filas.push({ alumnoId: a.id, nombre: ((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || a.nombre || '', grado: a.grado, seccion: a.seccion, turno: a.turno||'-', fecha, ingreso: null, salida: null, estadoIngreso: 'Sin registro' });
+            }
+          });
         });
-      });
+      } else {
+        toast('Rango grande: reduce fechas para mostrar "Sin registro"','warning');
+      }
     }
 
 
@@ -8491,7 +8521,7 @@ async function guardarImagenesBanner() {
   }
 }
 
-var _bannerImgsDefault = ["img/banner-default-1.jpg", "img/banner-default-2.jpg", "img/banner-default-3.jpg", "img/banner-default-4.jpg", "img/banner-default-5.jpg"];
+var _bannerImgsDefault = ["img/banner-default-1.jpg", "img/banner-default-2.jpg", "img/banner-default-4.jpg", "img/banner-default-5.jpg"];
 
 function aplicarImagenesBanner() {
   var imgs = _bannerImgs.length ? _bannerImgs : _bannerImgsDefault;
@@ -8611,7 +8641,13 @@ async function cargarGradosPorNivel(nivelParam) {
   if(!nivel) { _disableSelect('f-grado'); _disableSelect('f-seccion'); return; }
   _enableSelect('f-grado');
   const cfg = await getConfig();
-  const grados = (cfg.grados||{})[nivel] || [];
+  const gradosMap = cfg.grados || {};
+  const nivelNorm = String(nivel || '').trim().toLowerCase();
+  let grados = gradosMap[nivel] || gradosMap[String(nivel || '').trim()] || [];
+  if(!grados.length) {
+    const k = Object.keys(gradosMap).find(x => String(x||'').trim().toLowerCase() === nivelNorm);
+    if(k) grados = gradosMap[k] || [];
+  }
   grados.forEach(g => {
     const opt = document.createElement('option');
     opt.value = g; opt.textContent = g;
@@ -9036,7 +9072,7 @@ async function guardarIncidente() {
     toast('Reporte guardado','success');
     reactivarBtn();
     closeModal('modal-incidente');
-    renderIncidentes();
+    limpiarFiltrosIncidentes();
 
     // 2. Mostrar botón de llamada INMEDIATAMENTE en móvil
     if(alumnoData?.telefono && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
@@ -9194,7 +9230,7 @@ async function renderIncidentes() {
     const mesSel = document.getElementById('inc-filter-mes')?.value || '2_DIAS';
     if(mesSel === '2_DIAS') {
       const h = new Date();
-      h.setDate(h.getDate() - 2);
+      h.setDate(h.getDate() - 1);
       const limite = h.getFullYear() + '-' + String(h.getMonth()+1).padStart(2,'0') + '-' + String(h.getDate()).padStart(2,'0');
       docs = docs.filter(d => (d.fecha||'') >= limite);
     } else {

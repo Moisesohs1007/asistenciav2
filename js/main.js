@@ -1601,7 +1601,6 @@ async function openModalAlumno(id) {
     document.getElementById('f-id').title = '';
     document.getElementById('f-nombres').value = a.nombres;
     document.getElementById('f-apellidos').value = a.apellidos;
-    // Primero poblar el select de nivel con opciones de config
     const cfgTemp = await getConfig();
     const fTurno = document.getElementById('f-turno');
     fTurno.innerHTML = '<option value="">Seleccionar</option>';
@@ -1643,7 +1642,6 @@ async function openModalAlumno(id) {
     fSecc.innerHTML = '<option value="">Seleccionar</option>';
     _disableSelect('f-seccion');
     
-    // Primero poblar el select de nivel con opciones de config
     const cfgTemp = await getConfig();
     const fTurno = document.getElementById('f-turno');
     fTurno.innerHTML = '<option value="">Seleccionar</option>';
@@ -5499,7 +5497,13 @@ async function cargarGradosPorNivel(nivelParam) {
   if(!nivel) { _disableSelect('f-grado'); _disableSelect('f-seccion'); return; }
   _enableSelect('f-grado');
   const cfg = await getConfig();
-  const grados = (cfg.grados||{})[nivel] || [];
+  const gradosMap = cfg.grados || {};
+  const nivelNorm = String(nivel || '').trim().toLowerCase();
+  let grados = gradosMap[nivel] || gradosMap[String(nivel || '').trim()] || [];
+  if(!grados.length) {
+    const k = Object.keys(gradosMap).find(x => String(x||'').trim().toLowerCase() === nivelNorm);
+    if(k) grados = gradosMap[k] || [];
+  }
   grados.forEach(g => {
     const opt = document.createElement('option');
     opt.value = g; opt.textContent = g;
