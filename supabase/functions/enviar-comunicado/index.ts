@@ -36,8 +36,8 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    if (items.length > 40) {
-      return new Response(JSON.stringify({ error: 'Demasiados destinatarios' }), {
+    if (items.length > 80) {
+      return new Response(JSON.stringify({ error: 'Demasiados destinatarios (máximo 80)' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -171,7 +171,7 @@ serve(async (req) => {
       try { details = txt ? JSON.parse(txt) : { raw: '' }; } catch (e) {}
       results.push({ telefono: num, ok: res.ok, status: res.status, details });
 
-      await sleep(250);
+      await sleep(1200);
     }
 
     return new Response(JSON.stringify({ success: true, results }), {

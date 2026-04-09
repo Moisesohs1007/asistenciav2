@@ -2879,7 +2879,7 @@
         <span style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Marcar todos (aula)</span>
       </div>
       <button class="btn btn-ghost" onclick="comSelectAllFiltrados()" style="font-size:0.78rem;padding:5px 10px;">Seleccionar</button>
-      <button class="btn btn-ghost" onclick="comClearSelection()" style="font-size:0.78rem;padding:5px 10px;">✕ Limpiar</button>
+      <button class="btn btn-ghost" onclick="comLimpiarComunicado()" style="font-size:0.78rem;padding:5px 10px;">✕ Limpiar</button>
       <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
         <div style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Seleccionados: <b id="com-count">0</b>/40</div>
       </div>
@@ -2909,11 +2909,16 @@
         <div class="card-title"><span class="dot" style="background:var(--accent2)"></span>Mensaje</div>
         <div class="form-group" style="margin-top:10px;">
           <label>Enviar a</label>
-          <select id="com-enviar-a">
+          <select id="com-enviar-a" onchange="onComEnviarAChange()">
             <option value="tel1">Apoderado 1</option>
             <option value="tel2">Apoderado 2</option>
             <option value="ambos">Ambos</option>
+            <option value="otro">Otro número</option>
           </select>
+        </div>
+        <div class="form-group" id="com-otro-wrap" style="display:none;">
+          <label>Teléfono (WhatsApp)</label>
+          <input id="com-otro-tel" type="text" placeholder="Ej: 999888777 o +51999888777" oninput="this.value=this.value.replace(/[^0-9+ ]/g,'')">
         </div>
         <div class="form-group">
           <label>Texto (puedes usar: {alumno}, {grado}, {seccion}, {nivel})</label>
@@ -6580,6 +6585,7 @@ let _comAlumnos = null;
 let _comSel = new Set();
 let _comInit = false;
 const _COM_MAX = 40;
+const _COM_MAX_MSG = 80;
 let _comFile = null;
 let _comMediaB64 = '';
 let _comMediaName = '';
@@ -6596,9 +6602,23 @@ async function initComunicado() {
     const niveles = nivelesCfg.length ? nivelesCfg : nivelesDatos;
     nivelSel.innerHTML = '<option value="">Todos</option>' + niveles.map(n=>`<option value="${n}">${n}</option>`).join('');
     document.getElementById('com-enviar-a').value = 'tel1';
+    onComEnviarAChange();
     _comInit = true;
   }
   renderComLista();
+}
+
+function onComEnviarAChange() {
+  const v = document.getElementById('com-enviar-a')?.value || 'tel1';
+  const wrap = document.getElementById('com-otro-wrap');
+  const inp = document.getElementById('com-otro-tel');
+  if(v === 'otro') {
+    if(wrap) wrap.style.display = '';
+    if(inp) inp.focus();
+  } else {
+    if(wrap) wrap.style.display = 'none';
+    if(inp) inp.value = '';
+  }
 }
 
 function _comIsAula() {
@@ -6676,7 +6696,29 @@ function _comFiltrados() {
     const nombre = (((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || (a.nombre||'')).toLowerCase();
     return nombre.includes(q) || String(a.id||'').includes(q);
   });
-  rows = rows.slice().sort((a,b)=>(((a.apellidos||'')+' '+(a.nombres||'')).trim()).localeCompare(((b.apellidos||'')+' '+(b.nombres||'')).trim()));
+  const gradoKey = (g) => {
+    const s = String(g || '').toLowerCase();
+    const m = s.match(/(\d{1,2})/);
+    const n = m ? parseInt(m[1], 10) : 999;
+    return isNaN(n) ? 999 : n;
+  };
+  const seccKey = (s) => String(s || '').trim().toUpperCase();
+  const apeKey = (a) => (((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || (a.nombre||'')).trim().toUpperCase();
+  rows = rows.slice().sort((a,b) => {
+    if(!grado && !seccion) {
+      const dg = gradoKey(a.grado) - gradoKey(b.grado);
+      if(dg) return dg;
+      const ds = seccKey(a.seccion).localeCompare(seccKey(b.seccion));
+      if(ds) return ds;
+      return apeKey(a).localeCompare(apeKey(b));
+    }
+    if(grado && !seccion) {
+      const ds = seccKey(a.seccion).localeCompare(seccKey(b.seccion));
+      if(ds) return ds;
+      return apeKey(a).localeCompare(apeKey(b));
+    }
+    return apeKey(a).localeCompare(apeKey(b));
+  });
   return rows;
 }
 
@@ -6724,6 +6766,43 @@ function comSelectAllFiltrados() {
 
 function comClearSelection() {
   _comSel = new Set();
+  renderComLista();
+}
+
+function comLimpiarComunicado() {
+  comClearSelection();
+  const nivelSel = document.getElementById('com-nivel');
+  const gradoSel = document.getElementById('com-grado');
+  const seccSel  = document.getElementById('com-seccion');
+  const search   = document.getElementById('com-search');
+  if(nivelSel) nivelSel.value = '';
+  if(gradoSel) {
+    gradoSel.value = '';
+    gradoSel.innerHTML = '<option value="">Todos</option>';
+    gradoSel.disabled = true;
+    gradoSel.style.opacity = '0.45';
+  }
+  if(seccSel) {
+    seccSel.value = '';
+    seccSel.innerHTML = '<option value="">Todas</option>';
+    seccSel.disabled = true;
+    seccSel.style.opacity = '0.45';
+  }
+  if(search) search.value = '';
+  const enviarA = document.getElementById('com-enviar-a');
+  if(enviarA) enviarA.value = 'tel1';
+  onComEnviarAChange();
+  const texto = document.getElementById('com-texto');
+  if(texto) texto.value = '';
+  const status = document.getElementById('com-status');
+  if(status) status.textContent = '';
+  const file = document.getElementById('com-img');
+  if(file) file.value = '';
+  _comFile = null; _comMediaB64 = ''; _comMediaName = '';
+  const prev = document.getElementById('com-img-preview');
+  const img  = document.getElementById('com-img-preview-img');
+  if(img) img.src = '';
+  if(prev) prev.style.display = 'none';
   renderComLista();
 }
 
@@ -6857,6 +6936,7 @@ async function enviarComunicado() {
     if(btn) { btn.disabled = true; btn.style.opacity = '0.75'; }
     if(st) st.textContent = 'Preparando envío...';
     const enviarA = document.getElementById('com-enviar-a').value;
+    const otroTel = (document.getElementById('com-otro-tel')?.value || '').trim();
     const rows = (_comAlumnos||[]).filter(a=>_comSel.has(a.id));
     const items = [];
     rows.forEach(a=>{
@@ -6869,9 +6949,11 @@ async function enviarComunicado() {
         if(tel1) items.push({ telefono: tel1, mensaje: msg });
         if(tel2 && tel2.replace(/\D/g,'').slice(-9) !== tel1.replace(/\D/g,'').slice(-9)) items.push({ telefono: tel2, mensaje: msg });
       }
+      if(enviarA === 'otro' && otroTel) items.push({ telefono: otroTel, mensaje: msg });
     });
     if(!items.length) { toast('No hay teléfonos válidos para enviar','warning'); return; }
-    if(items.length > _COM_MAX) { toast('Demasiados destinatarios (teléfonos). Reduce la selección o elige un solo apoderado.', 'warning'); return; }
+    const limite = (enviarA === 'ambos') ? _COM_MAX_MSG : _COM_MAX;
+    if(items.length > limite) { toast(`Demasiados mensajes (${items.length}). Máximo ${limite}.`, 'warning'); return; }
     const { data: { session } } = await _sb.auth.getSession();
     const jwt = session?.access_token;
     if(!jwt) { toast('Inicia sesión para enviar WhatsApp','warning'); return; }
