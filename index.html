@@ -2866,10 +2866,14 @@
         <input id="com-search" type="text" placeholder="Buscar alumno..." oninput="renderComLista()"
           style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-family:var(--font-body);font-size:0.82rem;">
       </div>
+      <div id="com-aula-all-wrap" style="display:none;align-items:center;gap:6px;">
+        <input type="checkbox" id="com-aula-all" onchange="comToggleAllAula(this)">
+        <span style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Marcar todos (aula)</span>
+      </div>
       <button class="btn btn-ghost" onclick="comSelectAllFiltrados()" style="font-size:0.78rem;padding:5px 10px;">Seleccionar</button>
       <button class="btn btn-ghost" onclick="comClearSelection()" style="font-size:0.78rem;padding:5px 10px;">✕ Limpiar</button>
       <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
-        <div style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Seleccionados: <b id="com-count">0</b>/30</div>
+        <div style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Seleccionados: <b id="com-count">0</b>/40</div>
       </div>
     </div>
 
@@ -2909,7 +2913,7 @@
         </div>
         <div class="form-group">
           <label>Imagen</label>
-          <input id="com-img" type="file" accept="image/*" onchange="onComImgChange()">
+          <input id="com-img" type="file" accept="image/*,application/pdf" onchange="onComImgChange()">
           <div id="com-img-preview" style="margin-top:8px;display:none;">
             <img id="com-img-preview-img" src="" style="width:100%;max-height:220px;object-fit:contain;border:1px solid var(--border);border-radius:10px;background:var(--surface2);">
           </div>
@@ -6567,8 +6571,10 @@ async function sendWhatsApp(telefono, mensaje, imageUrl = null) {
 let _comAlumnos = null;
 let _comSel = new Set();
 let _comInit = false;
-let _comImgFile = null;
-let _comImgUrl = '';
+const _COM_MAX = 40;
+let _comFile = null;
+let _comMediaB64 = '';
+let _comMediaName = '';
 
 async function initComunicado() {
   if(!_comAlumnos) {
@@ -6587,6 +6593,22 @@ async function initComunicado() {
   renderComLista();
 }
 
+function _comIsAula() {
+  return !!(document.getElementById('com-nivel').value && document.getElementById('com-grado').value && document.getElementById('com-seccion').value);
+}
+function _comUpdateAulaAll() {
+  const wrap = document.getElementById('com-aula-all-wrap');
+  const chk = document.getElementById('com-aula-all');
+  if(!wrap || !chk) return;
+  if(_comIsAula()) {
+    wrap.style.display = 'flex';
+  } else {
+    wrap.style.display = 'none';
+    chk.checked = false;
+    chk.indeterminate = false;
+  }
+}
+
 function onComNivelChange() {
   const nivel = document.getElementById('com-nivel').value;
   const gradoSel = document.getElementById('com-grado');
@@ -6600,6 +6622,7 @@ function onComNivelChange() {
     gradoSel.innerHTML = '<option value="">Todos</option>';
     gradoSel.disabled = true;
     gradoSel.style.opacity = '0.45';
+    _comUpdateAulaAll();
     renderComLista();
     return;
   }
@@ -6607,6 +6630,7 @@ function onComNivelChange() {
   gradoSel.innerHTML = '<option value="">Todos</option>' + grados.map(g=>`<option value="${g}">${g}</option>`).join('');
   gradoSel.disabled = false;
   gradoSel.style.opacity = '1';
+  _comUpdateAulaAll();
   renderComLista();
 }
 
@@ -6619,6 +6643,7 @@ function onComGradoChange() {
     seccSel.innerHTML = '<option value="">Todas</option>';
     seccSel.disabled = true;
     seccSel.style.opacity = '0.45';
+    _comUpdateAulaAll();
     renderComLista();
     return;
   }
@@ -6626,6 +6651,7 @@ function onComGradoChange() {
   seccSel.innerHTML = '<option value="">Todas</option>' + secciones.map(s=>`<option value="${s}">${s}</option>`).join('');
   seccSel.disabled = false;
   seccSel.style.opacity = '1';
+  _comUpdateAulaAll();
   renderComLista();
 }
 
@@ -6649,6 +6675,7 @@ function _comFiltrados() {
 function renderComLista() {
   const tbody = document.getElementById('com-tbody');
   if(!tbody) return;
+  _comUpdateAulaAll();
   const rows = _comFiltrados();
   tbody.innerHTML = rows.map(a=>{
     const id = a.id;
@@ -6670,7 +6697,7 @@ function renderComLista() {
 
 function comToggleSel(id, on) {
   if(on) {
-    if(_comSel.size >= 30) { toast('Máximo 30 destinatarios','warning'); renderComLista(); return; }
+    if(_comSel.size >= _COM_MAX) { toast('Máximo ' + _COM_MAX + ' destinatarios','warning'); renderComLista(); return; }
     _comSel.add(id);
   } else {
     _comSel.delete(id);
@@ -6681,7 +6708,7 @@ function comToggleSel(id, on) {
 function comSelectAllFiltrados() {
   const rows = _comFiltrados();
   for(const a of rows) {
-    if(_comSel.size >= 30) break;
+    if(_comSel.size >= _COM_MAX) break;
     if(a.telefono || a.telefono2) _comSel.add(a.id);
   }
   renderComLista();
@@ -6692,18 +6719,113 @@ function comClearSelection() {
   renderComLista();
 }
 
+function comToggleAllAula(chk) {
+  if(!chk) return;
+  if(!chk.checked) { comClearSelection(); chk.indeterminate = false; return; }
+  const rows = _comFiltrados();
+  _comSel = new Set();
+  let count = 0;
+  for(const a of rows) {
+    if(!(a.telefono || a.telefono2)) continue;
+    if(count >= _COM_MAX) break;
+    _comSel.add(a.id);
+    count++;
+  }
+  const totalConTel = rows.filter(a=>a.telefono || a.telefono2).length;
+  chk.indeterminate = totalConTel > _COM_MAX;
+  chk.checked = totalConTel <= _COM_MAX;
+  if(totalConTel > _COM_MAX) toast(`Aula tiene ${totalConTel}. Se seleccionaron ${_COM_MAX} primeros.`, 'warning');
+  renderComLista();
+}
+
+async function _loadPdfJs() {
+  if(window.pdfjsLib) return;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  try {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  } catch(e) {}
+}
+
+function _fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+async function _imageFileToJpegBase64(file) {
+  const url = await _fileToDataUrl(file);
+  const img = await new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = reject;
+    im.src = url;
+  });
+  const maxW = 1280;
+  const scale = img.width > maxW ? (maxW / img.width) : 1;
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+  const out = c.toDataURL('image/jpeg', 0.78);
+  return out.split(',')[1] || '';
+}
+
+async function _pdfFileToJpegBase64(file) {
+  await _loadPdfJs();
+  const buf = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  const page = await pdf.getPage(1);
+  const viewport = page.getViewport({ scale: 1.6 });
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(viewport.width);
+  c.height = Math.ceil(viewport.height);
+  const ctx = c.getContext('2d');
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  const out = c.toDataURL('image/jpeg', 0.82);
+  return out.split(',')[1] || '';
+}
+
 function onComImgChange() {
   const f = document.getElementById('com-img')?.files?.[0] || null;
-  _comImgFile = f;
-  _comImgUrl = '';
+  _comFile = f;
+  _comMediaB64 = '';
+  _comMediaName = '';
   const prev = document.getElementById('com-img-preview');
   const img = document.getElementById('com-img-preview-img');
-  if(f && prev && img) {
-    img.src = URL.createObjectURL(f);
-    prev.style.display = 'block';
-  } else if(prev) {
-    prev.style.display = 'none';
-  }
+  if(!f) { if(prev) prev.style.display = 'none'; return; }
+  (async () => {
+    try {
+      if(prev) prev.style.display = 'block';
+      if(String(f.type||'') === 'application/pdf' || String(f.name||'').toLowerCase().endsWith('.pdf')) {
+        if(img) img.src = '';
+        _comMediaB64 = await _pdfFileToJpegBase64(f);
+        _comMediaName = (String(f.name||'documento').replace(/\.pdf$/i,'') || 'documento') + '.jpg';
+        if(img) img.src = 'data:image/jpeg;base64,' + _comMediaB64;
+      } else if(String(f.type||'').startsWith('image/')) {
+        _comMediaB64 = await _imageFileToJpegBase64(f);
+        _comMediaName = (String(f.name||'imagen').replace(/\.(png|jpg|jpeg|webp)$/i,'') || 'imagen') + '.jpg';
+        if(img) img.src = 'data:image/jpeg;base64,' + _comMediaB64;
+      } else {
+        throw new Error('Formato no permitido');
+      }
+    } catch(e) {
+      toast('Archivo inválido: sube 1 imagen o 1 PDF', 'warning');
+      _comFile = null;
+      _comMediaB64 = '';
+      _comMediaName = '';
+      if(prev) prev.style.display = 'none';
+    }
+  })();
 }
 
 function _comMsg(tpl, a) {
@@ -6715,30 +6837,17 @@ function _comMsg(tpl, a) {
     .replaceAll('{nivel}', String(a.turno||''));
 }
 
-async function _comUploadImg() {
-  if(_comImgUrl) return _comImgUrl;
-  if(!_comImgFile) return '';
-  if(!window._sbStorage) throw new Error('Storage no disponible');
-  const id = (crypto?.randomUUID ? crypto.randomUUID() : (Date.now() + '_' + Math.random().toString(16).slice(2)));
-  const ext = (_comImgFile.type||'').includes('png') ? 'png' : 'jpg';
-  const path = `${COLEGIO_ID}/comunicados/${id}/imagen.${ext}`;
-  await _sbStorage.upload('incidentes', path, _comImgFile, _comImgFile.type || 'image/jpeg');
-  _comImgUrl = await _sbStorage.signedUrl('incidentes', path, 24 * 60 * 60);
-  return _comImgUrl;
-}
-
 async function enviarComunicado() {
   const btn = document.getElementById('com-btn-enviar');
   const st = document.getElementById('com-status');
   if(_comSel.size < 1) { toast('Selecciona al menos un alumno','warning'); return; }
-  if(_comSel.size > 30) { toast('Máximo 30 destinatarios','warning'); return; }
+  if(_comSel.size > _COM_MAX) { toast('Máximo ' + _COM_MAX + ' destinatarios','warning'); return; }
   const tpl = (document.getElementById('com-texto').value||'').trim();
   if(!tpl) { toast('Escribe el mensaje','warning'); return; }
-  if(!_comImgFile) { toast('Selecciona una imagen','warning'); return; }
+  if(!_comFile || !_comMediaB64) { toast('Sube 1 imagen o 1 PDF (se convertirá a imagen)','warning'); return; }
   try {
     if(btn) { btn.disabled = true; btn.style.opacity = '0.75'; }
     if(st) st.textContent = 'Preparando envío...';
-    const urlImagen = await _comUploadImg();
     const enviarA = document.getElementById('com-enviar-a').value;
     const rows = (_comAlumnos||[]).filter(a=>_comSel.has(a.id));
     const items = [];
@@ -6754,6 +6863,7 @@ async function enviarComunicado() {
       }
     });
     if(!items.length) { toast('No hay teléfonos válidos para enviar','warning'); return; }
+    if(items.length > _COM_MAX) { toast('Demasiados destinatarios (teléfonos). Reduce la selección o elige un solo apoderado.', 'warning'); return; }
     const { data: { session } } = await _sb.auth.getSession();
     const jwt = session?.access_token;
     if(!jwt) { toast('Inicia sesión para enviar WhatsApp','warning'); return; }
@@ -6765,7 +6875,7 @@ async function enviarComunicado() {
         'Authorization': `Bearer ${jwt}`,
         'apikey': SUPABASE_ANON_KEY
       },
-      body: JSON.stringify({ urlImagen, items })
+      body: JSON.stringify({ mediaBase64: _comMediaB64, filename: _comMediaName, items })
     });
     const body = await res.json().catch(() => ({}));
     if(!res.ok) {

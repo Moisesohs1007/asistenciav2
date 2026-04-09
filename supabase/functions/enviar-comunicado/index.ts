@@ -26,6 +26,8 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const urlImagen = typeof body.urlImagen === 'string' ? body.urlImagen : undefined;
+    const mediaBase64 = typeof body.mediaBase64 === 'string' ? body.mediaBase64 : '';
+    const filename = typeof body.filename === 'string' ? body.filename : '';
     const items = Array.isArray(body.items) ? body.items : [];
 
     if (!items.length) {
@@ -36,6 +38,12 @@ serve(async (req) => {
     }
     if (items.length > 40) {
       return new Response(JSON.stringify({ error: 'Demasiados destinatarios' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (!urlImagen && (!mediaBase64 || !filename)) {
+      return new Response(JSON.stringify({ error: 'Faltan parámetros requeridos (urlImagen o mediaBase64+filename)' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -107,6 +115,15 @@ serve(async (req) => {
     };
 
     async function sendFactiliza(num: string, mensaje: string) {
+      if (mediaBase64 && filename) {
+        const resNew = await fetch(`${factilizaBase}/api/v1/message/sendMedia/${instanciaSafe}`, {
+          method: 'POST',
+          headers: factilizaHeaders,
+          body: JSON.stringify({ number: num, mediatype: 'image', media: mediaBase64, filename, caption: mensaje }),
+        });
+        if (resNew.status !== 404 || !urlImagen) return resNew;
+      }
+
       if (urlImagen) {
         const resNew = await fetch(`${factilizaBase}/api/v1/message/sendMedia/${instanciaSafe}`, {
           method: 'POST',
