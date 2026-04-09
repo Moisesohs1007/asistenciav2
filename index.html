@@ -940,6 +940,47 @@
   body.modal-lock #msb-overlay { pointer-events: none !important; }
   body.modal-lock #user-dropdown-menu { display: none !important; pointer-events: none !important; }
 
+  .pta-wrap { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  .pta-donut {
+    width: 120px; height: 120px; border-radius: 50%;
+    background: conic-gradient(var(--pta-p) 0 var(--pta-p-end), var(--pta-t) var(--pta-p-end) var(--pta-t-end), var(--pta-a) var(--pta-t-end) 360deg);
+    position: relative;
+    flex-shrink: 0;
+    box-shadow: 0 10px 26px rgba(0,0,0,0.25);
+  }
+  .pta-donut::after {
+    content: '';
+    position: absolute;
+    inset: 26px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .pta-center {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .pta-center .pct { font-family: var(--font-display); font-weight: 900; font-size: 1.25rem; color: var(--text); line-height: 1; }
+  .pta-center .lbl { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+  .pta-legend { flex: 1; min-width: 220px; }
+  .pta-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); }
+  .pta-row:last-child { border-bottom: none; }
+  .pta-left { display:flex; align-items:center; gap:8px; min-width:0; }
+  .pta-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+  .pta-name { font-weight:800; font-size:0.86rem; color:var(--text); font-family:var(--font-display); }
+  .pta-val { font-size:0.82rem; color:var(--muted); white-space:nowrap; }
+
+  .inicio-nivel-pta-grid { display:grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 980px) { .inicio-nivel-pta-grid { grid-template-columns: 1fr 1fr; } }
+  .inicio-nivel-pta-card { background: var(--surface2); border:1px solid var(--border); border-radius: 14px; padding: 14px; }
+  .inicio-nivel-pta-title { display:flex; align-items:center; gap:8px; font-family:var(--font-display); font-weight:800; font-size:0.95rem; color:var(--text); margin-bottom:10px; }
+  .inicio-nivel-pta-title .dot { width:7px; height:7px; border-radius:50%; background: var(--accent2); flex-shrink:0; }
+
   .divider { border:none; border-top: 1px solid var(--border); margin: 16px 0; }
 
   /* ASISTENCIA TABLE COLORS */
