@@ -140,3 +140,31 @@ CREATE POLICY "resumen_apoderado_read" ON resumen_mensual FOR SELECT
     is_apoderado() AND 
     alumno_id = auth_alumno_id()
   );
+
+-- 6. AGENDA ESCOLAR (EVENTOS)
+-- Lectura: staff y apoderados del mismo colegio
+-- Escritura: solo staff (admin/director/profesor/portero) del mismo colegio
+CREATE TABLE IF NOT EXISTS agenda (
+  id TEXT PRIMARY KEY,
+  colegio_id TEXT NOT NULL REFERENCES colegios(id) ON DELETE CASCADE,
+  fecha TEXT NOT NULL,          -- YYYY-MM-DD
+  mes TEXT NOT NULL,            -- YYYY-MM
+  hora TEXT DEFAULT '',         -- HH:MM (opcional)
+  titulo TEXT NOT NULL,
+  detalle TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS agenda_colegio_mes_idx ON agenda (colegio_id, mes);
+CREATE INDEX IF NOT EXISTS agenda_colegio_fecha_idx ON agenda (colegio_id, fecha);
+
+ALTER TABLE agenda ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "agenda_read" ON agenda;
+DROP POLICY IF EXISTS "agenda_write" ON agenda;
+
+CREATE POLICY "agenda_read" ON agenda FOR SELECT
+  USING (colegio_id = auth_colegio_id() AND (is_staff() OR is_apoderado()));
+
+CREATE POLICY "agenda_write" ON agenda FOR ALL
+  USING (colegio_id = auth_colegio_id() AND is_staff());

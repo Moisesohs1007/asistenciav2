@@ -981,6 +981,47 @@
   .inicio-nivel-pta-title { display:flex; align-items:center; gap:8px; font-family:var(--font-display); font-weight:800; font-size:0.95rem; color:var(--text); margin-bottom:10px; }
   .inicio-nivel-pta-title .dot { width:7px; height:7px; border-radius:50%; background: var(--accent2); flex-shrink:0; }
 
+  .agenda-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-bottom: 8px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    text-align: center;
+    font-weight: 700;
+  }
+  .agenda-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+  .agenda-day {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    min-height: 78px;
+    padding: 8px;
+    cursor: pointer;
+    position: relative;
+  }
+  .agenda-day.muted { opacity: 0.55; }
+  .agenda-day.today { border-color: var(--accent2); box-shadow: 0 0 0 2px rgba(201,168,76,0.18) inset; }
+  .agenda-day.active { outline: 2px solid rgba(59,130,246,0.35); }
+  .agenda-num { font-family: var(--font-display); font-weight: 800; color: var(--text); font-size: 0.9rem; }
+  .agenda-dots { display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; }
+  .agenda-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); opacity: 0.85; }
+  .agenda-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+  .agenda-item-title { font-weight: 800; color: var(--text); font-family: var(--font-display); font-size: 0.9rem; }
+  .agenda-item-meta { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+  .agenda-item-actions { display:flex; gap:8px; margin-top: 10px; }
+
   .divider { border:none; border-top: 1px solid var(--border); margin: 16px 0; }
 
   /* ASISTENCIA TABLE COLORS */
@@ -1775,6 +1816,9 @@
       <button class="msb-subitem" onclick="msbPickSub(this,'comunicado','comunicacion','📢 Comunicado')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Comunicado</span>
       </button>
+      <button class="msb-subitem" onclick="msbPickSub(this,'agenda','comunicacion','📅 Agenda')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Agenda</span>
+      </button>
     </div>
 
     <!-- Configuración -->
@@ -2080,7 +2124,7 @@
       <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       <div class="nav-dropdown" id="drop-comunicacion">
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('comunicado');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>📢 Comunicado</div>
-        <div class="nav-drop-item" style="opacity:0.45;cursor:not-allowed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Agenda <span style="font-size:9px;color:#C9A84C;margin-left:4px;">Próx.</span></div>
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('agenda');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>📅 Agenda</div>
       </div>
     </button>
     <!-- Configuración -->
@@ -2977,6 +3021,39 @@
     </div>
   </div>
 
+  <!-- ===== AGENDA ===== -->
+  <div class="section" id="sec-agenda">
+    <div class="page-title">Agenda escolar</div>
+    <div class="page-sub">Calendario mensual para registrar actividades, reuniones y eventos del colegio</div>
+
+    <div class="card" style="padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Mes:</label>
+        <select id="age-mes" onchange="renderAgenda()" style="min-width:150px;"></select>
+      </div>
+      <button class="btn btn-ghost" onclick="agendaHoy()" style="font-size:0.78rem;padding:5px 10px;">Hoy</button>
+      <button class="btn btn-ghost" onclick="agendaPrevMes()" style="font-size:0.78rem;padding:5px 10px;">‹</button>
+      <button class="btn btn-ghost" onclick="agendaNextMes()" style="font-size:0.78rem;padding:5px 10px;">›</button>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+        <button class="btn btn-primary" onclick="openAgendaModal(hoy())" style="font-size:0.78rem;padding:6px 12px;">+ Evento</button>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:14px;align-items:start;">
+      <div class="card" style="padding:14px;">
+        <div class="agenda-week">
+          <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+        </div>
+        <div id="age-grid" class="agenda-grid"></div>
+      </div>
+      <div class="card" style="padding:14px;">
+        <div class="card-title"><span class="dot" style="background:var(--accent2)"></span>Eventos del día</div>
+        <div id="age-dia-title" style="margin-top:10px;font-family:var(--font-display);font-weight:800;color:var(--text);">—</div>
+        <div id="age-dia-list" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== REPORTES ===== -->
   <div class="section" id="sec-reportes">
     <div class="page-title">Reportes y Estadísticas</div>
@@ -3067,6 +3144,39 @@
   </div>
 
 </main>
+
+<!-- MODAL AGENDA -->
+<div class="modal-bg" id="modal-agenda">
+  <div class="modal" style="max-width:620px;">
+    <div class="modal-title">
+      <span id="agenda-modal-title">Nuevo evento</span>
+      <button class="btn btn-ghost" onclick="closeModal('modal-agenda')" style="padding:5px 10px;">✕</button>
+    </div>
+    <div class="form-grid" style="margin:0;">
+      <div class="form-group">
+        <label>Fecha</label>
+        <input type="date" id="age-fec">
+      </div>
+      <div class="form-group">
+        <label>Hora (opcional)</label>
+        <input type="time" id="age-hora">
+      </div>
+      <div class="form-group form-full">
+        <label>Título *</label>
+        <input type="text" id="age-titulo" placeholder="Ej: Reunión de padres">
+      </div>
+      <div class="form-group form-full">
+        <label>Detalle</label>
+        <textarea id="age-detalle" rows="5" style="resize:vertical;" placeholder="Descripción del evento..."></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:14px;">
+      <button class="btn btn-ghost" onclick="closeModal('modal-agenda')" style="justify-content:center;">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarAgendaEvento()" style="flex:1;justify-content:center;">Guardar</button>
+    </div>
+    <input type="hidden" id="age-event-id" value="">
+  </div>
+</div>
 
 <!-- MODAL ALUMNO -->
 <div class="modal-bg" id="modal-alumno">
@@ -3982,15 +4092,15 @@ function aplicarPermisos(rol) {
   setTimeout(renderBottomNav, 100);
   // Pestañas visibles según rol
   const permisos = {
-    admin:    ['inicio','scan','alumnos','registro','reportes','incidentes','comunicacion','comunicado','usuarios','config'],
-    director: ['inicio','registro','reportes','incidentes','comunicacion','comunicado'],
-    profesor: ['inicio','alumnos','registro','incidentes','comunicacion','comunicado'],
+    admin:    ['inicio','scan','alumnos','registro','reportes','incidentes','comunicacion','comunicado','agenda','usuarios','config'],
+    director: ['inicio','registro','reportes','incidentes','comunicacion','comunicado','agenda'],
+    profesor: ['inicio','alumnos','registro','incidentes','comunicacion','comunicado','agenda'],
     portero:  ['inicio','scan'],
   };
   const tabs = permisos[rol] || ['scan'];
 
   // Mostrar/ocultar tabs
-  ['scan','alumnos','registro','reportes','incidentes','comunicacion','usuarios','config'].forEach(t => {
+  ['scan','alumnos','registro','reportes','incidentes','comunicacion','agenda','usuarios','config'].forEach(t => {
     const el = document.getElementById('tab-'+t);
     if(el) el.style.display = tabs.includes(t) ? '' : 'none';
   });
@@ -4015,7 +4125,7 @@ function showSectionDirect(id) {
   document.getElementById('scan-action-bar').style.display = 'none';
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   const sec = document.getElementById('sec-'+id);
-  const tab = document.getElementById('tab-'+id) || (id === 'comunicado' ? document.getElementById('tab-comunicacion') : null);
+  const tab = document.getElementById('tab-'+id) || ((id === 'comunicado' || id === 'agenda') ? document.getElementById('tab-comunicacion') : null);
   if(sec) sec.classList.add('active');
   if(tab) tab.classList.add('active');
 
@@ -4043,6 +4153,7 @@ function showSectionDirect(id) {
     renderReportes();
   }
   if(id==='comunicado') { initComunicado(); }
+  if(id==='agenda') { initAgenda(); }
   if(id==='scan') updateStats();
   if(id==='usuarios') renderUsuarios();
   if(id==='config') renderConfig();
@@ -7036,6 +7147,223 @@ async function enviarComunicado() {
     if(st) st.textContent = '';
   } finally {
     if(btn) { btn.disabled = false; btn.style.opacity = ''; }
+  }
+}
+
+// ============================================================
+// AGENDA ESCOLAR (CALENDARIO MENSUAL)
+// ============================================================
+let _agendaCache = {}; // { 'YYYY-MM': [eventos] }
+let _agendaSelDia = '';
+
+function _mesToYM(mes) {
+  const [y,m] = String(mes||'').split('-').map(x=>parseInt(x,10));
+  return { y, m };
+}
+function _fmt2(n){ return String(n).padStart(2,'0'); }
+function _dateStr(y,m,d){ return y+'-'+_fmt2(m)+'-'+_fmt2(d); }
+function _isAgendaWriter(){ return ['admin','director','profesor'].includes(String(currentRol||'')); }
+
+async function initAgenda() {
+  poblarSelectorMes('age-mes');
+  if(!_agendaSelDia) _agendaSelDia = hoy();
+  await renderAgenda();
+  agendaSelectDay(_agendaSelDia);
+}
+
+function agendaHoy() {
+  const sel = document.getElementById('age-mes');
+  if(sel) sel.value = mesActual();
+  _agendaSelDia = hoy();
+  renderAgenda().then(()=>agendaSelectDay(_agendaSelDia));
+}
+
+function _addMonths(ym, delta) {
+  const { y, m } = _mesToYM(ym);
+  const d = new Date(y, (m||1)-1 + delta, 1);
+  return d.getFullYear() + '-' + _fmt2(d.getMonth()+1);
+}
+function agendaPrevMes() {
+  const sel = document.getElementById('age-mes');
+  if(!sel) return;
+  sel.value = _addMonths(sel.value, -1);
+  renderAgenda();
+}
+function agendaNextMes() {
+  const sel = document.getElementById('age-mes');
+  if(!sel) return;
+  sel.value = _addMonths(sel.value, 1);
+  renderAgenda();
+}
+
+async function _cargarAgendaMes(mes) {
+  if(_agendaCache[mes]) return _agendaCache[mes];
+  const cacheKey = 'agenda_' + mes;
+  const cached = LSC.get(cacheKey);
+  if(cached) { _agendaCache[mes] = cached; return cached; }
+  const snap = await db.collection('agenda')
+    .where('mes','==', mes)
+    .orderBy('fecha')
+    .get();
+  const evs = (snap.docs||[]).map(d => ({ id: d.id, ...d.data() }));
+  _agendaCache[mes] = evs;
+  LSC.set(cacheKey, evs, LSC.TTL_INCIDENTES);
+  return evs;
+}
+function _invalidarAgendaMes(mes) {
+  try { delete _agendaCache[mes]; } catch(e) {}
+  LSC.del('agenda_' + mes);
+}
+
+async function renderAgenda() {
+  const mes = document.getElementById('age-mes')?.value || mesActual();
+  const grid = document.getElementById('age-grid');
+  if(!grid) return;
+  grid.innerHTML = '<div style="grid-column:1/-1;color:var(--muted);text-align:center;padding:10px;">Cargando...</div>';
+  let eventos = [];
+  try { eventos = await _cargarAgendaMes(mes); } catch(e) { eventos = []; }
+  const map = {};
+  eventos.forEach(ev => {
+    const f = ev.fecha;
+    if(!f) return;
+    if(!map[f]) map[f] = [];
+    map[f].push(ev);
+  });
+  Object.values(map).forEach(arr => arr.sort((a,b)=>((a.hora||'')+' '+(a.titulo||'')).localeCompare((b.hora||'')+' '+(b.titulo||''))));
+
+  const { y, m } = _mesToYM(mes);
+  const first = new Date(y, m-1, 1);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const startOffset = (first.getDay() + 6) % 7; // lunes=0
+  const totalCells = 42;
+  const cells = [];
+  for(let i=0;i<totalCells;i++) {
+    const dayNum = i - startOffset + 1;
+    const d = new Date(y, m-1, dayNum);
+    const inMonth = d.getMonth() === (m-1);
+    const ds = _dateStr(d.getFullYear(), d.getMonth()+1, d.getDate());
+    const evCount = (map[ds]||[]).length;
+    const dots = evCount ? ('<div class="agenda-dots">' + Array(Math.min(3, evCount)).fill(0).map(()=>'<span class="agenda-dot"></span>').join('') + (evCount>3?`<span style="font-size:0.7rem;color:var(--muted);margin-left:2px;">+${evCount-3}</span>`:'') + '</div>') : '';
+    const cls = 'agenda-day' + (inMonth?'':' muted') + (ds===hoy()?' today':'') + (ds===_agendaSelDia?' active':'');
+    cells.push(`<div class="${cls}" onclick="agendaSelectDay('${ds}')">
+      <div class="agenda-num">${d.getDate()}</div>
+      ${dots}
+    </div>`);
+  }
+  grid.innerHTML = cells.join('');
+  if(_agendaSelDia) agendaSelectDay(_agendaSelDia, map);
+}
+
+function agendaSelectDay(fecha, mapOpt) {
+  _agendaSelDia = fecha;
+  const title = document.getElementById('age-dia-title');
+  const list = document.getElementById('age-dia-list');
+  if(title) title.textContent = fecha ? fecha.split('-').reverse().join('/') : '—';
+  if(!list) return;
+  const mes = (fecha||'').slice(0,7);
+  const map = mapOpt || (() => {
+    const evs = _agendaCache[mes] || [];
+    const m = {};
+    evs.forEach(ev=>{ if(!m[ev.fecha]) m[ev.fecha]=[]; m[ev.fecha].push(ev); });
+    Object.values(m).forEach(arr => arr.sort((a,b)=>((a.hora||'')+' '+(a.titulo||'')).localeCompare((b.hora||'')+' '+(b.titulo||''))));
+    return m;
+  })();
+  const evsDia = map[fecha] || [];
+  const canWrite = _isAgendaWriter();
+  const btnNuevo = canWrite ? `<button class="btn btn-primary" onclick="openAgendaModal('${fecha}')" style="width:100%;justify-content:center;margin-bottom:10px;">+ Agregar evento</button>` : '';
+  if(!evsDia.length) {
+    list.innerHTML = btnNuevo + `<div style="color:var(--muted);font-size:0.82rem;text-align:center;padding:12px;">Sin eventos</div>`;
+    return;
+  }
+  list.innerHTML = btnNuevo + evsDia.map(ev => {
+    const hora = ev.hora ? (ev.hora + ' · ') : '';
+    const det = ev.detalle ? `<div class="agenda-item-meta">${ev.detalle}</div>` : '';
+    const actions = canWrite ? `<div class="agenda-item-actions">
+      <button class="btn btn-ghost" onclick="openAgendaModal('${fecha}','${ev.id}')" style="padding:5px 10px;font-size:0.78rem;">✏ Editar</button>
+      <button class="btn btn-ghost" onclick="deleteAgendaEvento('${ev.id}','${fecha}')" style="padding:5px 10px;font-size:0.78rem;color:var(--danger);border-color:rgba(239,68,68,0.4);">🗑 Eliminar</button>
+    </div>` : '';
+    return `<div class="agenda-item">
+      <div class="agenda-item-title">${hora}${(ev.titulo||'')}</div>
+      ${det}
+      ${actions}
+    </div>`;
+  }).join('');
+}
+
+function openAgendaModal(fecha, eventId) {
+  if(!_isAgendaWriter()) { toast('No permitido','warning'); return; }
+  const m = document.getElementById('modal-agenda');
+  if(!m) return;
+  document.getElementById('age-event-id').value = eventId || '';
+  document.getElementById('age-fec').value = fecha || hoy();
+  document.getElementById('age-hora').value = '';
+  document.getElementById('age-titulo').value = '';
+  document.getElementById('age-detalle').value = '';
+  document.getElementById('agenda-modal-title').textContent = eventId ? 'Editar evento' : 'Nuevo evento';
+  if(eventId) {
+    const mes = (fecha||'').slice(0,7);
+    const ev = (_agendaCache[mes]||[]).find(x=>x.id===eventId);
+    if(ev) {
+      document.getElementById('age-fec').value = ev.fecha || fecha || hoy();
+      document.getElementById('age-hora').value = ev.hora || '';
+      document.getElementById('age-titulo').value = ev.titulo || '';
+      document.getElementById('age-detalle').value = ev.detalle || '';
+    }
+  }
+  m.style.display = '';
+  _modalLockOn();
+  m.classList.add('open');
+}
+
+async function guardarAgendaEvento() {
+  if(!_isAgendaWriter()) { toast('No permitido','warning'); return; }
+  const id = document.getElementById('age-event-id').value;
+  const fecha = document.getElementById('age-fec').value;
+  const hora = document.getElementById('age-hora').value;
+  const titulo = (document.getElementById('age-titulo').value||'').trim();
+  const detalle = (document.getElementById('age-detalle').value||'').trim();
+  if(!fecha || !titulo) { toast('Completa fecha y título','warning'); return; }
+  const mes = fecha.slice(0,7);
+  const data = {
+    fecha,
+    mes,
+    hora: hora || '',
+    titulo,
+    detalle: detalle || '',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+  try {
+    if(id) {
+      await db.collection('agenda').doc(id).update(data);
+    } else {
+      await db.collection('agenda').add({
+        ...data,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+    _invalidarAgendaMes(mes);
+    closeModal('modal-agenda');
+    toast('✅ Evento guardado','success');
+    _agendaSelDia = fecha;
+    await renderAgenda();
+    agendaSelectDay(fecha);
+  } catch(e) {
+    toast('❌ Error guardando evento: ' + e.message,'error');
+  }
+}
+
+async function deleteAgendaEvento(id, fecha) {
+  if(!_isAgendaWriter()) { toast('No permitido','warning'); return; }
+  if(!confirm('¿Eliminar este evento?')) return;
+  try {
+    await db.collection('agenda').doc(id).delete();
+    const mes = (fecha||'').slice(0,7);
+    _invalidarAgendaMes(mes);
+    toast('Evento eliminado','success');
+    await renderAgenda();
+    agendaSelectDay(fecha);
+  } catch(e) {
+    toast('❌ Error eliminando: ' + e.message,'error');
   }
 }
 
