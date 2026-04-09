@@ -1707,9 +1707,6 @@
       <button class="msb-subitem" onclick="msbPickSub(this,'alumnos','aula','👥 Alumnos')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Alumnos</span>
       </button>
-      <button class="msb-subitem" id="msb-sub-usuarios" onclick="msbPickSub(this,'usuarios','aula','👤 Usuarios')">
-        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Usuarios</span>
-      </button>
       <button class="msb-subitem" onclick="msbPickSub(this,'incidentes','aula','🚨 Incidentes')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Incidentes</span>
       </button>
@@ -1732,7 +1729,7 @@
     </div>
 
     <!-- Configuración -->
-    <button class="msb-item" id="msb-btn-config" onclick="msbPickDirect(this,'config','⚙️ Configuración')">
+    <button class="msb-item" id="msb-btn-config" onclick="msbToggleSub('config')">
       <div class="msb-icon">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"/>
@@ -1740,7 +1737,16 @@
         </svg>
       </div>
       <span class="msb-label">Configuración</span>
+      <span class="msb-arrow">›</span>
     </button>
+    <div class="msb-sub" id="msb-sub-config">
+      <button class="msb-subitem" onclick="msbPickSub(this,'config','config','⚙️ General')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">General</span>
+      </button>
+      <button class="msb-subitem" id="msb-sub-usuarios" onclick="msbPickSub(this,'usuarios','config','👤 Usuarios')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Usuarios</span>
+      </button>
+    </div>
 
   </div>
 
@@ -2014,7 +2020,6 @@
       <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       <div class="nav-dropdown" id="drop-aula">
         <div class="nav-drop-item" id="tab-alumnos" onclick="event.stopPropagation();showSection('alumnos');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Alumnos</div>
-        <div class="nav-drop-item" id="tab-usuarios" onclick="event.stopPropagation();showSection('usuarios');closeNavDrops()" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Usuarios</div>
         <div class="nav-drop-sep"></div>
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('incidentes');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Incidentes</div>
       </div>
@@ -2037,6 +2042,7 @@
       <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       <div class="nav-dropdown" id="drop-config">
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('config');closeNavDrops();if(typeof onShowConfig==='function')onShowConfig();"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>General</div>
+        <div class="nav-drop-item" id="tab-usuarios" onclick="event.stopPropagation();showSection('usuarios');closeNavDrops()" style="display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Usuarios</div>
       </div>
     </button>
     <!-- Tabs ocultos para compatibilidad con aplicarPermisos -->
@@ -4732,6 +4738,7 @@ async function confirmRegister(tipo) {
 let editingId = null;
 
 async function openModalAlumno(id) {
+  _modalLockOn();
   editingId = id || null;
   document.getElementById('modal-title-text').textContent = id ? 'Editar Alumno' : 'Nuevo Alumno';
   if(id) {

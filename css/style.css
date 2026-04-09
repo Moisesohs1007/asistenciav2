@@ -893,7 +893,7 @@
   .modal-bg {
     position: fixed; inset:0;
     background: rgba(0,0,0,0.7);
-    z-index: 2000;
+    z-index: 10005;
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
     backdrop-filter: blur(4px);
@@ -945,7 +945,7 @@
   .pta-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
   .pta-row:last-child { border-bottom: none; }
   .pta-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
-  .pta-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .pta-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
   .pta-name { font-weight: 800; font-size: 0.86rem; color: var(--text); font-family: var(--font-display); }
   .pta-val { font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
   .modal-title {
