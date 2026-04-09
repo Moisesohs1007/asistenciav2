@@ -912,56 +912,42 @@
     overflow-y: auto;
   }
 
-  .niveles-pies {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    justify-content: space-between;
-  }
-  .nivel-pie {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 170px;
-    flex: 1 1 170px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px 12px;
-  }
-  .nivel-pie-ring {
-    width: 44px;
-    height: 44px;
+  .pta-wrap { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .pta-donut {
+    width: 120px;
+    height: 120px;
     border-radius: 50%;
-    background: conic-gradient(var(--c) calc(var(--p) * 1%), rgba(255,255,255,0.08) 0);
-    display: grid;
-    place-items: center;
+    background: conic-gradient(var(--pta-p) 0 var(--pta-p-end), var(--pta-t) var(--pta-p-end) var(--pta-t-end), var(--pta-a) var(--pta-t-end) 360deg);
+    position: relative;
     flex-shrink: 0;
+    box-shadow: 0 10px 26px rgba(0,0,0,0.25);
   }
-  .nivel-pie-center {
-    width: 32px;
-    height: 32px;
+  .pta-donut::after {
+    content: '';
+    position: absolute;
+    inset: 26px;
     border-radius: 50%;
     background: var(--surface);
     border: 1px solid var(--border);
+  }
+  .pta-center {
+    position: absolute;
+    inset: 0;
     display: grid;
     place-items: center;
-    font-size: 0.72rem;
-    font-weight: 800;
-    color: var(--text);
-    font-family: var(--font-display);
+    text-align: center;
+    z-index: 1;
+    pointer-events: none;
   }
-  .nivel-pie-label { min-width: 0; }
-  .nivel-pie-title {
-    font-size: 0.82rem;
-    font-weight: 800;
-    color: var(--text);
-    font-family: var(--font-display);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .nivel-pie-sub { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+  .pta-center .pct { font-family: var(--font-display); font-weight: 900; font-size: 1.25rem; color: var(--text); line-height: 1; }
+  .pta-center .lbl { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+  .pta-legend { flex: 1; min-width: 220px; }
+  .pta-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .pta-row:last-child { border-bottom: none; }
+  .pta-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .pta-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .pta-name { font-weight: 800; font-size: 0.86rem; color: var(--text); font-family: var(--font-display); }
+  .pta-val { font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
   .modal-title {
     font-family: var(--font-display);
     font-size: 1.2rem;
@@ -969,6 +955,14 @@
     margin-bottom: 20px;
     display: flex; align-items: center; justify-content: space-between;
   }
+
+  body.modal-lock { overflow: hidden; }
+  body.modal-lock header,
+  body.modal-lock #nav-tabs,
+  body.modal-lock #bottom-nav,
+  body.modal-lock #mobile-sidebar,
+  body.modal-lock #msb-overlay { pointer-events: none !important; }
+  body.modal-lock #user-dropdown-menu { display: none !important; pointer-events: none !important; }
 
   .divider { border:none; border-top: 1px solid var(--border); margin: 16px 0; }
 
@@ -1592,28 +1586,28 @@
     }
     /* Modal contenedor: alto controlado con scroll interno */
     #modal-alumno .modal {
-      max-width: 660px !important;
-      max-height: calc(100vh - 80px) !important;
+      max-width: 860px !important;
+      max-height: 90vh !important;
       overflow-y: auto !important;
-      padding: 14px 20px !important;
+      padding: 28px !important;
       display: flex !important;
       flex-direction: column !important;
       gap: 6px !important;
     }
     /* Título más compacto */
     #modal-alumno .modal-title {
-      font-size: 0.95rem !important;
-      margin-bottom: 0 !important;
+      font-size: 1.15rem !important;
+      margin-bottom: 16px !important;
     }
     /* Fieldset estudiante: padding reducido */
     #modal-alumno fieldset {
-      padding: 6px 11px 8px !important;
-      margin-bottom: 0 !important;
-      border-radius: 8px !important;
+      padding: 16px 16px 14px !important;
+      margin-bottom: 12px !important;
+      border-radius: 12px !important;
     }
     #modal-alumno legend {
-      font-size: 0.68rem !important;
-      padding: 0 6px !important;
+      font-size: 0.8rem !important;
+      padding: 0 8px !important;
     }
     /* Grid estudiante: 3 columnas */
     #modal-alumno .alum-estudiante-grid {
@@ -1645,21 +1639,21 @@
       margin-bottom: 0 !important;
     }
     #modal-alumno .form-group label {
-      font-size: 0.7rem !important;
+      font-size: 0.8rem !important;
     }
     #modal-alumno .form-group input,
     #modal-alumno .form-group select {
-      padding: 6px 9px !important;
-      font-size: 0.8rem !important;
-      border-radius: 7px !important;
+      padding: 10px 12px !important;
+      font-size: 0.88rem !important;
+      border-radius: 10px !important;
     }
     /* Foto: avatar pequeño + fila horizontal */
     #modal-alumno #foto-preview-wrap {
-      width: 40px !important;
-      height: 40px !important;
+      width: 64px !important;
+      height: 64px !important;
     }
     #modal-alumno #foto-preview-placeholder {
-      font-size: 1rem !important;
+      font-size: 1.4rem !important;
     }
     /* Separador y botones más compactos */
     #modal-alumno .divider {

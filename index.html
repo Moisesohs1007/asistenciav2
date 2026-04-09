@@ -2108,7 +2108,7 @@
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
           <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Asistencia por nivel — hoy</div>
           <div id="inicio-niveles-bars"></div>
-          <div id="inicio-niveles-pies" class="niveles-pies" style="margin-top:12px;"></div>
+          <div id="inicio-pta" class="pta-wrap" style="margin-top:12px;"></div>
         </div>
         <!-- Últimos ingresos -->
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
@@ -2692,10 +2692,10 @@
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
           <div class="form-group" style="min-width:150px;margin:0;">
             <label>Fecha exacta</label>
-            <select id="inc-filter-mes" onchange="renderIncidentes()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:0.85rem;width:100%;">
+            <select id="inc-filter-mes" onchange="setVistaIncidentesMes();renderIncidentes()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:0.85rem;width:100%;">
               <!-- poblado por JS -->
             </select>
-            <input type="date" id="inc-filter-fecha" onchange="limpiarFiltroAlumnoInc();renderIncidentes()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:0.85rem;width:100%;">
+            <input type="date" id="inc-filter-fecha" onchange="setVistaIncidentesFecha();limpiarFiltroAlumnoInc();renderIncidentes()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 12px;font-family:var(--font-body);font-size:0.85rem;width:100%;">
           </div>
           <div class="form-group" style="min-width:180px;margin:0;">
             <label>Todos los reportes de un alumno</label>
@@ -3903,6 +3903,7 @@ function showSectionDirect(id) {
   updateBottomNavActive(id);
   if(id==='incidentes') {
     poblarSelectorMesInc();
+    setVistaIncidentesDefault();
     renderIncidentes();
   }
 }
@@ -4115,7 +4116,7 @@ async function cargarDashboardInicio() {
     const cfg = await getConfig();
     const niveles = (cfg.niveles||[]).map(n=>n.nombre);
     const barsEl = document.getElementById('inicio-niveles-bars');
-    const piesEl = document.getElementById('inicio-niveles-pies');
+    const ptaEl  = document.getElementById('inicio-pta');
     if(barsEl && niveles.length) {
       const colors = ['#378ADD','#16a34a','#854F0B','#534AB7'];
       barsEl.innerHTML = niveles.map((niv,i) => {
@@ -4130,23 +4131,36 @@ async function cargarDashboardInicio() {
           '<div style="font-size:0.75rem;color:' + col + ';width:32px;text-align:right;">' + pNiv + '%</div></div>';
       }).join('');
     }
-    if(piesEl && niveles.length) {
-      const colors = ['#378ADD','#16a34a','#f59e0b','#8b5cf6'];
-      piesEl.innerHTML = niveles.map((niv,i) => {
-        const alNiv = alumnos.filter(a=>a.turno===niv);
-        const presNiv = new Set(regsHoy.filter(r=>r.tipo==='INGRESO'&&r.turno===niv).map(r=>r.alumnoId)).size;
-        const pNiv = alNiv.length ? Math.round(presNiv/alNiv.length*100) : 0;
-        const col = colors[i % colors.length];
-        return `<div class="nivel-pie">
-          <div class="nivel-pie-ring" style="--p:${pNiv};--c:${col};">
-            <div class="nivel-pie-center">${pNiv}%</div>
+    if(ptaEl) {
+      const tardSet = new Set(regsHoy.filter(r=>r.tipo==='INGRESO' && String(r.estado||'').includes('Tardanza')).map(r=>r.alumnoId));
+      const tardanzas = tardSet.size;
+      const puntuales = Math.max(0, presentes - tardanzas);
+      const totalPTA = total || 1;
+      const pPct = Math.round(puntuales / totalPTA * 100);
+      const tPct = Math.round(tardanzas / totalPTA * 100);
+      const aPct = Math.max(0, 100 - pPct - tPct);
+      const pDeg = Math.round(360 * pPct / 100);
+      const tDeg = Math.round(360 * tPct / 100);
+      const pEnd = pDeg + 'deg';
+      const tEnd = (pDeg + tDeg) + 'deg';
+      ptaEl.innerHTML =
+        `<div class="pta-donut" style="--pta-p:#16a34a;--pta-t:#f59e0b;--pta-a:#dc2626;--pta-p-end:${pEnd};--pta-t-end:${tEnd};">
+          <div class="pta-center"><div class="pct">${pPct}%</div><div class="lbl">Puntual</div></div>
+        </div>
+        <div class="pta-legend">
+          <div class="pta-row">
+            <div class="pta-left"><span class="pta-dot" style="background:#16a34a"></span><span class="pta-name">Puntual</span></div>
+            <div class="pta-val">${pPct}% (${puntuales})</div>
           </div>
-          <div class="nivel-pie-label">
-            <div class="nivel-pie-title">${niv}</div>
-            <div class="nivel-pie-sub">${presNiv}/${alNiv.length}</div>
+          <div class="pta-row">
+            <div class="pta-left"><span class="pta-dot" style="background:#f59e0b"></span><span class="pta-name">Tardanza</span></div>
+            <div class="pta-val">${tPct}% (${tardanzas})</div>
+          </div>
+          <div class="pta-row">
+            <div class="pta-left"><span class="pta-dot" style="background:#dc2626"></span><span class="pta-name">Ausente</span></div>
+            <div class="pta-val">${aPct}% (${ausentes})</div>
           </div>
         </div>`;
-      }).join('');
     }
 
     // Últimos ingresos
@@ -4781,6 +4795,7 @@ async function openModalAlumno(id) {
   }
   const mAlumno = document.getElementById('modal-alumno');
   mAlumno.style.display = ''; // reset por si closeModal dejó display:none
+  _modalLockOn();
   mAlumno.classList.add('open');
 }
 
@@ -5121,6 +5136,7 @@ async function showQR(id) {
 
   const mQr = document.getElementById('modal-qr');
   mQr.style.display = '';
+  _modalLockOn();
   mQr.classList.add('open');
 }
 
@@ -7664,12 +7680,23 @@ function hoy() {
     + String(d.getDate()).padStart(2,'0');
 }
 
+function _modalLockOn() {
+  document.body.classList.add('modal-lock');
+  try { closeNavDrops(); } catch(e) {}
+  try { closeUserMenu(); } catch(e) {}
+}
+function _modalLockOff() {
+  if(document.querySelector('.modal-bg.open')) return;
+  document.body.classList.remove('modal-lock');
+}
+
 function closeModal(id) {
   const el = document.getElementById(id);
   if(!el) return;
   el.classList.remove('open');
   el.classList.remove('active');
   el.style.display = ''; // reset inline style para que CSS tome control
+  _modalLockOff();
 }
 
 function toast(msg, type='success') {
@@ -7752,7 +7779,7 @@ async function openModalUsuario(uid, nombre, rol, email) {
   togglePrivilegios();
   toggleBtnConfigurar();
   const mUsr = document.getElementById('modal-usuario');
-  if(mUsr) { mUsr.style.display = ''; mUsr.classList.add('open'); }
+  if(mUsr) { mUsr.style.display = ''; _modalLockOn(); mUsr.classList.add('open'); }
 }
 
 async function saveUsuario() {
@@ -8648,12 +8675,21 @@ async function cargarGradosPorNivel(nivelParam) {
     const k = Object.keys(gradosMap).find(x => String(x||'').trim().toLowerCase() === nivelNorm);
     if(k) grados = gradosMap[k] || [];
   }
+  if(!grados.length) {
+    const alumnos = await getAlumnosFiltrados();
+    const fromAlumnos = [...new Set(alumnos
+      .filter(a => String(a.turno||'').trim().toLowerCase() === nivelNorm)
+      .map(a => a.grado)
+      .filter(Boolean)
+    )].sort();
+    grados = fromAlumnos;
+  }
   grados.forEach(g => {
     const opt = document.createElement('option');
     opt.value = g; opt.textContent = g;
     gradoSel.appendChild(opt);
   });
-  if(!grados.length) toast('No hay grados configurados para este nivel','warning');
+  if(!grados.length) { _disableSelect('f-grado'); _disableSelect('f-seccion'); toast('Configura los grados de este nivel en Configuración → Grados','warning'); return; }
   await cargarSeccionesPorGrado();
   _enableSelect('f-seccion');
 }
@@ -8829,6 +8865,22 @@ function pdfHeaderColegio(doc, W, logoB64, {
 }
 
 let incAlumnoSeleccionado = null;
+let _incVista = 'DEF'; // DEF=últimos 2 días, MES=mes, FECHA=fecha exacta
+
+function setVistaIncidentesDefault() {
+  _incVista = 'DEF';
+  document.getElementById('inc-filter-fecha').value = '';
+  document.getElementById('inc-filter-search').value = '';
+  const sel = document.getElementById('inc-filter-mes');
+  if(sel) sel.value = hoy().slice(0,7);
+}
+function setVistaIncidentesMes() {
+  _incVista = 'MES';
+  document.getElementById('inc-filter-fecha').value = '';
+}
+function setVistaIncidentesFecha() {
+  _incVista = 'FECHA';
+}
 
 
 async function getCargoUsuario(uid) {
@@ -8854,9 +8906,7 @@ function limpiarFiltroAlumnoInc() {
   if(s && document.getElementById('inc-filter-fecha').value) s.value = '';
 }
 function limpiarFiltrosIncidentes() {
-  document.getElementById('inc-filter-mes').value = '2_DIAS';
-  document.getElementById('inc-filter-fecha').value = '';
-  document.getElementById('inc-filter-search').value = '';
+  setVistaIncidentesDefault();
   renderIncidentes();
 }
 function abrirModalIncidente() {
@@ -8874,7 +8924,7 @@ function abrirModalIncidente() {
   document.getElementById('inc-foto-grid').innerHTML = '';
   document.getElementById('inc-foto').value = '';
   document.querySelector('input[name="inc-sev"][value="Moderado"]').checked = true;
-  const mInc = document.getElementById('modal-incidente'); if(mInc){mInc.style.display='';mInc.classList.add('open');}
+  const mInc = document.getElementById('modal-incidente'); if(mInc){mInc.style.display='';_modalLockOn();mInc.classList.add('open');}
 }
 
 async function buscarAlumnoIncidente(q) {
@@ -9194,7 +9244,7 @@ function poblarSelectorMesInc() {
   const sel = document.getElementById('inc-filter-mes');
   if(!sel || sel.options.length > 1) return;
   const hoy = new Date();
-  let opts = '<option value="2_DIAS">Últimos 2 días</option>';
+  let opts = '';
   // Admin/director pueden ver hasta 6 meses atrás
   const mesActualNum = new Date().getMonth() + 1;
   const mesesLectivosInc = Math.max(0, mesActualNum - 3 + 1);
@@ -9226,9 +9276,9 @@ async function renderIncidentes() {
       docs = docs.filter(d => d.responsableId === currentUser.uid);
     }
 
-    // Filtro por mes o 2 días
-    const mesSel = document.getElementById('inc-filter-mes')?.value || '2_DIAS';
-    if(mesSel === '2_DIAS') {
+    // Filtro por mes o últimos 2 días (por defecto)
+    const mesSel = document.getElementById('inc-filter-mes')?.value || hoy().slice(0,7);
+    if((_incVista||'DEF') === 'DEF') {
       const h = new Date();
       h.setDate(h.getDate() - 1);
       const limite = h.getFullYear() + '-' + String(h.getMonth()+1).padStart(2,'0') + '-' + String(h.getDate()).padStart(2,'0');
