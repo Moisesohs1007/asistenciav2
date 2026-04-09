@@ -1022,6 +1022,29 @@
   .agenda-item-meta { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
   .agenda-item-actions { display:flex; gap:8px; margin-top: 10px; }
 
+  .com-layout, .agenda-layout { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
+  .com-layout > *, .agenda-layout > * { min-width: 0; }
+  @media (min-width: 980px) {
+    .com-layout { grid-template-columns: 1.1fr 0.9fr; }
+    .agenda-layout { grid-template-columns: 1.2fr 0.8fr; }
+  }
+  @media (max-width: 700px) {
+    #sec-agenda .agenda-toolbar { gap: 8px; }
+    #sec-agenda .agenda-toolbar #age-mes { min-width: 0 !important; width: 100%; }
+    #sec-agenda .agenda-toolbar .agenda-toolbar-right { width: 100%; margin-left: 0 !important; }
+    #sec-agenda .agenda-toolbar .agenda-toolbar-right .btn { width: 100%; justify-content: center; }
+
+    #sec-agenda .agenda-week { gap: 4px; font-size: 0.72rem; }
+    #sec-agenda .agenda-grid { gap: 4px; }
+    #sec-agenda .agenda-day { min-height: 58px; padding: 7px; border-radius: 12px; }
+    #sec-agenda .agenda-num { font-size: 0.86rem; }
+
+    #sec-comunicado table.table { width: 100%; min-width: 0 !important; }
+    #sec-comunicado table.table th, #sec-comunicado table.table td { padding: 8px 10px; font-size: 0.78rem; }
+    #sec-comunicado table.table th:nth-child(5), #sec-comunicado table.table td:nth-child(5),
+    #sec-comunicado table.table th:nth-child(6), #sec-comunicado table.table td:nth-child(6) { display: none; }
+  }
+
   .divider { border:none; border-top: 1px solid var(--border); margin: 16px 0; }
 
   /* ASISTENCIA TABLE COLORS */
@@ -1568,6 +1591,12 @@
     }
     .msb-dot span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.25); }
     .msb-subitem.active .msb-dot span { background: #C9A84C; }
+    #mobile-sidebar.open .msb-dot { width: 44px; }
+    .msb-dot.msb-dot-ico { color: rgba(255,255,255,0.38); }
+    .msb-dot.msb-dot-ico span { display: none; }
+    .msb-dot.msb-dot-ico svg { width: 16px; height: 16px; opacity: 0.85; }
+    .msb-subitem.active .msb-dot.msb-dot-ico { color: #C9A84C; }
+    .msb-subitem.active .msb-dot.msb-dot-ico svg { opacity: 1; }
     .msb-sublabel {
       opacity: 0; transform: translateX(-4px);
       transition: opacity 0.18s 0.1s, transform 0.18s 0.1s;
@@ -1814,10 +1843,23 @@
     </button>
     <div class="msb-sub" id="msb-sub-comunicacion">
       <button class="msb-subitem" onclick="msbPickSub(this,'comunicado','comunicacion','📢 Comunicado')">
-        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Comunicado</span>
+        <div class="msb-dot msb-dot-ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+            <path d="M6 8V6a2 2 0 0 1 2-2h4"/>
+          </svg>
+          <span></span>
+        </div><span class="msb-sublabel">Comunicado</span>
       </button>
       <button class="msb-subitem" onclick="msbPickSub(this,'agenda','comunicacion','📅 Agenda')">
-        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Agenda</span>
+        <div class="msb-dot msb-dot-ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          <span></span>
+        </div><span class="msb-sublabel">Agenda</span>
       </button>
     </div>
 
@@ -2934,7 +2976,7 @@
     <div class="page-title">Comunicado</div>
     <div class="page-sub">Selecciona alumnos y envía una imagen con texto personalizado por WhatsApp</div>
 
-    <div class="card" style="padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <div class="card com-toolbar" style="padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Nivel:</label>
         <select id="com-nivel" onchange="onComNivelChange()" style="min-width:140px;">
@@ -2969,11 +3011,11 @@
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1.1fr 0.9fr;gap:14px;align-items:start;">
+    <div class="com-layout">
       <div class="card" style="padding:0;overflow:hidden;">
         <div class="card-title" style="padding:14px 14px 10px;"><span class="dot"></span>Destinatarios</div>
         <div style="max-height:520px;overflow:auto;">
-          <table class="table" style="min-width:720px;">
+          <table class="table" style="width:100%;">
             <thead>
               <tr>
                 <th style="width:44px;"></th>
@@ -3026,7 +3068,7 @@
     <div class="page-title">Agenda escolar</div>
     <div class="page-sub">Calendario mensual para registrar actividades, reuniones y eventos del colegio</div>
 
-    <div class="card" style="padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <div class="card agenda-toolbar" style="padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Mes:</label>
         <select id="age-mes" onchange="renderAgenda()" style="min-width:150px;"></select>
@@ -3034,12 +3076,12 @@
       <button class="btn btn-ghost" onclick="agendaHoy()" style="font-size:0.78rem;padding:5px 10px;">Hoy</button>
       <button class="btn btn-ghost" onclick="agendaPrevMes()" style="font-size:0.78rem;padding:5px 10px;">‹</button>
       <button class="btn btn-ghost" onclick="agendaNextMes()" style="font-size:0.78rem;padding:5px 10px;">›</button>
-      <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+      <div class="agenda-toolbar-right" style="margin-left:auto;display:flex;align-items:center;gap:10px;">
         <button class="btn btn-primary" onclick="openAgendaModal(hoy())" style="font-size:0.78rem;padding:6px 12px;">+ Evento</button>
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1.2fr 0.8fr;gap:14px;align-items:start;">
+    <div class="agenda-layout">
       <div class="card" style="padding:14px;">
         <div class="agenda-week">
           <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
@@ -7168,7 +7210,32 @@ async function initAgenda() {
   poblarSelectorMes('age-mes');
   if(!_agendaSelDia) _agendaSelDia = hoy();
   await renderAgenda();
-  agendaSelectDay(_agendaSelDia);
+  setupAgendaSwipe();
+}
+
+let _agendaSwipeReady = false;
+function setupAgendaSwipe() {
+  if(_agendaSwipeReady) return;
+  const grid = document.getElementById('age-grid');
+  if(!grid) return;
+  let sx = 0, sy = 0, st = 0;
+  grid.addEventListener('touchstart', function(e){
+    const t = e.touches && e.touches[0];
+    if(!t) return;
+    sx = t.clientX; sy = t.clientY; st = Date.now();
+  }, { passive: true });
+  grid.addEventListener('touchend', function(e){
+    const t = e.changedTouches && e.changedTouches[0];
+    if(!t) return;
+    const dx = t.clientX - sx;
+    const dy = t.clientY - sy;
+    const dt = Date.now() - st;
+    if(dt > 600) return;
+    if(Math.abs(dx) < 48) return;
+    if(Math.abs(dy) > 60) return;
+    if(dx < 0) agendaNextMes(); else agendaPrevMes();
+  }, { passive: true });
+  _agendaSwipeReady = true;
 }
 
 function agendaHoy() {
@@ -7245,7 +7312,7 @@ async function renderAgenda() {
     const evCount = (map[ds]||[]).length;
     const dots = evCount ? ('<div class="agenda-dots">' + Array(Math.min(3, evCount)).fill(0).map(()=>'<span class="agenda-dot"></span>').join('') + (evCount>3?`<span style="font-size:0.7rem;color:var(--muted);margin-left:2px;">+${evCount-3}</span>`:'') + '</div>') : '';
     const cls = 'agenda-day' + (inMonth?'':' muted') + (ds===hoy()?' today':'') + (ds===_agendaSelDia?' active':'');
-    cells.push(`<div class="${cls}" onclick="agendaSelectDay('${ds}')">
+    cells.push(`<div class="${cls}" data-date="${ds}" onclick="agendaSelectDay('${ds}')">
       <div class="agenda-num">${d.getDate()}</div>
       ${dots}
     </div>`);
@@ -7256,6 +7323,11 @@ async function renderAgenda() {
 
 function agendaSelectDay(fecha, mapOpt) {
   _agendaSelDia = fecha;
+  try {
+    document.querySelectorAll('#age-grid .agenda-day.active').forEach(el => el.classList.remove('active'));
+    const cel = document.querySelector('#age-grid .agenda-day[data-date="' + fecha + '"]');
+    if(cel) cel.classList.add('active');
+  } catch(e) {}
   const title = document.getElementById('age-dia-title');
   const list = document.getElementById('age-dia-list');
   if(title) title.textContent = fecha ? fecha.split('-').reverse().join('/') : '—';
@@ -7288,6 +7360,12 @@ function agendaSelectDay(fecha, mapOpt) {
       ${actions}
     </div>`;
   }).join('');
+  try {
+    if(window.matchMedia && window.matchMedia('(max-width:700px)').matches) {
+      const panel = document.getElementById('age-dia-title');
+      if(panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  } catch(e) {}
 }
 
 function openAgendaModal(fecha, eventId) {
