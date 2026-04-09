@@ -16,6 +16,10 @@ var _registrosRecientes     = null; // últimos 5 días procesados (para pestañ
 var _registrosRecientesTime = 0;    // timestamp de última carga
 var _RECIENTES_TTL = 5 * 60 * 1000; // 5 minutos
 
+var _agendaPorMes     = {};
+var _agendaPorMesTime = {};
+var _AGENDA_TTL = 5 * 60 * 1000;
+
 // Cargar config una sola vez
 function getConfigCache() {
   if(_configCache) return Promise.resolve(_configCache);
@@ -207,6 +211,26 @@ function poblarMeses() {
   // Por defecto mes actual (primera opción)
   var mesActual = String(new Date().getMonth()+1).padStart(2,'0');
   document.getElementById('sel-mes-hist').value = mesActual;
+}
+
+function poblarMesesAgenda(force) {
+  var sel = document.getElementById('apo-age-mes');
+  if(!sel) return;
+  if(!force && sel.options && sel.options.length) return;
+  var opts = '';
+  var hoy = new Date();
+  for(var i = -2; i <= 2; i++) {
+    var d = new Date(hoy.getFullYear(), hoy.getMonth() + i, 1);
+    var y = d.getFullYear();
+    var m = String(d.getMonth() + 1).padStart(2,'0');
+    var val = y + '-' + m;
+    var label = d.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
+    label = label.charAt(0).toUpperCase() + label.slice(1);
+    opts += '<option value="' + val + '">' + label + '</option>';
+  }
+  sel.innerHTML = opts;
+  var mesActual = hoy.getFullYear() + '-' + String(hoy.getMonth()+1).padStart(2,'0');
+  if(!sel.value) sel.value = mesActual;
 }
 
 function onMesChange(origen) {
@@ -453,14 +477,14 @@ document.addEventListener('click', function(e) {
 });
 
 function showTab(tab) {
-  ['resumen','historial','incidentes','carnet','comunicados','contacto'].forEach(function(t) {
+  ['resumen','historial','incidentes','agenda','carnet','comunicados','contacto'].forEach(function(t) {
     var panel = document.getElementById('panel-'+t);
     if(panel) panel.style.display = t === tab ? 'block' : 'none';
   });
   // Actualizar topbar móvil
   apoMsbSetActive(tab);
   // Resaltar menú activo
-  var _map = {resumen:'inicio',historial:'asistencia',incidentes:'academico',comunicados:'comunicacion',carnet:'cuenta',contacto:'cuenta'};
+  var _map = {resumen:'inicio',historial:'asistencia',incidentes:'academico',agenda:'academico',comunicados:'comunicacion',carnet:'cuenta',contacto:'cuenta'};
   setApoTabActive(_map[tab]||'inicio', tab);
   try { sessionStorage.setItem('asmqr_apo_lastTab', tab); } catch(e) {}
   if(tab === 'resumen') {
@@ -489,6 +513,7 @@ function showTab(tab) {
     return;
   }
   if(tab === 'incidentes') renderIncidentes();
+  if(tab === 'agenda')    renderApoAgenda();
   if(tab === 'carnet')     renderCarnet();
   if(tab === 'contacto')   renderContacto();
 }
@@ -1192,10 +1217,10 @@ function apoMsbPickSub(el, sectionId, parentId, label) {
 }
 function apoMsbSetActive(tab) {
   if(!apoMsbIsMobile()) return;
-  var labels = {resumen:'🏠 Inicio',historial:'📅 Historial',incidentes:'🚨 Incidencias',comunicados:'💬 Comunicados',carnet:'🪪 Carnet',contacto:'📞 Contacto'};
+  var labels = {resumen:'🏠 Inicio',historial:'📅 Historial',incidentes:'🚨 Incidencias',agenda:'📅 Agenda',comunicados:'💬 Comunicados',carnet:'🪪 Carnet',contacto:'📞 Contacto'};
   var tb = document.getElementById('apo-topbar-title');
   if(tb) tb.textContent = labels[tab] || tab;
-  var parentMap = {historial:'asistencia',resumen:'inicio',incidentes:'academico',comunicados:'comunicacion',carnet:'cuenta',contacto:'cuenta'};
+  var parentMap = {historial:'asistencia',resumen:'inicio',incidentes:'academico',agenda:'academico',comunicados:'comunicacion',carnet:'cuenta',contacto:'cuenta'};
   document.querySelectorAll('.apo-msb-item').forEach(function(i){ i.classList.remove('active'); });
   document.querySelectorAll('.apo-msb-subitem').forEach(function(i){ i.classList.remove('active'); });
   var parent = parentMap[tab];
@@ -1238,6 +1263,95 @@ function apoMsbInit() {
 }
 // ──────────────────────────────────────────────────────────────────
 
+function _h(s) {
+  return String(s || '').replace(/[&<>"']/g, function(c) {
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]);
+  });
+}
+
+function _agendaCacheValido(mes) {
+  var t = _agendaPorMesTime[mes] || 0;
+  return (Date.now() - t) < _AGENDA_TTL;
+}
+
+function cargarAgendaMes(mes) {
+  if(_agendaPorMes[mes] && _agendaCacheValido(mes)) return Promise.resolve(_agendaPorMes[mes]);
+  return db.collection('agenda')
+    .where('mes','==', mes)
+    .orderBy('fecha')
+    .limit(500)
+    .get()
+    .then(function(snap) {
+      var eventos = (snap.docs || []).map(function(d) {
+        var ev = d.data() || {};
+        ev.id = d.id;
+        return ev;
+      });
+      eventos.sort(function(a,b){
+        var fa = (a.fecha||'').localeCompare(b.fecha||'');
+        if(fa !== 0) return fa;
+        return (a.hora||'').localeCompare(b.hora||'');
+      });
+      _agendaPorMes[mes] = eventos;
+      _agendaPorMesTime[mes] = Date.now();
+      return eventos;
+    });
+}
+
+function _fechaLarga(f) {
+  if(!f) return '';
+  var d = new Date(f + 'T00:00:00');
+  if(isNaN(d.getTime())) return f;
+  var s = d.toLocaleDateString('es-PE', { weekday:'long', day:'2-digit', month:'long' });
+  return s ? (s.charAt(0).toUpperCase() + s.slice(1)) : f;
+}
+
+function renderApoAgenda() {
+  poblarMesesAgenda(false);
+  var sel = document.getElementById('apo-age-mes');
+  var mes = sel ? sel.value : '';
+  var cont = document.getElementById('apo-agenda-list');
+  if(!cont) return;
+  if(!mes) { cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Selecciona un mes</div>'; return; }
+  cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div>';
+  cargarAgendaMes(mes).then(function(eventos) {
+    if(!eventos || !eventos.length) {
+      cont.innerHTML = '<div class="card" style="padding:22px 16px;text-align:center;color:var(--muted);font-size:0.83rem;">Sin eventos en este mes</div>';
+      return;
+    }
+    var grupos = {};
+    eventos.forEach(function(ev){
+      var f = ev.fecha || '';
+      if(!grupos[f]) grupos[f] = [];
+      grupos[f].push(ev);
+    });
+    var fechas = Object.keys(grupos).sort();
+    cont.innerHTML = fechas.map(function(f){
+      var items = grupos[f].map(function(ev){
+        var hora = (ev.hora || '').trim();
+        var titulo = _h(ev.titulo || 'Evento');
+        var detalle = _h(ev.detalle || '');
+        var detHtml = detalle ? ('<div style="margin-top:6px;color:var(--muted);font-size:0.82rem;line-height:1.35;">' + detalle + '</div>') : '';
+        return '<div class="card" style="padding:14px 14px;margin-top:8px;border-radius:14px;">'
+          + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">'
+          +   '<div style="min-width:0;">'
+          +     '<div style="font-weight:800;font-size:0.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + titulo + '</div>'
+          +     (hora ? '<div style="margin-top:2px;color:var(--muted);font-size:0.78rem;">' + _h(hora) + '</div>' : '')
+          +     detHtml
+          +   '</div>'
+          + '</div>'
+          + '</div>';
+      }).join('');
+      return '<div class="card" style="padding:14px 14px;border-radius:16px;margin-bottom:10px;">'
+        + '<div style="font-weight:900;color:var(--text);font-size:0.9rem;">' + _h(_fechaLarga(f)) + '</div>'
+        + items
+        + '</div>';
+    }).join('');
+  }).catch(function(e){
+    cont.innerHTML = '<div class="card" style="padding:22px 16px;text-align:center;color:#f87171;font-size:0.83rem;">Error al cargar agenda: ' + _h(e.message) + '</div>';
+  });
+}
+
 function cambiarApoPass() {
   var actual = document.getElementById('apo-pass-actual').value;
   var nueva1 = document.getElementById('apo-pass-nueva-1').value;
@@ -1266,4 +1380,3 @@ function cambiarApoPass() {
     errEl.style.display = 'block';
   });
 }
-
