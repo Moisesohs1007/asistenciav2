@@ -906,7 +906,7 @@
   .modal-bg {
     position: fixed; inset:0;
     background: rgba(0,0,0,0.7);
-    z-index: 200;
+    z-index: 10005;
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
     backdrop-filter: blur(4px);
@@ -931,6 +931,14 @@
     margin-bottom: 20px;
     display: flex; align-items: center; justify-content: space-between;
   }
+
+  body.modal-lock { overflow: hidden; }
+  body.modal-lock header,
+  body.modal-lock #nav-tabs,
+  body.modal-lock #bottom-nav,
+  body.modal-lock #mobile-sidebar,
+  body.modal-lock #msb-overlay { pointer-events: none !important; }
+  body.modal-lock #user-dropdown-menu { display: none !important; pointer-events: none !important; }
 
   .divider { border:none; border-top: 1px solid var(--border); margin: 16px 0; }
 
