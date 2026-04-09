@@ -963,6 +963,38 @@
   }
   .nivel-pie-sub { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
 
+  .inicio-nivel-pta-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  @media (min-width: 980px) {
+    .inicio-nivel-pta-grid { grid-template-columns: 1fr 1fr; }
+  }
+  .inicio-nivel-pta-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .inicio-nivel-pta-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 0.95rem;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .inicio-nivel-pta-title .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent2);
+    flex-shrink: 0;
+  }
+
   .pta-wrap { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
   .pta-donut {
     width: 120px;

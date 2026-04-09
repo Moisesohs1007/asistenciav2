@@ -2119,9 +2119,8 @@
       <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:14px;">
         <!-- Asistencia por nivel -->
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
-          <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Asistencia por nivel — hoy</div>
-          <div id="inicio-niveles-bars"></div>
-          <div id="inicio-niveles-pies" class="niveles-pies" style="margin-top:12px;"></div>
+          <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Distribución P / T / A — hoy (por nivel)</div>
+          <div id="inicio-niveles-pta" class="inicio-nivel-pta-grid"></div>
         </div>
         <!-- Últimos ingresos -->
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
@@ -4218,42 +4217,55 @@ async function cargarDashboardInicio() {
     const nAulasEl = document.getElementById('inicio-kpi-aulas');
     if(nAulasEl) nAulasEl.textContent = aulas.size + ' aulas';
 
-    // Barras por nivel
+    // Distribución P/T/A por nivel (dona)
     const cfg = await getConfig();
-    const niveles = (cfg.niveles||[]).map(n=>n.nombre);
-    const barsEl = document.getElementById('inicio-niveles-bars');
-    const piesEl = document.getElementById('inicio-niveles-pies');
-    if(barsEl && niveles.length) {
-      const colors = ['#378ADD','#16a34a','#854F0B','#534AB7'];
-      barsEl.innerHTML = niveles.map((niv,i) => {
-        const alNiv = alumnos.filter(a=>a.turno===niv);
-        const presNiv = new Set(regsHoy.filter(r=>r.tipo==='INGRESO'&&r.turno===niv).map(r=>r.alumnoId)).size;
-        const pNiv = alNiv.length ? Math.round(presNiv/alNiv.length*100) : 0;
-        const col = colors[i % colors.length];
-        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
-          '<div style="font-size:0.78rem;color:var(--text);width:72px;flex-shrink:0;">' + niv + '</div>' +
-          '<div style="flex:1;height:7px;background:var(--surface2);border-radius:4px;overflow:hidden;">' +
-          '<div style="height:100%;border-radius:4px;background:' + col + ';width:' + pNiv + '%;"></div></div>' +
-          '<div style="font-size:0.75rem;color:' + col + ';width:32px;text-align:right;">' + pNiv + '%</div></div>';
-      }).join('');
-    }
-    if(piesEl && niveles.length) {
-      const colors = ['#378ADD','#16a34a','#f59e0b','#8b5cf6'];
-      piesEl.innerHTML = niveles.map((niv,i) => {
-        const alNiv = alumnos.filter(a=>a.turno===niv);
-        const presNiv = new Set(regsHoy.filter(r=>r.tipo==='INGRESO'&&r.turno===niv).map(r=>r.alumnoId)).size;
-        const pNiv = alNiv.length ? Math.round(presNiv/alNiv.length*100) : 0;
-        const col = colors[i % colors.length];
-        return `<div class="nivel-pie">
-          <div class="nivel-pie-ring" style="--p:${pNiv};--c:${col};">
-            <div class="nivel-pie-center">${pNiv}%</div>
-          </div>
-          <div class="nivel-pie-label">
-            <div class="nivel-pie-title">${niv}</div>
-            <div class="nivel-pie-sub">${presNiv}/${alNiv.length}</div>
-          </div>
-        </div>`;
-      }).join('');
+    const niveles = (cfg.niveles||[]).map(n=>n.nombre).filter(Boolean);
+    const contEl = document.getElementById('inicio-niveles-pta');
+    if(contEl) {
+      if(!niveles.length) {
+        contEl.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;text-align:center;padding:10px 0;">Sin niveles configurados</div>';
+      } else {
+        contEl.innerHTML = niveles.map(niv => {
+          const alNiv = alumnos.filter(a=>a.turno===niv);
+          const regsNiv = regsHoy.filter(r=>r.tipo==='INGRESO' && r.turno===niv);
+          const presentesSet = new Set(regsNiv.map(r=>r.alumnoId));
+          const tardSet = new Set(regsNiv.filter(r=>String(r.estado||'').includes('Tardanza')).map(r=>r.alumnoId));
+          const presentes = presentesSet.size;
+          const tardanzas = tardSet.size;
+          const puntuales = Math.max(0, presentes - tardanzas);
+          const ausentes = Math.max(0, alNiv.length - presentes);
+          const total = alNiv.length || 1;
+          const pPct = Math.round(puntuales / total * 100);
+          const tPct = Math.round(tardanzas / total * 100);
+          const aPct = Math.max(0, 100 - pPct - tPct);
+          const pDeg = Math.round(360 * pPct / 100);
+          const tDeg = Math.round(360 * tPct / 100);
+          const pEnd = pDeg + 'deg';
+          const tEnd = (pDeg + tDeg) + 'deg';
+          return `<div class="inicio-nivel-pta-card">
+            <div class="inicio-nivel-pta-title"><span class="dot"></span>Distribución P / T / A — ${niv}</div>
+            <div class="pta-wrap">
+              <div class="pta-donut" style="--pta-p:#16a34a;--pta-t:#f59e0b;--pta-a:#dc2626;--pta-p-end:${pEnd};--pta-t-end:${tEnd};">
+                <div class="pta-center"><div class="pct">${pPct}%</div><div class="lbl">Puntual</div></div>
+              </div>
+              <div class="pta-legend">
+                <div class="pta-row">
+                  <div class="pta-left"><span class="pta-dot" style="background:#16a34a"></span><span class="pta-name">Puntual</span></div>
+                  <div class="pta-val">${pPct}% (${puntuales})</div>
+                </div>
+                <div class="pta-row">
+                  <div class="pta-left"><span class="pta-dot" style="background:#f59e0b"></span><span class="pta-name">Tardanza</span></div>
+                  <div class="pta-val">${tPct}% (${tardanzas})</div>
+                </div>
+                <div class="pta-row">
+                  <div class="pta-left"><span class="pta-dot" style="background:#dc2626"></span><span class="pta-name">Ausente</span></div>
+                  <div class="pta-val">${aPct}% (${ausentes})</div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+      }
     }
 
     // Últimos ingresos
