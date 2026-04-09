@@ -1723,8 +1723,8 @@
       <span class="msb-arrow">›</span>
     </button>
     <div class="msb-sub" id="msb-sub-comunicacion">
-      <button class="msb-subitem" onclick="msbPickSub(this,'mensajes','comunicacion','💬 Mensajes')">
-        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Mensajes</span>
+      <button class="msb-subitem" onclick="msbPickSub(this,'comunicado','comunicacion','📢 Comunicado')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Comunicado</span>
       </button>
     </div>
 
@@ -2030,9 +2030,8 @@
       Comunicación
       <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       <div class="nav-dropdown" id="drop-comunicacion">
-        <div class="nav-drop-item" style="opacity:0.45;cursor:not-allowed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Mensajería <span style="font-size:9px;color:#C9A84C;margin-left:4px;">Próx.</span></div>
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('comunicado');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>📢 Comunicado</div>
         <div class="nav-drop-item" style="opacity:0.45;cursor:not-allowed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Agenda <span style="font-size:9px;color:#C9A84C;margin-left:4px;">Próx.</span></div>
-        <div class="nav-drop-item" style="opacity:0.45;cursor:not-allowed;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/></svg>Comunicados <span style="font-size:9px;color:#C9A84C;margin-left:4px;">Próx.</span></div>
       </div>
     </button>
     <!-- Configuración -->
@@ -2114,7 +2113,7 @@
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
           <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Asistencia por nivel — hoy</div>
           <div id="inicio-niveles-bars"></div>
-          <div id="inicio-pta" class="pta-wrap" style="margin-top:12px;"></div>
+          <div id="inicio-niveles-pies" class="niveles-pies" style="margin-top:12px;"></div>
         </div>
         <!-- Últimos ingresos -->
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
@@ -2834,6 +2833,89 @@
       <div style="display:flex;gap:10px;margin-top:20px;">
         <button class="btn btn-primary" onclick="guardarIncidente()" style="flex:1;justify-content:center;background:linear-gradient(135deg,#ef4444,#f97316);">🖨️ Guardar y Generar PDF</button>
         <button class="btn btn-ghost" onclick="closeModal('modal-incidente'); limpiarFiltrosIncidentes();" style="justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== COMUNICADO ===== -->
+  <div class="section" id="sec-comunicado">
+    <div class="page-title">Comunicado</div>
+    <div class="page-sub">Selecciona alumnos y envía una imagen con texto personalizado por WhatsApp</div>
+
+    <div class="card" style="padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Nivel:</label>
+        <select id="com-nivel" onchange="onComNivelChange()" style="min-width:140px;">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Grado:</label>
+        <select id="com-grado" onchange="onComGradoChange()" disabled style="min-width:120px;opacity:0.45;">
+          <option value="">Todos</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Sección:</label>
+        <select id="com-seccion" onchange="renderComLista()" disabled style="min-width:120px;opacity:0.45;">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
+      <div style="flex:1;min-width:190px;">
+        <input id="com-search" type="text" placeholder="Buscar alumno..." oninput="renderComLista()"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-family:var(--font-body);font-size:0.82rem;">
+      </div>
+      <button class="btn btn-ghost" onclick="comSelectAllFiltrados()" style="font-size:0.78rem;padding:5px 10px;">Seleccionar</button>
+      <button class="btn btn-ghost" onclick="comClearSelection()" style="font-size:0.78rem;padding:5px 10px;">✕ Limpiar</button>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+        <div style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Seleccionados: <b id="com-count">0</b>/30</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.1fr 0.9fr;gap:14px;align-items:start;">
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div class="card-title" style="padding:14px 14px 10px;"><span class="dot"></span>Destinatarios</div>
+        <div style="max-height:520px;overflow:auto;">
+          <table class="table" style="min-width:720px;">
+            <thead>
+              <tr>
+                <th style="width:44px;"></th>
+                <th>Alumno</th>
+                <th style="width:90px;">Grado</th>
+                <th style="width:90px;">Sección</th>
+                <th style="width:120px;">Nivel</th>
+                <th style="width:150px;">WhatsApp</th>
+              </tr>
+            </thead>
+            <tbody id="com-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot" style="background:var(--accent2)"></span>Mensaje</div>
+        <div class="form-group" style="margin-top:10px;">
+          <label>Enviar a</label>
+          <select id="com-enviar-a">
+            <option value="tel1">Apoderado 1</option>
+            <option value="tel2">Apoderado 2</option>
+            <option value="ambos">Ambos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Texto (puedes usar: {alumno}, {grado}, {seccion}, {nivel})</label>
+          <textarea id="com-texto" rows="7" placeholder="Ej: Hola, se informa sobre {alumno}..." style="resize:vertical;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Imagen</label>
+          <input id="com-img" type="file" accept="image/*" onchange="onComImgChange()">
+          <div id="com-img-preview" style="margin-top:8px;display:none;">
+            <img id="com-img-preview-img" src="" style="width:100%;max-height:220px;object-fit:contain;border:1px solid var(--border);border-radius:10px;background:var(--surface2);">
+          </div>
+        </div>
+        <button class="btn btn-primary" id="com-btn-enviar" onclick="enviarComunicado()" style="width:100%;justify-content:center;">Enviar por WhatsApp</button>
+        <div id="com-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
       </div>
     </div>
   </div>
@@ -3843,15 +3925,15 @@ function aplicarPermisos(rol) {
   setTimeout(renderBottomNav, 100);
   // Pestañas visibles según rol
   const permisos = {
-    admin:    ['inicio','scan','alumnos','registro','reportes','incidentes','usuarios','config'],
-    director: ['inicio','registro','reportes','incidentes'],
-    profesor: ['inicio','alumnos','registro','incidentes'],
+    admin:    ['inicio','scan','alumnos','registro','reportes','incidentes','comunicacion','comunicado','usuarios','config'],
+    director: ['inicio','registro','reportes','incidentes','comunicacion','comunicado'],
+    profesor: ['inicio','alumnos','registro','incidentes','comunicacion','comunicado'],
     portero:  ['inicio','scan'],
   };
   const tabs = permisos[rol] || ['scan'];
 
   // Mostrar/ocultar tabs
-  ['scan','alumnos','registro','reportes','incidentes','usuarios','config'].forEach(t => {
+  ['scan','alumnos','registro','reportes','incidentes','comunicacion','usuarios','config'].forEach(t => {
     const el = document.getElementById('tab-'+t);
     if(el) el.style.display = tabs.includes(t) ? '' : 'none';
   });
@@ -3861,7 +3943,7 @@ function aplicarPermisos(rol) {
   try { lastSection = sessionStorage.getItem('asmqr_lastSection'); } catch(e) {}
   if(lastSection && tabs.includes(lastSection)) {
     showSectionDirect(lastSection);
-    setActiveTab('tab-' + lastSection);
+    setActiveTab(lastSection === 'comunicado' ? 'tab-comunicacion' : ('tab-' + lastSection));
     if(lastSection === 'inicio') cargarDashboardInicio();
   } else {
     showSectionDirect('inicio');
@@ -3876,7 +3958,7 @@ function showSectionDirect(id) {
   document.getElementById('scan-action-bar').style.display = 'none';
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   const sec = document.getElementById('sec-'+id);
-  const tab = document.getElementById('tab-'+id);
+  const tab = document.getElementById('tab-'+id) || (id === 'comunicado' ? document.getElementById('tab-comunicacion') : null);
   if(sec) sec.classList.add('active');
   if(tab) tab.classList.add('active');
 
@@ -3903,6 +3985,7 @@ function showSectionDirect(id) {
     mostrarBtnAnio();
     renderReportes();
   }
+  if(id==='comunicado') { initComunicado(); }
   if(id==='scan') updateStats();
   if(id==='usuarios') renderUsuarios();
   if(id==='config') renderConfig();
@@ -4122,7 +4205,7 @@ async function cargarDashboardInicio() {
     const cfg = await getConfig();
     const niveles = (cfg.niveles||[]).map(n=>n.nombre);
     const barsEl = document.getElementById('inicio-niveles-bars');
-    const ptaEl  = document.getElementById('inicio-pta');
+    const piesEl = document.getElementById('inicio-niveles-pies');
     if(barsEl && niveles.length) {
       const colors = ['#378ADD','#16a34a','#854F0B','#534AB7'];
       barsEl.innerHTML = niveles.map((niv,i) => {
@@ -4137,36 +4220,23 @@ async function cargarDashboardInicio() {
           '<div style="font-size:0.75rem;color:' + col + ';width:32px;text-align:right;">' + pNiv + '%</div></div>';
       }).join('');
     }
-    if(ptaEl) {
-      const tardSet = new Set(regsHoy.filter(r=>r.tipo==='INGRESO' && String(r.estado||'').includes('Tardanza')).map(r=>r.alumnoId));
-      const tardanzas = tardSet.size;
-      const puntuales = Math.max(0, presentes - tardanzas);
-      const totalPTA = total || 1;
-      const pPct = Math.round(puntuales / totalPTA * 100);
-      const tPct = Math.round(tardanzas / totalPTA * 100);
-      const aPct = Math.max(0, 100 - pPct - tPct);
-      const pDeg = Math.round(360 * pPct / 100);
-      const tDeg = Math.round(360 * tPct / 100);
-      const pEnd = pDeg + 'deg';
-      const tEnd = (pDeg + tDeg) + 'deg';
-      ptaEl.innerHTML =
-        `<div class="pta-donut" style="--pta-p:#16a34a;--pta-t:#f59e0b;--pta-a:#dc2626;--pta-p-end:${pEnd};--pta-t-end:${tEnd};">
-          <div class="pta-center"><div class="pct">${pPct}%</div><div class="lbl">Puntual</div></div>
-        </div>
-        <div class="pta-legend">
-          <div class="pta-row">
-            <div class="pta-left"><span class="pta-dot" style="background:#16a34a"></span><span class="pta-name">Puntual</span></div>
-            <div class="pta-val">${pPct}% (${puntuales})</div>
+    if(piesEl && niveles.length) {
+      const colors = ['#378ADD','#16a34a','#f59e0b','#8b5cf6'];
+      piesEl.innerHTML = niveles.map((niv,i) => {
+        const alNiv = alumnos.filter(a=>a.turno===niv);
+        const presNiv = new Set(regsHoy.filter(r=>r.tipo==='INGRESO'&&r.turno===niv).map(r=>r.alumnoId)).size;
+        const pNiv = alNiv.length ? Math.round(presNiv/alNiv.length*100) : 0;
+        const col = colors[i % colors.length];
+        return `<div class="nivel-pie">
+          <div class="nivel-pie-ring" style="--p:${pNiv};--c:${col};">
+            <div class="nivel-pie-center">${pNiv}%</div>
           </div>
-          <div class="pta-row">
-            <div class="pta-left"><span class="pta-dot" style="background:#f59e0b"></span><span class="pta-name">Tardanza</span></div>
-            <div class="pta-val">${tPct}% (${tardanzas})</div>
-          </div>
-          <div class="pta-row">
-            <div class="pta-left"><span class="pta-dot" style="background:#dc2626"></span><span class="pta-name">Ausente</span></div>
-            <div class="pta-val">${aPct}% (${ausentes})</div>
+          <div class="nivel-pie-label">
+            <div class="nivel-pie-title">${niv}</div>
+            <div class="nivel-pie-sub">${presNiv}/${alNiv.length}</div>
           </div>
         </div>`;
+      }).join('');
     }
 
     // Últimos ingresos
@@ -6491,6 +6561,228 @@ async function sendWhatsApp(telefono, mensaje, imageUrl = null) {
   } catch(e) {
     toast('❌ Error conexión WhatsApp: ' + e.message, 'error');
     return false;
+  }
+}
+
+let _comAlumnos = null;
+let _comSel = new Set();
+let _comInit = false;
+let _comImgFile = null;
+let _comImgUrl = '';
+
+async function initComunicado() {
+  if(!_comAlumnos) {
+    _comAlumnos = await DB.getAlumnos();
+  }
+  if(!_comInit) {
+    const cfg = await getConfig();
+    const nivelSel = document.getElementById('com-nivel');
+    const nivelesCfg = (cfg.niveles||[]).map(n=>n.nombre).filter(Boolean);
+    const nivelesDatos = [...new Set((_comAlumnos||[]).map(a=>a.turno).filter(Boolean))];
+    const niveles = nivelesCfg.length ? nivelesCfg : nivelesDatos;
+    nivelSel.innerHTML = '<option value="">Todos</option>' + niveles.map(n=>`<option value="${n}">${n}</option>`).join('');
+    document.getElementById('com-enviar-a').value = 'tel1';
+    _comInit = true;
+  }
+  renderComLista();
+}
+
+function onComNivelChange() {
+  const nivel = document.getElementById('com-nivel').value;
+  const gradoSel = document.getElementById('com-grado');
+  const seccSel = document.getElementById('com-seccion');
+  gradoSel.value = '';
+  seccSel.value = '';
+  seccSel.innerHTML = '<option value="">Todas</option>';
+  seccSel.disabled = true;
+  seccSel.style.opacity = '0.45';
+  if(!nivel) {
+    gradoSel.innerHTML = '<option value="">Todos</option>';
+    gradoSel.disabled = true;
+    gradoSel.style.opacity = '0.45';
+    renderComLista();
+    return;
+  }
+  const grados = [...new Set((_comAlumnos||[]).filter(a=>a.turno===nivel).map(a=>a.grado).filter(Boolean))].sort();
+  gradoSel.innerHTML = '<option value="">Todos</option>' + grados.map(g=>`<option value="${g}">${g}</option>`).join('');
+  gradoSel.disabled = false;
+  gradoSel.style.opacity = '1';
+  renderComLista();
+}
+
+function onComGradoChange() {
+  const nivel = document.getElementById('com-nivel').value;
+  const grado = document.getElementById('com-grado').value;
+  const seccSel = document.getElementById('com-seccion');
+  seccSel.value = '';
+  if(!nivel || !grado) {
+    seccSel.innerHTML = '<option value="">Todas</option>';
+    seccSel.disabled = true;
+    seccSel.style.opacity = '0.45';
+    renderComLista();
+    return;
+  }
+  const secciones = [...new Set((_comAlumnos||[]).filter(a=>a.turno===nivel && a.grado===grado).map(a=>a.seccion).filter(Boolean))].sort();
+  seccSel.innerHTML = '<option value="">Todas</option>' + secciones.map(s=>`<option value="${s}">${s}</option>`).join('');
+  seccSel.disabled = false;
+  seccSel.style.opacity = '1';
+  renderComLista();
+}
+
+function _comFiltrados() {
+  const nivel = document.getElementById('com-nivel').value;
+  const grado = document.getElementById('com-grado').value;
+  const seccion = document.getElementById('com-seccion').value;
+  const q = (document.getElementById('com-search').value||'').trim().toLowerCase();
+  let rows = (_comAlumnos||[]);
+  if(nivel) rows = rows.filter(a=>a.turno===nivel);
+  if(grado) rows = rows.filter(a=>a.grado===grado);
+  if(seccion) rows = rows.filter(a=>a.seccion===seccion);
+  if(q) rows = rows.filter(a=>{
+    const nombre = (((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || (a.nombre||'')).toLowerCase();
+    return nombre.includes(q) || String(a.id||'').includes(q);
+  });
+  rows = rows.slice().sort((a,b)=>(((a.apellidos||'')+' '+(a.nombres||'')).trim()).localeCompare(((b.apellidos||'')+' '+(b.nombres||'')).trim()));
+  return rows;
+}
+
+function renderComLista() {
+  const tbody = document.getElementById('com-tbody');
+  if(!tbody) return;
+  const rows = _comFiltrados();
+  tbody.innerHTML = rows.map(a=>{
+    const id = a.id;
+    const nombre = (((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || a.nombre || '').trim();
+    const tel = (a.telefono || a.telefono2 || '').trim();
+    const checked = _comSel.has(id) ? 'checked' : '';
+    const disabled = tel ? '' : 'disabled';
+    return `<tr>
+      <td style="text-align:center;"><input type="checkbox" ${checked} ${disabled} onchange="comToggleSel('${id}', this.checked)"></td>
+      <td style="font-weight:700;color:var(--text);">${nombre}</td>
+      <td>${a.grado||''}</td>
+      <td>${a.seccion||''}</td>
+      <td>${a.turno||''}</td>
+      <td style="color:var(--muted);">${tel || '—'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="padding:14px;color:var(--muted);text-align:center;">Sin resultados</td></tr>';
+  document.getElementById('com-count').textContent = String(_comSel.size);
+}
+
+function comToggleSel(id, on) {
+  if(on) {
+    if(_comSel.size >= 30) { toast('Máximo 30 destinatarios','warning'); renderComLista(); return; }
+    _comSel.add(id);
+  } else {
+    _comSel.delete(id);
+  }
+  document.getElementById('com-count').textContent = String(_comSel.size);
+}
+
+function comSelectAllFiltrados() {
+  const rows = _comFiltrados();
+  for(const a of rows) {
+    if(_comSel.size >= 30) break;
+    if(a.telefono || a.telefono2) _comSel.add(a.id);
+  }
+  renderComLista();
+}
+
+function comClearSelection() {
+  _comSel = new Set();
+  renderComLista();
+}
+
+function onComImgChange() {
+  const f = document.getElementById('com-img')?.files?.[0] || null;
+  _comImgFile = f;
+  _comImgUrl = '';
+  const prev = document.getElementById('com-img-preview');
+  const img = document.getElementById('com-img-preview-img');
+  if(f && prev && img) {
+    img.src = URL.createObjectURL(f);
+    prev.style.display = 'block';
+  } else if(prev) {
+    prev.style.display = 'none';
+  }
+}
+
+function _comMsg(tpl, a) {
+  const nombre = (((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || a.nombre || '').trim();
+  return String(tpl||'')
+    .replaceAll('{alumno}', nombre)
+    .replaceAll('{grado}', String(a.grado||''))
+    .replaceAll('{seccion}', String(a.seccion||''))
+    .replaceAll('{nivel}', String(a.turno||''));
+}
+
+async function _comUploadImg() {
+  if(_comImgUrl) return _comImgUrl;
+  if(!_comImgFile) return '';
+  if(!window._sbStorage) throw new Error('Storage no disponible');
+  const id = (crypto?.randomUUID ? crypto.randomUUID() : (Date.now() + '_' + Math.random().toString(16).slice(2)));
+  const ext = (_comImgFile.type||'').includes('png') ? 'png' : 'jpg';
+  const path = `${COLEGIO_ID}/comunicados/${id}/imagen.${ext}`;
+  await _sbStorage.upload('incidentes', path, _comImgFile, _comImgFile.type || 'image/jpeg');
+  _comImgUrl = await _sbStorage.signedUrl('incidentes', path, 24 * 60 * 60);
+  return _comImgUrl;
+}
+
+async function enviarComunicado() {
+  const btn = document.getElementById('com-btn-enviar');
+  const st = document.getElementById('com-status');
+  if(_comSel.size < 1) { toast('Selecciona al menos un alumno','warning'); return; }
+  if(_comSel.size > 30) { toast('Máximo 30 destinatarios','warning'); return; }
+  const tpl = (document.getElementById('com-texto').value||'').trim();
+  if(!tpl) { toast('Escribe el mensaje','warning'); return; }
+  if(!_comImgFile) { toast('Selecciona una imagen','warning'); return; }
+  try {
+    if(btn) { btn.disabled = true; btn.style.opacity = '0.75'; }
+    if(st) st.textContent = 'Preparando envío...';
+    const urlImagen = await _comUploadImg();
+    const enviarA = document.getElementById('com-enviar-a').value;
+    const rows = (_comAlumnos||[]).filter(a=>_comSel.has(a.id));
+    const items = [];
+    rows.forEach(a=>{
+      const msg = _waEncabezado() + '\n\n' + _comMsg(tpl, a) + _waPie();
+      const tel1 = (a.telefono||'').trim();
+      const tel2 = (a.telefono2||'').trim();
+      if(enviarA === 'tel1' && tel1) items.push({ telefono: tel1, mensaje: msg });
+      if(enviarA === 'tel2' && tel2) items.push({ telefono: tel2, mensaje: msg });
+      if(enviarA === 'ambos') {
+        if(tel1) items.push({ telefono: tel1, mensaje: msg });
+        if(tel2 && tel2.replace(/\D/g,'').slice(-9) !== tel1.replace(/\D/g,'').slice(-9)) items.push({ telefono: tel2, mensaje: msg });
+      }
+    });
+    if(!items.length) { toast('No hay teléfonos válidos para enviar','warning'); return; }
+    const { data: { session } } = await _sb.auth.getSession();
+    const jwt = session?.access_token;
+    if(!jwt) { toast('Inicia sesión para enviar WhatsApp','warning'); return; }
+    if(st) st.textContent = `Enviando a ${items.length} destinatarios...`;
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/enviar-comunicado`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwt}`,
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({ urlImagen, items })
+    });
+    const body = await res.json().catch(() => ({}));
+    if(!res.ok) {
+      toast('❌ Error: ' + (body.error || ('HTTP ' + res.status)), 'warning');
+      if(st) st.textContent = '';
+      return;
+    }
+    const results = Array.isArray(body.results) ? body.results : [];
+    const ok = results.filter(r=>r.ok).length;
+    const fail = results.length - ok;
+    if(st) st.textContent = `Envío terminado: ${ok} ok, ${fail} fallos`;
+    toast(`📢 Comunicado: ${ok} ok, ${fail} fallos`, fail ? 'warning' : 'success');
+  } catch(e) {
+    toast('❌ Error: ' + e.message, 'error');
+    if(st) st.textContent = '';
+  } finally {
+    if(btn) { btn.disabled = false; btn.style.opacity = ''; }
   }
 }
 
