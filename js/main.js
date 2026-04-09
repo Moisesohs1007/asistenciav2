@@ -1634,9 +1634,23 @@ async function openModalAlumno(id) {
     ['f-id','f-nombres','f-apellidos','f-telefono','f-apoderado-nombres','f-apoderado-apellidos','f-telefono2','f-apoderado2-nombres','f-apoderado2-apellidos','f-foto-url','f-foto-data'].forEach(x => document.getElementById(x).value='');
     document.getElementById('foto-preview-img').style.display='none';
     document.getElementById('foto-preview-placeholder').style.display='block';
-    document.getElementById('f-grado').value = '';
-    document.getElementById('f-seccion').value = 'A';
-    document.getElementById('f-turno').value = '';
+    const fGrado = document.getElementById('f-grado');
+    const fSecc  = document.getElementById('f-seccion');
+    fGrado.value = '';
+    fGrado.innerHTML = '<option value="">Seleccionar</option>';
+    _disableSelect('f-grado');
+    fSecc.value = '';
+    fSecc.innerHTML = '<option value="">Seleccionar</option>';
+    _disableSelect('f-seccion');
+    
+    // Primero poblar el select de nivel con opciones de config
+    const cfgTemp = await getConfig();
+    const fTurno = document.getElementById('f-turno');
+    fTurno.innerHTML = '<option value="">Seleccionar</option>';
+    (cfgTemp.niveles||[]).forEach(n => {
+      fTurno.innerHTML += `<option value="${n.nombre}">${n.nombre}</option>`;
+    });
+    fTurno.value = '';
   }
   const mAlumno = document.getElementById('modal-alumno');
   mAlumno.style.display = ''; // reset por si closeModal dejó display:none
@@ -5013,6 +5027,8 @@ async function onNivelChangeAlumnos() {
     _disableSelect('fa-grado');
   }
   await poblarFiltroSeccion('fa-seccion', null);
+  if(nivel) _enableSelect('fa-seccion');
+  else _disableSelect('fa-seccion');
   renderAlumnos();
 }
 
@@ -5477,10 +5493,11 @@ async function guardarSecciones() {
 
 // Cargar grados en el formulario de alumno según nivel seleccionado
 async function cargarGradosPorNivel(nivelParam) {
-  const nivel = nivelParam || document.getElementById('f-turno').value;
+  const nivel = (typeof nivelParam === 'string') ? nivelParam : document.getElementById('f-turno').value;
   const gradoSel = document.getElementById('f-grado');
   gradoSel.innerHTML = '<option value="">Seleccionar</option>';
-  if(!nivel) return;
+  if(!nivel) { _disableSelect('f-grado'); _disableSelect('f-seccion'); return; }
+  _enableSelect('f-grado');
   const cfg = await getConfig();
   const grados = (cfg.grados||{})[nivel] || [];
   grados.forEach(g => {
@@ -5488,7 +5505,9 @@ async function cargarGradosPorNivel(nivelParam) {
     opt.value = g; opt.textContent = g;
     gradoSel.appendChild(opt);
   });
+  if(!grados.length) toast('No hay grados configurados para este nivel','warning');
   await cargarSeccionesPorGrado();
+  _enableSelect('f-seccion');
 }
 
 async function cargarSeccionesPorGrado() {

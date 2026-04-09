@@ -4742,9 +4742,23 @@ async function openModalAlumno(id) {
     ['f-id','f-nombres','f-apellidos','f-telefono','f-apoderado-nombres','f-apoderado-apellidos','f-telefono2','f-apoderado2-nombres','f-apoderado2-apellidos','f-foto-url','f-foto-data'].forEach(x => document.getElementById(x).value='');
     document.getElementById('foto-preview-img').style.display='none';
     document.getElementById('foto-preview-placeholder').style.display='block';
-    document.getElementById('f-grado').value = '';
-    document.getElementById('f-seccion').value = 'A';
-    document.getElementById('f-turno').value = '';
+    const fGrado = document.getElementById('f-grado');
+    const fSecc  = document.getElementById('f-seccion');
+    fGrado.value = '';
+    fGrado.innerHTML = '<option value="">Seleccionar</option>';
+    _disableSelect('f-grado');
+    fSecc.value = '';
+    fSecc.innerHTML = '<option value="">Seleccionar</option>';
+    _disableSelect('f-seccion');
+    
+    // Primero poblar el select de nivel con opciones de config
+    const cfgTemp = await getConfig();
+    const fTurno = document.getElementById('f-turno');
+    fTurno.innerHTML = '<option value="">Seleccionar</option>';
+    (cfgTemp.niveles||[]).forEach(n => {
+      fTurno.innerHTML += `<option value="${n.nombre}">${n.nombre}</option>`;
+    });
+    fTurno.value = '';
   }
   const mAlumno = document.getElementById('modal-alumno');
   mAlumno.style.display = ''; // reset por si closeModal dejó display:none
@@ -8125,6 +8139,8 @@ async function onNivelChangeAlumnos() {
     _disableSelect('fa-grado');
   }
   await poblarFiltroSeccion('fa-seccion', null);
+  if(nivel) _enableSelect('fa-seccion');
+  else _disableSelect('fa-seccion');
   renderAlumnos();
 }
 
@@ -8589,10 +8605,11 @@ async function guardarSecciones() {
 
 // Cargar grados en el formulario de alumno según nivel seleccionado
 async function cargarGradosPorNivel(nivelParam) {
-  const nivel = nivelParam || document.getElementById('f-turno').value;
+  const nivel = (typeof nivelParam === 'string') ? nivelParam : document.getElementById('f-turno').value;
   const gradoSel = document.getElementById('f-grado');
   gradoSel.innerHTML = '<option value="">Seleccionar</option>';
-  if(!nivel) return;
+  if(!nivel) { _disableSelect('f-grado'); _disableSelect('f-seccion'); return; }
+  _enableSelect('f-grado');
   const cfg = await getConfig();
   const grados = (cfg.grados||{})[nivel] || [];
   grados.forEach(g => {
@@ -8600,7 +8617,9 @@ async function cargarGradosPorNivel(nivelParam) {
     opt.value = g; opt.textContent = g;
     gradoSel.appendChild(opt);
   });
+  if(!grados.length) toast('No hay grados configurados para este nivel','warning');
   await cargarSeccionesPorGrado();
+  _enableSelect('f-seccion');
 }
 
 async function cargarSeccionesPorGrado() {
@@ -8799,6 +8818,7 @@ function limpiarFiltroAlumnoInc() {
   if(s && document.getElementById('inc-filter-fecha').value) s.value = '';
 }
 function limpiarFiltrosIncidentes() {
+  document.getElementById('inc-filter-mes').value = '2_DIAS';
   document.getElementById('inc-filter-fecha').value = '';
   document.getElementById('inc-filter-search').value = '';
   renderIncidentes();
@@ -9138,7 +9158,7 @@ function poblarSelectorMesInc() {
   const sel = document.getElementById('inc-filter-mes');
   if(!sel || sel.options.length > 1) return;
   const hoy = new Date();
-  let opts = '';
+  let opts = '<option value="2_DIAS">Últimos 2 días</option>';
   // Admin/director pueden ver hasta 6 meses atrás
   const mesActualNum = new Date().getMonth() + 1;
   const mesesLectivosInc = Math.max(0, mesActualNum - 3 + 1);
@@ -9170,9 +9190,16 @@ async function renderIncidentes() {
       docs = docs.filter(d => d.responsableId === currentUser.uid);
     }
 
-    // Filtro por mes seleccionado
-    const mesSel = document.getElementById('inc-filter-mes')?.value || hoy().slice(0,7);
-    docs = docs.filter(d => (d.fecha||'').startsWith(mesSel));
+    // Filtro por mes o 2 días
+    const mesSel = document.getElementById('inc-filter-mes')?.value || '2_DIAS';
+    if(mesSel === '2_DIAS') {
+      const h = new Date();
+      h.setDate(h.getDate() - 2);
+      const limite = h.getFullYear() + '-' + String(h.getMonth()+1).padStart(2,'0') + '-' + String(h.getDate()).padStart(2,'0');
+      docs = docs.filter(d => (d.fecha||'') >= limite);
+    } else {
+      docs = docs.filter(d => (d.fecha||'').startsWith(mesSel));
+    }
 
     // Filtros UI — todo en memoria, sin tocar Firestore
     const fecha = document.getElementById('inc-filter-fecha')?.value;
@@ -9183,7 +9210,7 @@ async function renderIncidentes() {
       (d.alumnoId||'').includes(q)
     );
 
-    docs.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||''));
+    docs.sort((a,b) => ((b.fecha||'')+' '+(b.hora||'')).localeCompare((a.fecha||'')+' '+(a.hora||'')));
 
     if(!docs.length) {
       tbody.innerHTML = '';

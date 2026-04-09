@@ -889,7 +889,7 @@
   .modal-bg {
     position: fixed; inset:0;
     background: rgba(0,0,0,0.7);
-    z-index: 200;
+    z-index: 2000;
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
     backdrop-filter: blur(4px);
@@ -1530,10 +1530,10 @@
        IMPORTANTE: este bloque NO afecta movil (<768px).
        Todos los cambios aqui son exclusivos de escritorio. ══ */
   @media (min-width: 768px) {
-    /* Overlay: padding-top generoso para que el titulo no quede oculto */
+    /* Overlay: centrado normal ya que está por encima del header */
     #modal-alumno {
-      align-items: flex-start !important;
-      padding: 60px 20px 16px !important;
+      align-items: center !important;
+      padding: 20px !important;
     }
     /* Modal contenedor: alto controlado con scroll interno */
     #modal-alumno .modal {
