@@ -2160,7 +2160,7 @@
       <div style="display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:14px;">
         <!-- Asistencia por nivel -->
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;">
-          <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Distribución P / T / A — hoy (por nivel)</div>
+          <div style="font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:14px;">Distribución P / T / A — hoy</div>
           <div id="inicio-niveles-pta" class="inicio-nivel-pta-grid"></div>
         </div>
         <!-- Últimos ingresos -->
@@ -4284,7 +4284,7 @@ async function cargarDashboardInicio() {
           const pEnd = pDeg + 'deg';
           const tEnd = (pDeg + tDeg) + 'deg';
           return `<div class="inicio-nivel-pta-card">
-            <div class="inicio-nivel-pta-title"><span class="dot"></span>Distribución P / T / A — ${niv}</div>
+            <div class="inicio-nivel-pta-title"><span class="dot"></span>${niv}</div>
             <div class="pta-wrap">
               <div class="pta-donut" style="--pta-p:#16a34a;--pta-t:#f59e0b;--pta-a:#dc2626;--pta-p-end:${pEnd};--pta-t-end:${tEnd};">
                 <div class="pta-center"><div class="pct">${pPct}%</div><div class="lbl">Puntual</div></div>
