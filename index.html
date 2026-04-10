@@ -1037,7 +1037,7 @@
   @media (min-width: 980px) {
     .com-layout { grid-template-columns: 1.1fr 0.9fr; }
     .agenda-layout { grid-template-columns: 1.2fr 0.8fr; }
-    .rex-layout { grid-template-columns: 1.05fr 0.95fr; }
+    .rex-layout { grid-template-columns: 1fr; }
   }
   .rex-days { display:grid; gap: 10px; }
   .rex-day { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
@@ -3218,7 +3218,7 @@
 
   <div class="section" id="sec-rol-examenes" onfocusin="initRolExamenes()">
     <div class="page-title">Rol de Exámenes</div>
-    <div class="page-sub">Completa el formulario y genera una ficha lista para imprimir o descargar</div>
+    <div class="page-sub">Completa el formulario y genera el prompt para copiar en ChatGPT</div>
 
     <div class="rex-layout">
       <div class="card">
@@ -3226,20 +3226,20 @@
 
         <div class="form-group" style="margin-top:10px;">
           <label>Bimestre</label>
-          <input id="rex-bimestre" type="text" placeholder="Ej: PRIMER BIMESTRE" oninput="rexRenderPreview()">
+          <input id="rex-bimestre" type="text" placeholder="Ej: PRIMER BIMESTRE">
         </div>
         <div class="form-group">
           <label>Grado / Sección</label>
-          <input id="rex-grado" type="text" placeholder="Ej: 6TO GRADO A" oninput="rexRenderPreview()">
+          <input id="rex-grado" type="text" placeholder="Ej: 6TO GRADO A">
         </div>
         <div class="form-group">
           <label>Tutor(a)</label>
-          <input id="rex-tutor" type="text" placeholder="Ej: Lic. MILAGROS Cabrel Salazar" oninput="rexRenderPreview()">
+          <input id="rex-tutor" type="text" placeholder="Ej: Lic. MILAGROS Cabrel Salazar">
         </div>
         <div class="form-group">
           <label>Opacidad marca de agua</label>
           <div style="display:flex;align-items:center;gap:10px;">
-            <input id="rex-wm-opacity" type="range" min="5" max="15" step="1" value="10" oninput="document.getElementById('rex-wm-opacity-val').textContent=this.value+'%';rexRenderPreview();">
+            <input id="rex-wm-opacity" type="range" min="5" max="15" step="1" value="10" oninput="document.getElementById('rex-wm-opacity-val').textContent=this.value+'%';">
             <div style="min-width:48px;color:var(--muted);font-size:0.85rem;" id="rex-wm-opacity-val">10%</div>
           </div>
         </div>
@@ -3253,30 +3253,21 @@
 
         <div class="form-group">
           <label>Observaciones</label>
-          <textarea id="rex-obs" rows="3" placeholder="Observaciones..." oninput="rexRenderPreview()"></textarea>
+          <textarea id="rex-obs" rows="3" placeholder="Observaciones..."></textarea>
         </div>
         <div class="form-group">
           <label>Texto final</label>
-          <input id="rex-msg" type="text" placeholder="Ej: Apoyemos a nuestros Niños en esta semana" oninput="rexRenderPreview()">
+          <input id="rex-msg" type="text" placeholder="Ej: Apoyemos a nuestros Niños en esta semana">
         </div>
 
         <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
-          <button class="btn btn-primary" id="rex-btn-guardar" onclick="rexGuardar()" style="flex:1;justify-content:center;min-width:160px;">💾 Guardar</button>
-          <button class="btn btn-primary" onclick="rexDownloadPNG()" style="flex:1;justify-content:center;min-width:160px;">⬇ Descargar</button>
-          <button class="btn btn-primary" onclick="rexPrint()" style="flex:1;justify-content:center;min-width:160px;">🖨 Imprimir</button>
+          <button class="btn btn-primary" id="rex-btn-guardar" onclick="rexGuardar()" style="flex:1;justify-content:center;min-width:160px;">🧠 Generar prompt</button>
           <button class="btn btn-ghost" onclick="rexReset()" style="justify-content:center;">Limpiar</button>
         </div>
         <div id="rex-ia-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
-      </div>
-
-      <div class="card" style="padding:12px;">
-        <div class="card-title"><span class="dot"></span>Vista previa</div>
-        <div class="rex-preview-wrap" style="margin-top:10px;">
-          <div id="rex-preview"></div>
-        </div>
         <div class="divider"></div>
         <div class="card-title" style="margin-top:0;"><span class="dot" style="background:var(--accent2)"></span>Prompt para ChatGPT</div>
-        <textarea id="rex-prompt-out" rows="7" readonly style="margin-top:10px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);width:100%;padding:10px;font-size:0.82rem;"></textarea>
+        <textarea id="rex-prompt-out" rows="9" readonly style="margin-top:10px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);width:100%;padding:10px;font-size:0.82rem;"></textarea>
         <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
           <button class="btn btn-ghost" onclick="rexCopiarPrompt()" style="border-color:var(--accent2);color:var(--accent2);">Copiar</button>
         </div>
@@ -7416,7 +7407,7 @@ function _escHtml(s) {
 
 function initRolExamenes() {
   if(!_rexState) _rexState = _rexDefaultState();
-  if(_rexInited) { rexRenderPreview(); return; }
+  if(_rexInited) return;
   _rexInited = true;
   try {
     document.getElementById('rex-bimestre').value = _rexState.bimestre || '';
@@ -7430,7 +7421,6 @@ function initRolExamenes() {
     if(opv) opv.textContent = String(_rexState.wmOpacity || 10) + '%';
   } catch(e) {}
   rexRenderDays();
-  rexRenderPreview();
 }
 
 function rexReset() {
@@ -7471,7 +7461,6 @@ function rexAddCourse(dayIdx) {
   if(!Array.isArray(d.courses)) d.courses = [];
   d.courses.push('');
   rexRenderDays();
-  rexRenderPreview();
 }
 
 function rexRemoveCourse(dayIdx, courseIdx) {
@@ -7480,7 +7469,6 @@ function rexRemoveCourse(dayIdx, courseIdx) {
   if(!d || !Array.isArray(d.courses)) return;
   d.courses.splice(courseIdx, 1);
   rexRenderDays();
-  rexRenderPreview();
 }
 
 function rexSetCourse(dayIdx, courseIdx, val) {
@@ -7489,7 +7477,6 @@ function rexSetCourse(dayIdx, courseIdx, val) {
   if(!d) return;
   if(!Array.isArray(d.courses)) d.courses = [];
   d.courses[courseIdx] = String(val||'');
-  rexRenderPreview();
 }
 
 function rexSetDate(dayIdx, val) {
@@ -7497,7 +7484,6 @@ function rexSetDate(dayIdx, val) {
   const d = _rexState.days[dayIdx];
   if(!d) return;
   d.date = String(val||'');
-  rexRenderPreview();
 }
 
 function _rexFmtDM(iso) {
@@ -7538,6 +7524,10 @@ function rexBuildPromptBase() {
   if(!_rexState) return '';
   const colegio = String(COLEGIO_NOMBRE || '').trim();
   const eslogan = String(COLEGIO_ESLOGAN || '').trim();
+  let logoUrl = String(COLEGIO_LOGO || '').trim();
+  try {
+    if(logoUrl) logoUrl = new URL(logoUrl, window.location.href).href;
+  } catch(e) {}
   const b = String(_rexState.bimestre || '').trim();
   const g = String(_rexState.grado || '').trim();
   const t = String(_rexState.tutor || '').trim();
@@ -7563,7 +7553,9 @@ function rexBuildPromptBase() {
 
 IDENTIDAD (del sistema)
 - Nombre del colegio (en 1 sola línea, centrado, mayúsculas): "${colegio}"${eslLine}
-- Logo institucional: usar el logo adjunto sin fondo, proporcional, ubicado arriba a la izquierda.
+- Insignia/Logo institucional: usar el logo adjunto sin fondo, proporcional, ubicado arriba a la izquierda.
+- Logo institucional (URL, si el generador soporta cargar por enlace): ${logoUrl ? `"${logoUrl}"` : '(no disponible)'}
+- Marca de agua: reutilizar el MISMO logo como marca de agua grande centrada (o inclinada), en tonos azulados, con opacidad ${Math.max(5, Math.min(15, (_rexState.wmOpacity||10)))}% (rango permitido 5%–15%).
 
 TÍTULO PRINCIPAL
 - Texto: "ROL DE EXÁMENES" (centrado, grande, azul oscuro con sombra/contorno suave).
@@ -7587,7 +7579,7 @@ FRASE FINAL EN CINTA AZUL
 REQUISITOS
 - Paleta: azul marino + azul medio + celeste + blanco, acentos amarillo suave y rojo para “AD”.
 - Mantener orden, legibilidad y equilibrio visual.
-- Sin marcas de agua y sin textos inventados fuera de los datos dados.
+- Incluir marca de agua con el logo institucional y sin textos inventados fuera de los datos dados.
 `;
 }
 
