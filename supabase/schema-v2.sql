@@ -168,3 +168,30 @@ CREATE POLICY "agenda_read" ON agenda FOR SELECT
 
 CREATE POLICY "agenda_write" ON agenda FOR ALL
   USING (colegio_id = auth_colegio_id() AND is_staff());
+
+-- 7. AUDITORÍA IA (PROMPTS AUTOMÁTICOS)
+-- Inserción: solo service role (desde Edge Functions)
+-- Lectura: staff del mismo colegio
+CREATE TABLE IF NOT EXISTS auditoria_ai (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  colegio_id TEXT NOT NULL REFERENCES colegios(id) ON DELETE CASCADE,
+  user_id UUID,
+  rol TEXT DEFAULT '',
+  accion TEXT NOT NULL,
+  ok BOOLEAN NOT NULL DEFAULT FALSE,
+  detalle TEXT DEFAULT '',
+  payload JSONB
+);
+
+CREATE INDEX IF NOT EXISTS auditoria_ai_colegio_idx ON auditoria_ai (colegio_id, created_at DESC);
+
+ALTER TABLE auditoria_ai ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "auditoria_ai_read" ON auditoria_ai;
+DROP POLICY IF EXISTS "auditoria_ai_insert" ON auditoria_ai;
+
+CREATE POLICY "auditoria_ai_read" ON auditoria_ai FOR SELECT
+  USING (colegio_id = auth_colegio_id() AND is_staff());
+
+CREATE POLICY "auditoria_ai_insert" ON auditoria_ai FOR INSERT
+  WITH CHECK (FALSE);

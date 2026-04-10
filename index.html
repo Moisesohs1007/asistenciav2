@@ -3261,16 +3261,24 @@
         </div>
 
         <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+          <button class="btn btn-primary" id="rex-btn-guardar" onclick="rexGuardar()" style="flex:1;justify-content:center;min-width:160px;">💾 Guardar</button>
           <button class="btn btn-primary" onclick="rexDownloadPNG()" style="flex:1;justify-content:center;min-width:160px;">⬇ Descargar</button>
           <button class="btn btn-primary" onclick="rexPrint()" style="flex:1;justify-content:center;min-width:160px;">🖨 Imprimir</button>
           <button class="btn btn-ghost" onclick="rexReset()" style="justify-content:center;">Limpiar</button>
         </div>
+        <div id="rex-ia-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
       </div>
 
       <div class="card" style="padding:12px;">
         <div class="card-title"><span class="dot"></span>Vista previa</div>
         <div class="rex-preview-wrap" style="margin-top:10px;">
           <div id="rex-preview"></div>
+        </div>
+        <div class="divider"></div>
+        <div class="card-title" style="margin-top:0;"><span class="dot" style="background:var(--accent2)"></span>Prompt IA</div>
+        <textarea id="rex-prompt-out" rows="7" readonly style="margin-top:10px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);width:100%;padding:10px;font-size:0.82rem;"></textarea>
+        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+          <button class="btn btn-ghost" onclick="rexCopiarPrompt()" style="border-color:var(--accent2);color:var(--accent2);">Copiar</button>
         </div>
       </div>
     </div>
@@ -7514,6 +7522,133 @@ function rexSyncFromInputs() {
     _rexState.msg = document.getElementById('rex-msg')?.value || '';
     _rexState.wmOpacity = parseInt(document.getElementById('rex-wm-opacity')?.value || '10', 10) || 10;
   } catch(e) {}
+}
+
+function rexAuditLocal(entry) {
+  try {
+    const key = 'asmqr_audit_ai';
+    const arr = JSON.parse(localStorage.getItem(key) || '[]');
+    arr.unshift(entry);
+    if(arr.length > 100) arr.length = 100;
+    localStorage.setItem(key, JSON.stringify(arr));
+  } catch(e) {}
+}
+
+function rexBuildPromptBase() {
+  if(!_rexState) return '';
+  const colegio = String(COLEGIO_NOMBRE || '').trim();
+  const eslogan = String(COLEGIO_ESLOGAN || '').trim();
+  const b = String(_rexState.bimestre || '').trim();
+  const g = String(_rexState.grado || '').trim();
+  const t = String(_rexState.tutor || '').trim();
+  const obs = String(_rexState.obs || '').trim();
+  const msg = String(_rexState.msg || '').trim();
+  const dias = Array.isArray(_rexState.days) ? _rexState.days : [];
+  const headers = dias.map(d => {
+    const dow = String(d?.dow || '').trim() || 'Día';
+    const dm = _rexFmtDM(String(d?.date || ''));
+    return `${dow} [${dm}]`;
+  }).join(' | ');
+  const maxCourses = Math.max(0, ...dias.map(d => (Array.isArray(d?.courses) ? d.courses.length : 0)));
+  const rows = Array.from({ length: maxCourses || 1 }).map((_, i) => {
+    const cols = dias.map(d => {
+      const c = (Array.isArray(d?.courses) ? (d.courses[i] || '') : '');
+      return String(c || '').trim().toUpperCase();
+    });
+    return cols.join(' | ');
+  }).join('\n');
+
+  const eslLine = eslogan ? `\n- Eslogan (si aplica, en una sola línea, entre comillas): "${eslogan}"` : '';
+  return `Genera una imagen institucional escolar (alta calidad, lista para impresión y digital), basada en la estética y composición de una referencia tipo “Rol de Exámenes” (estilo escolar azul/celeste, ilustraciones infantiles, marco redondeado, elementos escolares como mochila/libros/pizarra, y un ícono de hoja con sello “AD”).
+
+IDENTIDAD (del sistema)
+- Nombre del colegio (en 1 sola línea, centrado, mayúsculas): "${colegio}"${eslLine}
+- Logo institucional: usar el logo adjunto sin fondo, proporcional, ubicado arriba a la izquierda.
+
+TÍTULO PRINCIPAL
+- Texto: "ROL DE EXÁMENES" (centrado, grande, azul oscuro con sombra/contorno suave).
+
+PÍLDORAS (centradas, estilo parecido a referencia)
+- 1) "${b}"
+- 2) "${g}"
+- 3) "TUTOR: ${t}"
+
+TABLA DE EXÁMENES (5 columnas, Lun–Vie, bordes redondeados, encabezado azul, texto blanco)
+- Encabezados: ${headers}
+- Filas (cursos por día, lista vertical si hay más de 2):
+${rows}
+
+OBSERVACIONES (con ícono tipo clipboard)
+- Texto: "Observaciones: ${obs}"
+
+FRASE FINAL EN CINTA AZUL
+- Texto: "${msg}"
+
+REQUISITOS
+- Paleta: azul marino + azul medio + celeste + blanco, acentos amarillo suave y rojo para “AD”.
+- Mantener orden, legibilidad y equilibrio visual.
+- Sin marcas de agua y sin textos inventados fuera de los datos dados.
+`;
+}
+
+async function rexEnviarPromptIA(promptBase) {
+  const { data: { session } } = await _sb.auth.getSession();
+  const jwt = session?.access_token;
+  if(!jwt) throw new Error('Sesión no disponible');
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/rex-prompt`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${jwt}`,
+      'apikey': SUPABASE_ANON_KEY
+    },
+    body: JSON.stringify({
+      promptBase,
+      colegioNombre: COLEGIO_NOMBRE || '',
+      colegioEslogan: COLEGIO_ESLOGAN || '',
+      payload: _rexState
+    })
+  });
+  const body = await res.json().catch(() => ({}));
+  if(!res.ok) throw new Error(body.error || ('HTTP ' + res.status));
+  return String(body.prompt || body.result || '');
+}
+
+async function rexGuardar() {
+  if(!_rexInited) initRolExamenes();
+  _rexEnsureState();
+  rexSyncFromInputs();
+  const btn = document.getElementById('rex-btn-guardar');
+  const st = document.getElementById('rex-ia-status');
+  const out = document.getElementById('rex-prompt-out');
+  try {
+    if(btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
+    if(st) st.textContent = 'Generando y enviando prompt a IA...';
+    try { localStorage.setItem('rex_state_last', JSON.stringify(_rexState)); } catch(e) {}
+    const promptBase = rexBuildPromptBase();
+    const promptFinal = await rexEnviarPromptIA(promptBase);
+    if(out) out.value = promptFinal;
+    if(st) st.textContent = '✅ Prompt IA generado y recibido.';
+    rexAuditLocal({ at: new Date().toISOString(), feature: 'rol-examenes', action: 'send_prompt', ok: true, len: promptFinal.length, uid: (currentUser?.uid || ''), rol: String(currentRol||'') });
+    toast('✅ Prompt IA listo', 'success');
+  } catch(e) {
+    if(st) st.textContent = '❌ Error IA: ' + e.message;
+    rexAuditLocal({ at: new Date().toISOString(), feature: 'rol-examenes', action: 'send_prompt', ok: false, error: String(e.message||e), uid: (currentUser?.uid || ''), rol: String(currentRol||'') });
+    toast('❌ Error IA: ' + e.message, 'error');
+  } finally {
+    if(btn) { btn.disabled = false; btn.style.opacity = ''; }
+  }
+}
+
+async function rexCopiarPrompt() {
+  const out = document.getElementById('rex-prompt-out');
+  if(!out || !out.value) { toast('No hay prompt para copiar','warning'); return; }
+  try {
+    await navigator.clipboard.writeText(out.value);
+    toast('✅ Prompt copiado','success');
+  } catch(e) {
+    toast('No se pudo copiar. Mantén presionado y copia manualmente.','warning');
+  }
 }
 
 async function rexRenderPreview() {
