@@ -7302,7 +7302,7 @@ async function renderAgenda() {
   const first = new Date(y, m-1, 1);
   const daysInMonth = new Date(y, m, 0).getDate();
   const startOffset = (first.getDay() + 6) % 7; // lunes=0
-  const totalCells = 42;
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
   const cells = [];
   for(let i=0;i<totalCells;i++) {
     const dayNum = i - startOffset + 1;
