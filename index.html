@@ -1039,13 +1039,92 @@
     .agenda-layout { grid-template-columns: 1.2fr 0.8fr; }
     .rex-layout { grid-template-columns: 1fr; }
   }
-  .rex-days { display:grid; gap: 10px; }
-  .rex-day { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
-  .rex-day-head { display:flex; align-items:center; justify-content:space-between; gap: 10px; flex-wrap: wrap; }
-  .rex-day-title { font-family: var(--font-display); font-weight: 900; color: var(--text); }
-  .rex-course-list { margin-top: 10px; display:grid; gap: 8px; }
-  .rex-course-row { display:flex; gap: 8px; }
-  .rex-course-row input { flex: 1; min-width: 0; }
+  .rex-days { 
+    display: grid; 
+    gap: 16px; 
+    grid-template-columns: 1fr; 
+  }
+  @media (min-width: 640px) {
+    .rex-days { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 1024px) {
+    .rex-days { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  }
+  .rex-day { 
+    background: var(--surface2); 
+    border: 1px solid var(--border); 
+    border-radius: 14px; 
+    padding: 16px; 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    display: flex;
+    flex-direction: column;
+  }
+  .rex-day-head { 
+    display:flex; 
+    align-items:center; 
+    justify-content:space-between; 
+    gap: 10px; 
+    flex-wrap: wrap; 
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed var(--border);
+  }
+  .rex-day-title { font-family: var(--font-display); font-weight: 800; color: var(--text); font-size: 1.1rem; }
+  .rex-course-list { display:grid; gap: 10px; flex: 1; }
+  .rex-course-row { display:flex; gap: 8px; align-items: center; }
+  .rex-course-row input { 
+    flex: 1; 
+    min-width: 0; 
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    color: var(--text);
+    transition: border-color 0.2s;
+  }
+  .rex-course-row input:focus { border-color: var(--accent2); outline: none; }
+  .rex-course-row .btn-remove {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border-radius: 8px;
+    padding: 8px 12px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s;
+  }
+  .rex-course-row .btn-remove:hover {
+    background: rgba(220, 53, 69, 0.2);
+  }
+  .rex-day-head input[type="date"] {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    transition: border-color 0.2s;
+  }
+  .rex-day-head input[type="date"]:focus {
+    border-color: var(--accent2);
+    outline: none;
+  }
+  .rex-day-head .btn-add {
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+    background: transparent;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .rex-day-head .btn-add:hover {
+    background: var(--accent2);
+    color: #fff;
+  }
   .rex-preview-wrap { background: linear-gradient(180deg, rgba(233,246,255,0.55), rgba(255,255,255,0.92)); border:1px solid var(--border); border-radius: 14px; padding: 10px; overflow:auto; max-height: 720px; }
   .rex-doc {
     --rex-blue: #0f3b7a;
@@ -7440,7 +7519,7 @@ function rexRenderDays() {
     const courses = (d.courses||[]).map((c, ci) => `
       <div class="rex-course-row">
         <input type="text" value="${_escHtml(c||'')}" placeholder="Curso" oninput="rexSetCourse(${di},${ci},this.value)">
-        ${ci>=2 ? `<button class="btn btn-ghost" type="button" onclick="rexRemoveCourse(${di},${ci})" style="padding:6px 10px;">✕</button>` : ``}
+        ${ci>=2 ? `<button class="btn-remove" type="button" onclick="rexRemoveCourse(${di},${ci})" title="Quitar curso">✕</button>` : ``}
       </div>
     `).join('');
     return `
@@ -7448,8 +7527,8 @@ function rexRenderDays() {
         <div class="rex-day-head">
           <div class="rex-day-title">${_escHtml(d.dow||'Día')}</div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <input type="date" value="${_escHtml(d.date||'')}" onchange="rexSetDate(${di},this.value)" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:6px 10px;font-size:0.85rem;">
-            <button class="btn btn-ghost" type="button" onclick="rexAddCourse(${di})" style="padding:6px 10px;border-color:var(--accent2);color:var(--accent2);">+ Curso</button>
+            <input type="date" value="${_escHtml(d.date||'')}" onchange="rexSetDate(${di},this.value)">
+            <button class="btn-add" type="button" onclick="rexAddCourse(${di})">+ Curso</button>
           </div>
         </div>
         <div class="rex-course-list">${courses}</div>
@@ -7538,23 +7617,19 @@ function rexBuildPromptBase() {
   const obs = String(_rexState.obs || '').trim();
   const msg = String(_rexState.msg || '').trim();
   const dias = Array.isArray(_rexState.days) ? _rexState.days : [];
-  const headers = dias.map(d => {
+  const tablaExamenes = dias.map(d => {
     const dow = String(d?.dow || '').trim() || 'Día';
     const dm = _rexFmtDM(String(d?.date || ''));
-    return `${dow} [${dm}]`;
-  }).join(' | ');
-  const maxCourses = Math.max(0, ...dias.map(d => (Array.isArray(d?.courses) ? d.courses.length : 0)));
-  const rows = Array.from({ length: maxCourses || 1 }).map((_, i) => {
-    const cols = dias.map(d => {
-      const c = (Array.isArray(d?.courses) ? (d.courses[i] || '') : '');
-      return String(c || '').trim().toUpperCase();
-    });
-    return cols.join(' | ');
+    const courses = Array.isArray(d?.courses) ? d.courses.map(c => String(c || '').trim().toUpperCase()) : [];
+    // Filtrar vacíos si queremos, o dejarlos como [VACÍO] para que respete el espacio
+    const validCourses = courses.filter(c => c !== '');
+    const courseList = validCourses.length > 0 ? validCourses.join(', ') : '(Sin exámenes)';
+    return `- ${dow} [${dm}]: ${courseList}`;
   }).join('\n');
 
   const eslLine = eslogan ? `\n- Eslogan (si aplica, en una sola línea, entre comillas): "${eslogan}"` : '';
   return `IMPORTANTE (para que no salga vacío):
-- Usa EXACTAMENTE los textos y datos indicados. No dejes campos en blanco.
+- Usa EXACTAMENTE los textos y datos indicados. No dejes campos en blanco a menos que se indique "(Sin exámenes)".
 - Adjunta el LOGO del colegio (archivo de imagen) y úsalo como insignia arriba a la izquierda y como marca de agua.
 - ChatGPT normalmente NO carga imágenes desde enlaces; usa el logo adjunto.
 
@@ -7575,9 +7650,8 @@ PÍLDORAS (centradas, estilo parecido a referencia)
 - 3) "TUTOR: ${t}"
 
 TABLA DE EXÁMENES (5 columnas, Lun–Vie, bordes redondeados, encabezado azul, texto blanco)
-- Encabezados: ${headers}
-- Filas (cursos por día, lista vertical si hay más de 2):
-${rows}
+Organiza los cursos estrictamente según este detalle:
+${tablaExamenes}
 
 OBSERVACIONES (con ícono tipo clipboard)
 - Texto: "Observaciones: ${obs}"
