@@ -789,6 +789,7 @@ function showSectionDirect(id) {
     renderReportes();
   }
   if(id==='scan') updateStats();
+  if(id==='rol-examenes' && typeof initRolExamenes === 'function') initRolExamenes();
   if(id==='usuarios') renderUsuarios();
   if(id==='config') renderConfig();
   updateBottomNavActive(id);
