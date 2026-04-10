@@ -740,6 +740,8 @@ function aplicarPermisos(rol) {
     const el = document.getElementById('tab-'+t);
     if(el) el.style.display = tabs.includes(t) ? '' : 'none';
   });
+  const comTab = document.getElementById('tab-comunicacion');
+  if(comTab) comTab.style.display = (rol === 'portero') ? 'none' : '';
 
   // Restaurar última sección activa si existe y está permitida
   var lastSection = null;
