@@ -3270,6 +3270,10 @@
         <textarea id="rex-prompt-out" rows="9" readonly style="margin-top:10px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);width:100%;padding:10px;font-size:0.82rem;"></textarea>
         <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
           <button class="btn btn-ghost" onclick="rexCopiarPrompt()" style="border-color:var(--accent2);color:var(--accent2);">Copiar</button>
+          <button class="btn btn-ghost" onclick="rexDescargarLogo()" style="border-color:var(--accent2);color:var(--accent2);">⬇ Logo</button>
+        </div>
+        <div style="margin-top:8px;font-size:0.78rem;color:var(--muted);line-height:1.3;">
+          1) Presiona <b>⬇ Logo</b> y guarda la insignia. 2) En ChatGPT, adjunta ese logo junto con el prompt para que aparezca como insignia y marca de agua.
         </div>
       </div>
     </div>
@@ -7522,7 +7526,7 @@ function rexAuditLocal(entry) {
 
 function rexBuildPromptBase() {
   if(!_rexState) return '';
-  const colegio = String(COLEGIO_NOMBRE || '').trim();
+  const colegio = String(COLEGIO_NOMBRE || '').trim() || '-';
   const eslogan = String(COLEGIO_ESLOGAN || '').trim();
   let logoUrl = String(COLEGIO_LOGO || '').trim();
   try {
@@ -7549,7 +7553,12 @@ function rexBuildPromptBase() {
   }).join('\n');
 
   const eslLine = eslogan ? `\n- Eslogan (si aplica, en una sola línea, entre comillas): "${eslogan}"` : '';
-  return `Genera una imagen institucional escolar (alta calidad, lista para impresión y digital), basada en la estética y composición de una referencia tipo “Rol de Exámenes” (estilo escolar azul/celeste, ilustraciones infantiles, marco redondeado, elementos escolares como mochila/libros/pizarra, y un ícono de hoja con sello “AD”).
+  return `IMPORTANTE (para que no salga vacío):
+- Usa EXACTAMENTE los textos y datos indicados. No dejes campos en blanco.
+- Adjunta el LOGO del colegio (archivo de imagen) y úsalo como insignia arriba a la izquierda y como marca de agua.
+- ChatGPT normalmente NO carga imágenes desde enlaces; usa el logo adjunto.
+
+Genera una imagen institucional escolar (alta calidad, lista para impresión y digital), basada en la estética y composición de una referencia tipo “Rol de Exámenes” (estilo escolar azul/celeste, ilustraciones infantiles, marco redondeado, elementos escolares como mochila/libros/pizarra, y un ícono de hoja con sello “AD”).
 
 IDENTIDAD (del sistema)
 - Nombre del colegio (en 1 sola línea, centrado, mayúsculas): "${colegio}"${eslLine}
@@ -7581,6 +7590,29 @@ REQUISITOS
 - Mantener orden, legibilidad y equilibrio visual.
 - Incluir marca de agua con el logo institucional y sin textos inventados fuera de los datos dados.
 `;
+}
+
+async function rexDescargarLogo() {
+  let logoUrl = '';
+  try { logoUrl = String(COLEGIO_LOGO || (getLogo ? getLogo() : '') || '').trim(); } catch(e) { logoUrl = ''; }
+  if(!logoUrl) { toast('Logo no disponible','warning'); return; }
+  try { logoUrl = new URL(logoUrl, window.location.href).href; } catch(e) {}
+  try {
+    const res = await fetch(logoUrl, { cache: 'no-store' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'logo-colegio.png';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ try { URL.revokeObjectURL(a.href); } catch(e) {} a.remove(); }, 1200);
+    toast('✅ Logo descargado','success');
+  } catch(e) {
+    try { window.open(logoUrl, '_blank'); } catch(_) {}
+    toast('No se pudo descargar automáticamente. Se abrió el logo para que lo guardes.','warning');
+  }
 }
 
 async function rexEnviarPromptIA(promptBase) {
