@@ -3354,6 +3354,18 @@
         <div style="margin-top:8px;font-size:0.78rem;color:var(--muted);line-height:1.3;">
           1) Presiona <b>⬇ Logo</b> y guarda la insignia. 2) En tu IA, adjunta ese logo junto con el prompt para que aparezca como insignia y marca de agua.
         </div>
+        <div style="margin-top:10px;background:var(--surface2);border:1px dashed var(--border);border-radius:10px;padding:10px;font-size:0.82rem;line-height:1.35;color:var(--muted);">
+          <div style="font-weight:800;color:var(--text);margin-bottom:6px;">IA recomendadas para diseñar imágenes (pega el prompt y adjunta el logo)</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;">
+            <a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;">ChatGPT (Imágenes)</a>
+            <a href="https://gemini.google.com/" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;">Gemini</a>
+            <a href="https://www.midjourney.com/" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;">Midjourney</a>
+            <a href="https://ideogram.ai/" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;">Ideogram (texto)</a>
+            <a href="https://firefly.adobe.com/" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;">Adobe Firefly</a>
+            <a href="https://leonardo.ai/" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;">Leonardo AI</a>
+            <a href="https://www.canva.com/ai-image-generator/" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;">Canva</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -7633,15 +7645,16 @@ function rexBuildPromptBase() {
   if(!_rexState) return '';
   const colegio = String(COLEGIO_NOMBRE || '').trim() || '-';
   const eslogan = String(COLEGIO_ESLOGAN || '').trim();
-  let logoUrl = String(COLEGIO_LOGO || '').trim();
-  try {
-    if(logoUrl) logoUrl = new URL(logoUrl, window.location.href).href;
-  } catch(e) {}
   const b = String(_rexState.bimestre || '').trim();
   const g = String(_rexState.grado || '').trim();
   const t = String(_rexState.tutor || '').trim();
   const obs = String(_rexState.obs || '').trim();
   const msg = String(_rexState.msg || '').trim();
+  const bVal = b || '(Sin dato)';
+  const gVal = g || '(Sin dato)';
+  const tVal = t || '(Sin dato)';
+  const obsVal = obs || '(Sin dato)';
+  const msgVal = msg || '(Sin dato)';
   const dias = Array.isArray(_rexState.days) ? _rexState.days : [];
   const tablaExamenes = dias.map(d => {
     const dow = String(d?.dow || '').trim() || 'Día';
@@ -7654,42 +7667,44 @@ function rexBuildPromptBase() {
   }).join('\n');
 
   const eslLine = eslogan ? `\n- Eslogan (si aplica, en una sola línea, entre comillas): "${eslogan}"` : '';
-  return `IMPORTANTE (para que no salga vacío):
-- Usa EXACTAMENTE los textos y datos indicados. No dejes campos en blanco a menos que se indique "(Sin exámenes)".
-- Adjunta el LOGO del colegio (archivo de imagen) y úsalo como insignia arriba a la izquierda y como marca de agua.
-- Algunas IAs no cargan imágenes desde enlaces; usa el logo adjunto.
+  return `Genera UN SOLO afiche escolar institucional (alta calidad, listo para impresión y digital), estilo azul/celeste con marco redondeado e ilustraciones infantiles (mochila/libros/pizarra) y un ícono de hoja con sello “AD”.
 
-Genera una imagen institucional escolar (alta calidad, lista para impresión y digital), basada en la estética y composición de una referencia tipo “Rol de Exámenes” (estilo escolar azul/celeste, ilustraciones infantiles, marco redondeado, elementos escolares como mochila/libros/pizarra, y un ícono de hoja con sello “AD”).
+REGLAS ESTRICTAS
+- Usar SOLO los textos provistos; no inventar ni añadir otros textos.
+- Mantener ortografía EXACTA de los textos.
+- No dejar campos en blanco: si falta un dato, escribir exactamente “(Sin dato)”. La única excepción permitida es “(Sin exámenes)”.
+- Usar el LOGO ADJUNTO (archivo de imagen): como insignia arriba a la izquierda y como marca de agua.
+- NO usar enlaces ni URL para el logo.
 
-IDENTIDAD (del sistema)
-- Nombre del colegio (en 1 sola línea, centrado, mayúsculas): "${colegio}"${eslLine}
-- Insignia/Logo institucional: usar el logo adjunto sin fondo, proporcional, ubicado arriba a la izquierda.
-- Logo institucional (URL, si el generador soporta cargar por enlace): ${logoUrl ? `"${logoUrl}"` : '(no disponible)'}
-- Marca de agua: reutilizar el MISMO logo como marca de agua grande centrada (o inclinada), en tonos azulados, con opacidad ${Math.max(5, Math.min(15, (_rexState.wmOpacity||10)))}% (rango permitido 5%–15%).
+FORMATO
+- A4 vertical, alta calidad, listo para impresión.
+
+IDENTIDAD
+- Nombre del colegio (1 línea, centrado, mayúsculas): "${colegio}"${eslLine}
+- Insignia/Logo institucional: logo adjunto, sin fondo, proporcional, arriba a la izquierda.
+- Marca de agua: mismo logo grande centrado (o inclinada), tono azulado, opacidad ${Math.max(5, Math.min(15, (_rexState.wmOpacity||10)))}% (permitido 5%–15%).
 
 TÍTULO PRINCIPAL
-- Texto: "ROL DE EXÁMENES" (centrado, grande, azul oscuro con sombra/contorno suave).
+- "ROL DE EXÁMENES" (centrado, grande, azul oscuro con sombra/contorno suave).
 
-PÍLDORAS (centradas, estilo parecido a referencia)
-- 1) "${b}"
-- 2) "${g}"
-- 3) "TUTOR: ${t}"
+PÍLDORAS (centradas)
+- 1) "${bVal}"
+- 2) "${gVal}"
+- 3) "TUTOR: ${tVal}"
 
 TABLA DE EXÁMENES (5 columnas, Lun–Vie, bordes redondeados, encabezado azul, texto blanco)
-Organiza los cursos estrictamente según este detalle:
+- Organiza los cursos estrictamente así:
 ${tablaExamenes}
 
 OBSERVACIONES (con ícono tipo clipboard)
-- Texto: "Observaciones: ${obs}"
+- "Observaciones: ${obsVal}"
 
 FRASE FINAL EN CINTA AZUL
-- Texto: "${msg}"
+- "${msgVal}"
 
-REQUISITOS
-- Paleta: azul marino + azul medio + celeste + blanco, acentos amarillo suave y rojo para “AD”.
-- Mantener orden, legibilidad y equilibrio visual.
-- Incluir marca de agua con el logo institucional y sin textos inventados fuera de los datos dados.
-`;
+PALETA Y ESTILO
+- Azul marino + azul medio + celeste + blanco; acentos amarillo suave y rojo para “AD”.
+- Mantener orden, legibilidad y equilibrio visual.`;
 }
 
 async function rexDescargarLogo() {

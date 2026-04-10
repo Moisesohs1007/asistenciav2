@@ -54,8 +54,8 @@ serve(async (req) => {
   let errText = '';
 
   try {
-    const system = `Eres un diseñador gráfico institucional escolar. Devuelve SOLO un prompt final para generar una imagen (sin explicación, sin markdown). Mantén estructura tipo referencia “Rol de Exámenes”, estética escolar azul/celeste, y usa el nombre/logo que se indiquen.`;
-    const userMsg = `Nombre colegio: ${colegioNombre}\nEslogan: ${colegioEslogan}\n\nBase:\n${promptBase}\n\nEntrega: Un (1) prompt final listo para un generador de imágenes, en español, con especificaciones de tamaño/calidad y composición.`;
+    const system = `Eres un diseñador gráfico institucional escolar. Devuelve SOLO un (1) prompt final en español para un generador de imágenes (sin explicación, sin markdown). No inventes textos ni datos: usa exactamente los textos de la base. No agregues URLs. Mantén composición tipo “Rol de Exámenes”, estética escolar azul/celeste, e indica que el logo será adjunto como insignia arriba a la izquierda y como marca de agua.`;
+    const userMsg = `Base:\n${promptBase}\n\nEntrega: Un (1) prompt final listo para un generador de imágenes, manteniendo la estructura y los textos tal cual; si hay “(Sin dato)” o “(Sin exámenes)”, respétalos.`;
 
     const r = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -113,4 +113,3 @@ serve(async (req) => {
   if (!ok) return jsonResponse({ error: errText || 'Error generando prompt' }, 500);
   return jsonResponse({ success: true, prompt: resultText }, 200);
 });
-
