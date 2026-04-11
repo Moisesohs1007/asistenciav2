@@ -11591,8 +11591,9 @@ function updateBottomNavActive(id) {
 
 // Portal apoderado → apoderado.html
 
-async function crearCuentaApoderado(alumno) {
+async function crearCuentaApoderado(alumno, opts) {
   const email = `${alumno.id}${APO_DOMAIN}`;
+  const showExistsModal = !(opts && opts.showExistsModal === false);
 
   const pass  = alumno.id;
   let intentos = 0;
@@ -11608,32 +11609,33 @@ async function crearCuentaApoderado(alumno) {
         // Ya existe en Firebase Auth — mostrar aviso al admin
         await tmpAuth.signOut().catch(()=>{});
         await tmpApp.delete().catch(()=>{});
-        // Mostrar modal de aviso
-        const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px;';
-        overlay.innerHTML = `
-          <div style="background:var(--surface);border:1px solid rgba(245,158,11,0.5);border-radius:16px;padding:28px 24px;max-width:420px;width:100%;">
-            <div style="font-size:1.5rem;margin-bottom:12px;text-align:center;">⚠️</div>
-            <div style="font-weight:700;font-size:1rem;margin-bottom:8px;color:#f59e0b;">Cuenta de apoderado ya existe</div>
-            <div style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;line-height:1.6;">
-              El alumno fue registrado correctamente, pero la cuenta del portal apoderado 
-              (<strong style="color:var(--text);">${email}</strong>) ya existe en Firebase Auth 
-              con una contraseña desconocida.
-            </div>
-            <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:12px 14px;font-size:0.82rem;color:var(--muted);margin-bottom:20px;line-height:1.7;">
-              <strong style="color:#f59e0b;">Para que el apoderado pueda ingresar:</strong><br>
-              1. Ve a <a href="https://console.firebase.google.com/project/asistencia-qr-a3346/authentication/users" target="_blank" style="color:#60a5fa;">Firebase Console → Authentication</a><br>
-              2. Busca el email <code style="color:#f59e0b;">${email}</code><br>
-              3. Elimínalo y vuelve a registrar el alumno<br><br>
-              <em>O el apoderado puede entrar con su contraseña anterior si la recuerda.</em>
-            </div>
-            <button onclick="this.closest('div[style*=fixed]').remove()" 
-              style="width:100%;background:#f59e0b;color:#000;border:none;border-radius:8px;padding:10px;font-size:0.9rem;font-weight:700;cursor:pointer;">
-              Entendido
-            </button>
-          </div>`;
-        overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
-        document.body.appendChild(overlay);
+        if(showExistsModal) {
+          const overlay = document.createElement('div');
+          overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px;';
+          overlay.innerHTML = `
+            <div style="background:var(--surface);border:1px solid rgba(245,158,11,0.5);border-radius:16px;padding:28px 24px;max-width:420px;width:100%;">
+              <div style="font-size:1.5rem;margin-bottom:12px;text-align:center;">⚠️</div>
+              <div style="font-weight:700;font-size:1rem;margin-bottom:8px;color:#f59e0b;">Cuenta de apoderado ya existe</div>
+              <div style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;line-height:1.6;">
+                El alumno fue registrado correctamente, pero la cuenta del portal apoderado 
+                (<strong style="color:var(--text);">${email}</strong>) ya existe en Firebase Auth 
+                con una contraseña desconocida.
+              </div>
+              <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:12px 14px;font-size:0.82rem;color:var(--muted);margin-bottom:20px;line-height:1.7;">
+                <strong style="color:#f59e0b;">Para que el apoderado pueda ingresar:</strong><br>
+                1. Ve a <a href="https://console.firebase.google.com/project/asistencia-qr-a3346/authentication/users" target="_blank" style="color:#60a5fa;">Firebase Console → Authentication</a><br>
+                2. Busca el email <code style="color:#f59e0b;">${email}</code><br>
+                3. Elimínalo y vuelve a registrar el alumno<br><br>
+                <em>O el apoderado puede entrar con su contraseña anterior si la recuerda.</em>
+              </div>
+              <button onclick="this.closest('div[style*=fixed]').remove()" 
+                style="width:100%;background:#f59e0b;color:#000;border:none;border-radius:8px;padding:10px;font-size:0.9rem;font-weight:700;cursor:pointer;">
+                Entendido
+              </button>
+            </div>`;
+          overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
+          document.body.appendChild(overlay);
+        }
         // Aun así actualizar Firestore con primerIngreso:true
         await db.collection('apoderados').doc(alumno.id).set({
           alumnoId: alumno.id, email, primerIngreso: true,
@@ -11668,7 +11670,7 @@ async function crearCuentaApoderado(alumno) {
 }
 
 async function crearCuentaApoderadoSilencioso(alumno) {
-  try { await crearCuentaApoderado(alumno); } catch(e) { console.warn(e); }
+  try { await crearCuentaApoderado(alumno, { showExistsModal: false }); } catch(e) { console.warn(e); }
 }
 
 async function crearCuentasApoderadosMasivo() {
