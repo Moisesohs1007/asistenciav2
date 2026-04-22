@@ -83,9 +83,18 @@ const _CONFIG_FIELD_MAP = {
 async function _getConfig(docId) {
   if (docId === 'alumnos_ts') return { exists: false, data: () => ({}) };
   if (docId === 'factiliza') {
+    const { data, error } = await _sb
+      .from('colegios')
+      .select('id,factiliza_token,factiliza_instancia')
+      .eq('id', COLEGIO_ID)
+      .single();
+    if (error || !data) return { exists: false, data: () => ({ token: '', instancia: '' }) };
     return {
-      exists: false,
-      data: () => ({ token: '', instancia: '' })
+      exists: true,
+      data: () => ({
+        token:     data.factiliza_token || '',
+        instancia: data.factiliza_instancia || '',
+      })
     };
   }
   const { data, error } = await _sb
@@ -102,9 +111,11 @@ async function _getConfig(docId) {
       anio:          data.anio,
       eslogan:       data.eslogan,
       logoUrl:       data.logo_url,
+      apoDomain:     data.apo_domain,
       niveles:       Array.isArray(data.niveles)   ? data.niveles   : JSON.parse(data.niveles   || '[]'),
       grados:        typeof data.grados === 'object'? data.grados   : JSON.parse(data.grados    || '{}'),
       secciones:     Array.isArray(data.secciones) ? data.secciones : JSON.parse(data.secciones || '[]'),
+      bannerImagenes: Array.isArray(data.banner_imagenes) ? data.banner_imagenes : JSON.parse(data.banner_imagenes || '[]'),
     })
   };
 }
@@ -120,8 +131,13 @@ async function _setConfig(docId, data, options = {}) {
     if (data.niveles   !== undefined) update.niveles   = JSON.stringify(data.niveles);
     if (data.grados    !== undefined) update.grados    = JSON.stringify(data.grados);
     if (data.secciones !== undefined) update.secciones = JSON.stringify(data.secciones);
-    if (data.nombre    !== undefined) update.nombre    = data.nombre;
-    if (data.anio      !== undefined) update.anio      = data.anio;
+    if (data.bannerImagenes !== undefined) update.banner_imagenes = JSON.stringify(data.bannerImagenes);
+    if (data.nombreColegio !== undefined) update.nombre = data.nombreColegio;
+    if (data.nombre !== undefined) update.nombre = data.nombre;
+    if (data.anio   !== undefined) update.anio   = data.anio;
+    if (data.eslogan !== undefined) update.eslogan = data.eslogan;
+    if (data.logoUrl !== undefined) update.logo_url = data.logoUrl;
+    if (data.apoDomain !== undefined) update.apo_domain = data.apoDomain;
   }
   if (!Object.keys(update).length) return;
   update.updated_at = new Date().toISOString();
