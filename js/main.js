@@ -6505,6 +6505,8 @@ function msbSetActive(sectionId) {
     inicio: '🏠 Inicio', scan: '📷 Escanear QR', registro: '📋 Registro del día',
     reportes: '📊 Reportes', alumnos: '👥 Alumnos', usuarios: '👤 Usuarios',
     incidentes: '🚨 Incidentes', mensajes: '💬 Mensajes',
+    comunicado: '📢 Comunicado', agenda: '📅 Agenda', 'rol-examenes': '📝 Rol de Exámenes',
+    'generadores-ia': '🤖 Generadores IA', 'ia-horarios': '🗓️ Horarios (prompt)', 'horarios-grado': '🗂️ Horarios por grado',
     config: '⚙️ Configuración',
   };
   const tb = document.getElementById('mobile-topbar-title');
@@ -6514,7 +6516,8 @@ function msbSetActive(sectionId) {
   const parentMap = {
     scan:'asistencia',registro:'asistencia',reportes:'asistencia',
     alumnos:'aula',usuarios:'aula',incidentes:'aula',
-    mensajes:'comunicacion',
+    mensajes:'comunicacion', comunicado:'comunicacion', agenda:'comunicacion', 'rol-examenes':'comunicacion',
+    'generadores-ia':'comunicacion', 'ia-horarios':'comunicacion', 'horarios-grado':'comunicacion',
   };
   document.querySelectorAll('.msb-item').forEach(i=>i.classList.remove('active'));
   document.querySelectorAll('.msb-subitem').forEach(i=>i.classList.remove('active'));

@@ -2049,6 +2049,34 @@
           <span></span>
         </div><span class="msb-sublabel">Agenda</span>
       </button>
+      <button class="msb-subitem" onclick="msbPickSub(this,'generadores-ia','comunicacion','🤖 Generadores IA')">
+        <div class="msb-dot msb-dot-ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v2"/>
+            <path d="M12 20v2"/>
+            <path d="M4.93 4.93l1.41 1.41"/>
+            <path d="M17.66 17.66l1.41 1.41"/>
+            <path d="M2 12h2"/>
+            <path d="M20 12h2"/>
+            <path d="M4.93 19.07l1.41-1.41"/>
+            <path d="M17.66 6.34l1.41-1.41"/>
+            <path d="M8 12a4 4 0 0 1 8 0v3H8v-3z"/>
+            <path d="M9 15v2"/>
+            <path d="M15 15v2"/>
+          </svg>
+          <span></span>
+        </div><span class="msb-sublabel">Generadores IA</span>
+      </button>
+      <button class="msb-subitem" onclick="msbPickSub(this,'horarios-grado','comunicacion','🗂️ Horarios por grado')">
+        <div class="msb-dot msb-dot-ico">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 7h6l2 2h10v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/>
+            <path d="M7 13h10"/>
+            <path d="M7 17h7"/>
+          </svg>
+          <span></span>
+        </div><span class="msb-sublabel">Horarios por grado</span>
+      </button>
       <button class="msb-subitem" onclick="msbPickSub(this,'rol-examenes','comunicacion','📝 Rol de Exámenes')">
         <div class="msb-dot msb-dot-ico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -2365,6 +2393,10 @@
       <div class="nav-dropdown" id="drop-comunicacion">
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('comunicado');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>📢 Comunicado</div>
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('agenda');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>📅 Agenda</div>
+        <div class="nav-drop-sep"></div>
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('generadores-ia');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/><path d="M8 12a4 4 0 0 1 8 0v3H8v-3z"/><path d="M9 15v2"/><path d="M15 15v2"/></svg>🤖 Generadores IA</div>
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('horarios-grado');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/><path d="M7 13h10"/><path d="M7 17h7"/></svg>🗂️ Horarios por grado</div>
+        <div class="nav-drop-sep"></div>
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('rol-examenes');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11h6"/><path d="M9 15h6"/><path d="M7 3h10a2 2 0 0 1 2 2v16l-3-2-3 2-3-2-3 2V5a2 2 0 0 1 2-2z"/></svg>📝 Rol de Exámenes</div>
       </div>
     </button>
@@ -3295,6 +3327,30 @@
     </div>
   </div>
 
+  <div class="section" id="sec-generadores-ia">
+    <div class="page-title">Generadores IA</div>
+    <div class="page-sub">Herramientas para generar prompts institucionales (adjunta el logo en tu IA)</div>
+    <div class="card" style="padding:16px;">
+      <div class="card-title"><span class="dot"></span>Generadores disponibles</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px;">
+        <div style="border:1px solid var(--border);background:var(--surface2);border-radius:14px;padding:14px;">
+          <div style="font-weight:800;color:var(--text);">📝 Rol de Exámenes</div>
+          <div style="margin-top:4px;font-size:0.82rem;color:var(--muted);line-height:1.35;">Genera el prompt con tabla de fechas y cursos para diseñar el rol en una IA.</div>
+          <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="showSection('rol-examenes')" style="justify-content:center;">Abrir</button>
+          </div>
+        </div>
+        <div style="border:1px solid var(--border);background:var(--surface2);border-radius:14px;padding:14px;">
+          <div style="font-weight:800;color:var(--text);">🗓️ Generador de Horarios (prompt)</div>
+          <div style="margin-top:4px;font-size:0.82rem;color:var(--muted);line-height:1.35;">Genera un prompt listo para diseñar un horario semanal por aula en una IA.</div>
+          <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="showSection('ia-horarios')" style="justify-content:center;">Abrir</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="section" id="sec-rol-examenes" onfocusin="initRolExamenes()">
     <div class="page-title">Rol de Exámenes</div>
     <div class="page-sub">Completa el formulario y genera el prompt para copiar en cualquier IA de generación</div>
@@ -3367,6 +3423,79 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-ia-horarios">
+    <div class="page-title">Generador de Horarios (prompt)</div>
+    <div class="page-sub">Pega tu horario y genera el prompt para diseñarlo en una IA</div>
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Datos</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:10px;">
+        <div class="form-group" style="margin:0;">
+          <label>Grado / Sección</label>
+          <input id="ih-grado" type="text" placeholder="Ej: 6TO GRADO A">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>Turno (opcional)</label>
+          <input id="ih-turno" type="text" placeholder="Ej: Mañana">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>Vigencia (opcional)</label>
+          <input id="ih-vigencia" type="text" placeholder="Ej: Semana 2 (01–05 Abril)">
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:12px;">
+        <label>Horario (texto)</label>
+        <textarea id="ih-horario" rows="10" placeholder="Ej:\nLunes\n07:00 - Matemática\n08:00 - Comunicación\n...\n\nMartes\n..." style="resize:vertical;"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Observaciones (opcional)</label>
+        <textarea id="ih-obs" rows="3" placeholder="Observaciones..." style="resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="ih-btn-gen" onclick="ihGenerarPrompt()" style="flex:1;justify-content:center;min-width:160px;">🧠 Generar prompt</button>
+        <button class="btn btn-ghost" onclick="ihLimpiar()" style="justify-content:center;">Limpiar</button>
+      </div>
+      <div id="ih-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
+      <div class="divider"></div>
+      <div class="card-title" style="margin-top:0;"><span class="dot" style="background:var(--accent2)"></span>Prompt para IA</div>
+      <textarea id="ih-out" rows="9" readonly style="margin-top:10px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);width:100%;padding:10px;font-size:0.82rem;"></textarea>
+      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+        <button class="btn btn-ghost" onclick="ihCopiar()" style="border-color:var(--accent2);color:var(--accent2);">Copiar</button>
+        <button class="btn btn-ghost" onclick="rexDescargarLogo()" style="border-color:var(--accent2);color:var(--accent2);">⬇ Logo</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-horarios-grado">
+    <div class="page-title">Horarios por grado</div>
+    <div class="page-sub">Sube el Excel general y genera un Excel desglosado por sección</div>
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Excel general</div>
+      <div class="form-group" style="margin-top:10px;">
+        <label>Archivo (.xlsx)</label>
+        <input id="hg-file" type="file" accept=".xlsx,.xls" onchange="hgOnFile(this)" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px;color:var(--text);font-size:0.85rem;">
+      </div>
+      <div id="hg-map" style="display:none;">
+        <div class="divider"></div>
+        <div class="card-title" style="margin-top:0;"><span class="dot" style="background:var(--accent2)"></span>Mapeo de columnas</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:10px;">
+          <div class="form-group" style="margin:0;">
+            <label>Columna Grado</label>
+            <select id="hg-col-grado"></select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Columna Sección</label>
+            <select id="hg-col-seccion"></select>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+          <button class="btn btn-primary" id="hg-btn-gen" onclick="hgGenerar()" style="justify-content:center;min-width:220px;">🗂️ Generar Excel desglosado</button>
+          <button class="btn btn-ghost" onclick="hgLimpiar()" style="justify-content:center;">Limpiar</button>
+        </div>
+      </div>
+      <div id="hg-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
     </div>
   </div>
 
@@ -7762,12 +7891,29 @@ async function rexGuardar() {
   const out = document.getElementById('rex-prompt-out');
   try {
     if(btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
-    if(st) st.textContent = 'Generando prompt...';
+    if(st) st.textContent = 'Generando base...';
     const promptBase = rexBuildPromptBase();
     if(out) out.value = promptBase;
-    if(st) st.textContent = '✅ Prompt listo. Copia y pega en tu IA.';
-    rexAuditLocal({ at: new Date().toISOString(), feature: 'rol-examenes', action: 'build_prompt_local', ok: true, len: promptBase.length, uid: (currentUser?.uid || ''), rol: String(currentRol||'') });
-    toast('✅ Prompt listo', 'success');
+    let promptFinal = '';
+    try {
+      if(st) st.textContent = 'Enviando a IA institucional...';
+      promptFinal = await rexEnviarPromptIA(promptBase);
+    } catch(e) {
+      promptFinal = '';
+      if(st) st.textContent = '⚠️ IA no disponible. Se dejó el prompt base listo para copiar.';
+      rexAuditLocal({ at: new Date().toISOString(), feature: 'rol-examenes', action: 'rex_prompt_edge', ok: false, error: String(e?.message||e), len: promptBase.length, uid: (currentUser?.uid || ''), rol: String(currentRol||'') });
+      toast('⚠️ No se pudo usar IA. Se dejó el prompt base.', 'warning');
+    }
+
+    if(promptFinal && out) out.value = promptFinal;
+    if(promptFinal) {
+      if(st) st.textContent = '✅ Prompt final generado. Copia y pega en tu IA.';
+      rexAuditLocal({ at: new Date().toISOString(), feature: 'rol-examenes', action: 'rex_prompt_edge', ok: true, len: promptFinal.length, uid: (currentUser?.uid || ''), rol: String(currentRol||'') });
+      toast('✅ Prompt final listo', 'success');
+    } else {
+      rexAuditLocal({ at: new Date().toISOString(), feature: 'rol-examenes', action: 'build_prompt_local', ok: true, len: promptBase.length, uid: (currentUser?.uid || ''), rol: String(currentRol||'') });
+      toast('✅ Prompt listo', 'success');
+    }
   } catch(e) {
     if(st) st.textContent = '❌ Error: ' + e.message;
     rexAuditLocal({ at: new Date().toISOString(), feature: 'rol-examenes', action: 'build_prompt_local', ok: false, error: String(e.message||e), uid: (currentUser?.uid || ''), rol: String(currentRol||'') });
@@ -7785,6 +7931,218 @@ async function rexCopiarPrompt() {
     toast('✅ Prompt copiado','success');
   } catch(e) {
     toast('No se pudo copiar. Mantén presionado y copia manualmente.','warning');
+  }
+}
+
+function ihLimpiar() {
+  const ids = ['ih-grado','ih-turno','ih-vigencia','ih-horario','ih-obs','ih-out'];
+  ids.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  const st = document.getElementById('ih-status');
+  if(st) st.textContent = '';
+}
+
+function ihBuildPromptBase() {
+  const colegio = String(COLEGIO_NOMBRE || '').trim() || '-';
+  const eslogan = String(COLEGIO_ESLOGAN || '').trim();
+  const grado = String(document.getElementById('ih-grado')?.value || '').trim() || '(Sin dato)';
+  const turno = String(document.getElementById('ih-turno')?.value || '').trim() || '(Sin dato)';
+  const vig = String(document.getElementById('ih-vigencia')?.value || '').trim() || '(Sin dato)';
+  const horario = String(document.getElementById('ih-horario')?.value || '').trim() || '(Sin dato)';
+  const obs = String(document.getElementById('ih-obs')?.value || '').trim() || '(Sin dato)';
+  const eslLine = eslogan ? `\n- Eslogan (si aplica, en una sola línea, entre comillas): "${eslogan}"` : '';
+  return `Genera UN SOLO afiche escolar institucional (alta calidad, listo para impresión y digital) con el HORARIO SEMANAL de un aula.
+
+REGLAS ESTRICTAS
+- Usar SOLO los textos provistos; no inventar ni añadir otros textos.
+- Mantener ortografía EXACTA de los textos.
+- No dejar campos en blanco: si falta un dato, escribir exactamente “(Sin dato)”.
+- Usar el LOGO ADJUNTO (archivo de imagen): como insignia arriba a la izquierda y como marca de agua.
+- NO usar enlaces ni URL para el logo.
+
+FORMATO
+- A4 vertical, alta calidad, listo para impresión.
+
+IDENTIDAD
+- Nombre del colegio (1 línea, centrado, mayúsculas): "${colegio}"${eslLine}
+- Insignia/Logo institucional: logo adjunto, sin fondo, proporcional, arriba a la izquierda.
+- Marca de agua: mismo logo grande centrado (o inclinada), tono azulado, opacidad 10% (permitido 5%–15%).
+
+TÍTULO PRINCIPAL
+- "HORARIO DE CLASES" (centrado, grande, azul oscuro con sombra/contorno suave).
+
+PÍLDORAS (centradas)
+- 1) "${grado}"
+- 2) "TURNO: ${turno}"
+- 3) "${vig}"
+
+HORARIO (respeta el contenido y el orden tal cual, sin inventar cursos)
+${horario}
+
+OBSERVACIONES
+- "Observaciones: ${obs}"
+
+PALETA Y ESTILO
+- Azul marino + azul medio + celeste + blanco; estilo escolar limpio y legible.`;
+}
+
+async function ihGenerarPrompt() {
+  const btn = document.getElementById('ih-btn-gen');
+  const st = document.getElementById('ih-status');
+  const out = document.getElementById('ih-out');
+  try {
+    if(btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
+    if(st) st.textContent = 'Generando prompt...';
+    const promptBase = ihBuildPromptBase();
+    if(out) out.value = promptBase;
+    if(st) st.textContent = '✅ Prompt listo. Copia y pega en tu IA.';
+    toast('✅ Prompt listo', 'success');
+  } catch(e) {
+    if(st) st.textContent = '❌ Error: ' + e.message;
+    toast('❌ Error: ' + e.message, 'error');
+  } finally {
+    if(btn) { btn.disabled = false; btn.style.opacity = ''; }
+  }
+}
+
+async function ihCopiar() {
+  const out = document.getElementById('ih-out');
+  if(!out || !out.value) { toast('No hay prompt para copiar','warning'); return; }
+  try {
+    await navigator.clipboard.writeText(out.value);
+    toast('✅ Prompt copiado','success');
+  } catch(e) {
+    toast('No se pudo copiar. Mantén presionado y copia manualmente.','warning');
+  }
+}
+
+let _hgWB = null;
+let _hgHeaders = [];
+
+async function hgEnsureXLSX() {
+  if(window.XLSX) return;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+function hgLimpiar() {
+  _hgWB = null;
+  _hgHeaders = [];
+  const f = document.getElementById('hg-file');
+  if(f) f.value = '';
+  const map = document.getElementById('hg-map');
+  if(map) map.style.display = 'none';
+  const st = document.getElementById('hg-status');
+  if(st) st.textContent = '';
+}
+
+async function hgOnFile(inp) {
+  const st = document.getElementById('hg-status');
+  const map = document.getElementById('hg-map');
+  try {
+    const file = inp?.files?.[0];
+    if(!file) return;
+    if(st) st.textContent = 'Leyendo archivo...';
+    await hgEnsureXLSX();
+    const ab = await file.arrayBuffer();
+    _hgWB = XLSX.read(new Uint8Array(ab), { type: 'array' });
+    const ws = _hgWB.Sheets[_hgWB.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    const headerRow = rows.find(r => Array.isArray(r) && r.some(v => String(v||'').trim() !== '')) || [];
+    _hgHeaders = headerRow.map(h => String(h||'').trim());
+    const gradoSel = document.getElementById('hg-col-grado');
+    const seccSel = document.getElementById('hg-col-seccion');
+    if(gradoSel) gradoSel.innerHTML = '';
+    if(seccSel) seccSel.innerHTML = '';
+
+    const opts = _hgHeaders.map((h, i) => ({ i, h: h || ('Col ' + (i+1)) }));
+    const addOptions = (sel) => {
+      if(!sel) return;
+      sel.innerHTML = '';
+      opts.forEach(o => {
+        const op = document.createElement('option');
+        op.value = String(o.i);
+        op.textContent = o.h;
+        sel.appendChild(op);
+      });
+    };
+    addOptions(gradoSel);
+    addOptions(seccSel);
+
+    const guess = (re) => {
+      const idx = _hgHeaders.findIndex(h => re.test(String(h||'').toLowerCase()));
+      return idx >= 0 ? idx : 0;
+    };
+    if(gradoSel) gradoSel.value = String(guess(/grado|aula|curso/));
+    if(seccSel) seccSel.value = String(guess(/seccion|sección/));
+
+    if(map) map.style.display = '';
+    if(st) st.textContent = '✅ Archivo cargado. Configura el mapeo y genera el Excel.';
+  } catch(e) {
+    if(st) st.textContent = '❌ Error: ' + e.message;
+    toast('❌ Error: ' + e.message, 'error');
+    if(map) map.style.display = 'none';
+    _hgWB = null;
+    _hgHeaders = [];
+  }
+}
+
+async function hgGenerar() {
+  const st = document.getElementById('hg-status');
+  const btn = document.getElementById('hg-btn-gen');
+  try {
+    if(!_hgWB) throw new Error('Primero sube el Excel general');
+    if(btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
+    if(st) st.textContent = 'Procesando...';
+    await hgEnsureXLSX();
+    const ws = _hgWB.Sheets[_hgWB.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    if(!rows.length) throw new Error('Hoja vacía');
+
+    const headerIdx = rows.findIndex(r => Array.isArray(r) && r.some(v => String(v||'').trim() !== ''));
+    if(headerIdx < 0) throw new Error('No se encontró encabezado');
+    const headers = rows[headerIdx].map(h => String(h||''));
+    const dataRows = rows.slice(headerIdx + 1).filter(r => Array.isArray(r) && r.some(v => String(v||'').trim() !== ''));
+
+    const colGrado = parseInt(document.getElementById('hg-col-grado')?.value || '0', 10) || 0;
+    const colSecc  = parseInt(document.getElementById('hg-col-seccion')?.value || '0', 10) || 0;
+
+    const groups = {};
+    dataRows.forEach(r => {
+      const grado = String(r[colGrado] ?? '').trim();
+      const secc  = String(r[colSecc] ?? '').trim();
+      let key = '';
+      if(grado && secc) key = grado + ' ' + secc;
+      else if(secc) key = secc;
+      else if(grado) key = grado;
+      else key = 'Sin dato';
+      if(!groups[key]) groups[key] = [];
+      groups[key].push(r);
+    });
+
+    const wbOut = XLSX.utils.book_new();
+    const keys = Object.keys(groups);
+    if(!keys.length) throw new Error('No hay filas para agrupar');
+
+    keys.forEach(k => {
+      const safe = String(k).trim().slice(0, 31) || 'Hoja';
+      const aoa = [headers, ...groups[k]];
+      const wsOut = XLSX.utils.aoa_to_sheet(aoa);
+      XLSX.utils.book_append_sheet(wbOut, wsOut, safe);
+    });
+
+    XLSX.writeFile(wbOut, 'horarios_desglosado_' + hoy() + '.xlsx');
+    if(st) st.textContent = '✅ Excel generado y descargado.';
+    toast('✅ Excel generado', 'success');
+  } catch(e) {
+    if(st) st.textContent = '❌ Error: ' + e.message;
+    toast('❌ Error: ' + e.message, 'error');
+  } finally {
+    if(btn) { btn.disabled = false; btn.style.opacity = ''; }
   }
 }
 
