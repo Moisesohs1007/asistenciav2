@@ -3428,42 +3428,71 @@
 
   <div class="section" id="sec-ia-horarios">
     <div class="page-title">Generador de Horarios (prompt)</div>
-    <div class="page-sub">Pega tu horario y genera el prompt para diseñarlo en una IA</div>
+    <div class="page-sub">Primero define las horas y recesos. Luego acepta la jornada para recién llenar criterios y generar el prompt (JSON)</div>
+
     <div class="card">
-      <div class="card-title"><span class="dot"></span>Datos</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:10px;">
-        <div class="form-group" style="margin:0;">
-          <label>Grado / Sección</label>
-          <input id="ih-grado" type="text" placeholder="Ej: 6TO GRADO A">
-        </div>
-        <div class="form-group" style="margin:0;">
-          <label>Turno (opcional)</label>
-          <input id="ih-turno" type="text" placeholder="Ej: Mañana">
-        </div>
-        <div class="form-group" style="margin:0;">
-          <label>Vigencia (opcional)</label>
-          <input id="ih-vigencia" type="text" placeholder="Ej: Semana 2 (01–05 Abril)">
-        </div>
-      </div>
-      <div class="form-group" style="margin-top:12px;">
-        <label>Horario (texto)</label>
-        <textarea id="ih-horario" rows="10" placeholder="Ej:\nLunes\n07:00 - Matemática\n08:00 - Comunicación\n...\n\nMartes\n..." style="resize:vertical;"></textarea>
-      </div>
-      <div class="form-group">
-        <label>Observaciones (opcional)</label>
-        <textarea id="ih-obs" rows="3" placeholder="Observaciones..." style="resize:vertical;"></textarea>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
-        <button class="btn btn-primary" id="ih-btn-gen" onclick="ihGenerarPrompt()" style="flex:1;justify-content:center;min-width:160px;">🧠 Generar prompt</button>
+      <div class="card-title"><span class="dot"></span>1) Jornada (horas y recesos)</div>
+      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="ihOpenJornadaModal()" style="justify-content:center;min-width:220px;">⏱️ Definir horas y recesos</button>
+        <button class="btn btn-ghost" onclick="ihRenderPreview()" style="justify-content:center;">🗓️ Generar cuadro semanal</button>
         <button class="btn btn-ghost" onclick="ihLimpiar()" style="justify-content:center;">Limpiar</button>
+      </div>
+      <div id="ih-jornada-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
+      <div id="ih-preview-wrap" style="margin-top:12px;display:none;overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface2);"></div>
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="ih-btn-aceptar" onclick="ihAceptarJornada()" style="justify-content:center;min-width:220px;" disabled>Aceptar jornada</button>
+      </div>
+      <div id="ih-aceptado-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
+    </div>
+
+    <div class="card" id="ih-criterios-card" style="display:none;">
+      <div class="card-title"><span class="dot" style="background:var(--accent2)"></span>2) Criterios (JSON)</div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:10px;">
+        <div class="form-group" style="margin:0;">
+          <label>Secciones (sections)</label>
+          <textarea id="ih-json-sections" rows="6" placeholder='[{"id":"PRI-1A","nivel":"Primaria","grado":"1","seccion":"A","local_base":"A"}]' style="resize:vertical;"></textarea>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>Docentes (teachers)</label>
+          <textarea id="ih-json-teachers" rows="6" placeholder='[{"id":"D1","nombre":"Juan Pérez","courses":["MAT"],"local_base":"A","availability":{"Lun":[1,2,4,5,6]}}]' style="resize:vertical;"></textarea>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>Cursos por sección (demands)</label>
+          <textarea id="ih-json-demands" rows="6" placeholder='[{"section_id":"PRI-1A","course_id":"MAT","hours_per_week":5,"teacher_id":"D1"}]' style="resize:vertical;"></textarea>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>Locales (locals)</label>
+          <textarea id="ih-json-locals" rows="6" placeholder='[{"id":"A","niveles":["Inicial","Primaria"]},{"id":"B","niveles":["Secundaria"]}]' style="resize:vertical;"></textarea>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px;">
+        <div class="form-group" style="margin:0;">
+          <label>Restricciones (constraints)</label>
+          <textarea id="ih-json-constraints" rows="6" placeholder='{"teacher_no_overlap":true,"respect_availability":true,"respect_travel_time":true,"travel_minutes_between_locals":10,"max_consecutive_same_course":2,"balance_courses_week":true}' style="resize:vertical;"></textarea>
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>Objetivo (objective)</label>
+          <textarea id="ih-json-objective" rows="6" placeholder='{"minimize_teacher_gaps_weight":3,"minimize_travel_weight":2,"minimize_same_course_clumps_weight":1}' style="resize:vertical;"></textarea>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:12px;">
+        <label>Parámetros (params) — generado desde la jornada</label>
+        <textarea id="ih-json-params" rows="6" readonly style="resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);width:100%;padding:10px;font-size:0.82rem;opacity:0.95;"></textarea>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="ih-btn-gen" onclick="ihGenerarPrompt()" style="flex:1;justify-content:center;min-width:200px;">🧠 Generar prompt</button>
+        <button class="btn btn-ghost" onclick="rexDescargarLogo()" style="justify-content:center;border-color:var(--accent2);color:var(--accent2);">⬇ Logo</button>
       </div>
       <div id="ih-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
       <div class="divider"></div>
       <div class="card-title" style="margin-top:0;"><span class="dot" style="background:var(--accent2)"></span>Prompt para IA</div>
-      <textarea id="ih-out" rows="9" readonly style="margin-top:10px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);width:100%;padding:10px;font-size:0.82rem;"></textarea>
+      <textarea id="ih-out" rows="12" readonly style="margin-top:10px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);width:100%;padding:10px;font-size:0.82rem;"></textarea>
       <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
         <button class="btn btn-ghost" onclick="ihCopiar()" style="border-color:var(--accent2);color:var(--accent2);">Copiar</button>
-        <button class="btn btn-ghost" onclick="rexDescargarLogo()" style="border-color:var(--accent2);color:var(--accent2);">⬇ Logo</button>
       </div>
     </div>
   </div>
@@ -3620,6 +3649,33 @@
       <button class="btn btn-primary" onclick="guardarAgendaEvento()" style="flex:1;justify-content:center;">Guardar</button>
     </div>
     <input type="hidden" id="age-event-id" value="">
+  </div>
+</div>
+
+<!-- MODAL JORNADA (Generador de Horarios) -->
+<div class="modal-bg" id="modal-ih-jornada" onclick="if(event.target===this)closeModal('modal-ih-jornada')">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-title">
+      <span>Definir horas y recesos</span>
+      <button class="btn btn-ghost" onclick="closeModal('modal-ih-jornada')" style="padding:5px 10px;">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+      <div class="form-group" style="margin:0;">
+        <label>Bloques por día</label>
+        <input id="ih-md-slots" type="number" min="4" max="12" step="1" value="6" oninput="ihModalRenderRows()">
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label>Días</label>
+        <input type="text" value="Lun, Mar, Mie, Jue, Vie" disabled style="opacity:0.8;">
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div id="ih-md-status" style="font-size:0.82rem;color:var(--muted);"></div>
+    <div id="ih-md-rows" style="margin-top:10px;display:grid;gap:10px;"></div>
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+      <button class="btn btn-ghost" onclick="closeModal('modal-ih-jornada')" style="justify-content:center;">Cancelar</button>
+      <button class="btn btn-primary" onclick="ihGuardarJornada()" style="flex:1;justify-content:center;">Guardar jornada</button>
+    </div>
   </div>
 </div>
 
@@ -7934,55 +7990,239 @@ async function rexCopiarPrompt() {
   }
 }
 
-function ihLimpiar() {
-  const ids = ['ih-grado','ih-turno','ih-vigencia','ih-horario','ih-obs','ih-out'];
-  ids.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
-  const st = document.getElementById('ih-status');
-  if(st) st.textContent = '';
+let _ihJornada = null;
+let _ihJornadaAccepted = false;
+
+function ihOpenJornadaModal() {
+  ihModalRenderRows();
+  const el = document.getElementById('modal-ih-jornada');
+  if(!el) return;
+  el.classList.add('open');
+  el.style.display = 'flex';
+  _modalLockOn();
 }
 
-function ihBuildPromptBase() {
-  const colegio = String(COLEGIO_NOMBRE || '').trim() || '-';
-  const eslogan = String(COLEGIO_ESLOGAN || '').trim();
-  const grado = String(document.getElementById('ih-grado')?.value || '').trim() || '(Sin dato)';
-  const turno = String(document.getElementById('ih-turno')?.value || '').trim() || '(Sin dato)';
-  const vig = String(document.getElementById('ih-vigencia')?.value || '').trim() || '(Sin dato)';
-  const horario = String(document.getElementById('ih-horario')?.value || '').trim() || '(Sin dato)';
-  const obs = String(document.getElementById('ih-obs')?.value || '').trim() || '(Sin dato)';
-  const eslLine = eslogan ? `\n- Eslogan (si aplica, en una sola línea, entre comillas): "${eslogan}"` : '';
-  return `Genera UN SOLO afiche escolar institucional (alta calidad, listo para impresión y digital) con el HORARIO SEMANAL de un aula.
+function ihModalRenderRows() {
+  const n = Math.max(4, Math.min(12, parseInt(document.getElementById('ih-md-slots')?.value || '6', 10) || 6));
+  const wrap = document.getElementById('ih-md-rows');
+  const st = document.getElementById('ih-md-status');
+  if(!wrap) return;
+  wrap.innerHTML = '';
 
-REGLAS ESTRICTAS
-- Usar SOLO los textos provistos; no inventar ni añadir otros textos.
-- Mantener ortografía EXACTA de los textos.
-- No dejar campos en blanco: si falta un dato, escribir exactamente “(Sin dato)”.
-- Usar el LOGO ADJUNTO (archivo de imagen): como insignia arriba a la izquierda y como marca de agua.
-- NO usar enlaces ni URL para el logo.
+  let t = '08:00';
+  for(let i=1;i<=n;i++) {
+    const isBreak = i === 3;
+    const dur = isBreak ? 15 : 45;
+    const end = ihAddMinutes(t, dur);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:90px 140px 1fr 1fr;gap:10px;align-items:center;';
+    row.innerHTML = `
+      <div style="font-weight:700;color:var(--text);font-size:0.9rem;">Bloque ${i}</div>
+      <select id="ih-md-type-${i}">
+        <option value="CLASE"${isBreak?'':' selected'}>Clase</option>
+        <option value="RECESO"${isBreak?' selected':''}>Receso</option>
+      </select>
+      <input id="ih-md-start-${i}" type="time" value="${t}">
+      <input id="ih-md-end-${i}" type="time" value="${end}">
+    `;
+    wrap.appendChild(row);
+    t = end;
+  }
+  if(st) st.textContent = 'Completa o ajusta los bloques. Marca los recesos como “Receso”.';
+}
 
-FORMATO
-- A4 vertical, alta calidad, listo para impresión.
+function ihTimeToMin(hhmm) {
+  const s = String(hhmm||'');
+  if(!/^\d{2}:\d{2}$/.test(s)) return null;
+  const h = parseInt(s.slice(0,2),10);
+  const m = parseInt(s.slice(3,5),10);
+  if(Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h*60 + m;
+}
 
-IDENTIDAD
-- Nombre del colegio (1 línea, centrado, mayúsculas): "${colegio}"${eslLine}
-- Insignia/Logo institucional: logo adjunto, sin fondo, proporcional, arriba a la izquierda.
-- Marca de agua: mismo logo grande centrado (o inclinada), tono azulado, opacidad 10% (permitido 5%–15%).
+function ihMinToTime(min) {
+  const m = ((min%1440)+1440)%1440;
+  const h = Math.floor(m/60);
+  const mm = m%60;
+  return String(h).padStart(2,'0') + ':' + String(mm).padStart(2,'0');
+}
 
-TÍTULO PRINCIPAL
-- "HORARIO DE CLASES" (centrado, grande, azul oscuro con sombra/contorno suave).
+function ihAddMinutes(hhmm, add) {
+  const base = ihTimeToMin(hhmm);
+  if(base === null) return '';
+  return ihMinToTime(base + (parseInt(add,10)||0));
+}
 
-PÍLDORAS (centradas)
-- 1) "${grado}"
-- 2) "TURNO: ${turno}"
-- 3) "${vig}"
+function ihGuardarJornada() {
+  const n = Math.max(4, Math.min(12, parseInt(document.getElementById('ih-md-slots')?.value || '6', 10) || 6));
+  const blocks = [];
+  let prevEnd = null;
+  for(let i=1;i<=n;i++) {
+    const type = String(document.getElementById(`ih-md-type-${i}`)?.value || 'CLASE');
+    const start = String(document.getElementById(`ih-md-start-${i}`)?.value || '');
+    const end = String(document.getElementById(`ih-md-end-${i}`)?.value || '');
+    const sMin = ihTimeToMin(start);
+    const eMin = ihTimeToMin(end);
+    if(sMin === null || eMin === null) throw new Error(`Bloque ${i}: completa hora inicio y fin`);
+    if(eMin <= sMin) throw new Error(`Bloque ${i}: la hora fin debe ser mayor que inicio`);
+    if(prevEnd !== null && sMin < prevEnd) throw new Error(`Bloque ${i}: se cruza con el bloque anterior`);
+    prevEnd = eMin;
+    blocks.push({ slot: i, type, start, end });
+  }
 
-HORARIO (respeta el contenido y el orden tal cual, sin inventar cursos)
-${horario}
+  _ihJornada = { days: ['Lun','Mar','Mie','Jue','Vie'], blocks };
+  _ihJornadaAccepted = false;
+  try { localStorage.setItem('asmqr_ih_jornada', JSON.stringify(_ihJornada)); } catch(e) {}
 
-OBSERVACIONES
-- "Observaciones: ${obs}"
+  closeModal('modal-ih-jornada');
+  ihRenderPreview();
+  ihActualizarParams();
+  const btn = document.getElementById('ih-btn-aceptar');
+  if(btn) btn.disabled = false;
+  const st = document.getElementById('ih-jornada-status');
+  if(st) st.textContent = '✅ Jornada guardada. Revisa el cuadro semanal y acepta para continuar.';
+  const st2 = document.getElementById('ih-aceptado-status');
+  if(st2) st2.textContent = '';
+  const crit = document.getElementById('ih-criterios-card');
+  if(crit) crit.style.display = 'none';
+}
 
-PALETA Y ESTILO
-- Azul marino + azul medio + celeste + blanco; estilo escolar limpio y legible.`;
+function ihGetParams() {
+  if(!_ihJornada) return null;
+  const breakSlots = _ihJornada.blocks.filter(b => b.type === 'RECESO').map(b => b.slot);
+  return {
+    days: _ihJornada.days,
+    slots_per_day: _ihJornada.blocks.length,
+    break_slots: breakSlots,
+    slot_times: _ihJornada.blocks.map(b => ({ slot: b.slot, type: b.type, start: b.start, end: b.end })),
+  };
+}
+
+function ihActualizarParams() {
+  const ta = document.getElementById('ih-json-params');
+  const p = ihGetParams();
+  if(ta) ta.value = p ? JSON.stringify(p, null, 2) : '';
+}
+
+function ihRenderPreview() {
+  const wrap = document.getElementById('ih-preview-wrap');
+  if(!wrap) return;
+  if(!_ihJornada) {
+    wrap.style.display = 'none';
+    toast('Primero define la jornada','warning');
+    return;
+  }
+  const days = _ihJornada.days;
+  const rows = _ihJornada.blocks;
+
+  const table = document.createElement('table');
+  table.className = 'table';
+  table.style.width = '100%';
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th style="min-width:170px;">Hora/Día</th>
+        ${days.map(d => `<th>${d}</th>`).join('')}
+      </tr>
+    </thead>
+    <tbody>
+      ${rows.map(b => {
+        const label = `Bloque ${b.slot}<br><span style="opacity:0.85;font-size:0.78rem;">${b.start}–${b.end}</span><br><span style="opacity:0.75;font-size:0.75rem;">${b.type==='RECESO'?'RECESO':'CLASE'}</span>`;
+        const isBreak = b.type === 'RECESO';
+        const cell = isBreak
+          ? `<td style="background:rgba(245,158,11,0.12);color:var(--text);font-weight:700;text-align:center;">RECESO</td>`
+          : `<td style="color:var(--muted);text-align:center;">—</td>`;
+        return `<tr>
+          <td style="font-weight:700;color:var(--text);">${label}</td>
+          ${days.map(() => cell).join('')}
+        </tr>`;
+      }).join('')}
+    </tbody>
+  `;
+  wrap.innerHTML = '';
+  wrap.appendChild(table);
+  wrap.style.display = '';
+}
+
+function ihAceptarJornada() {
+  if(!_ihJornada) { toast('Primero define la jornada','warning'); return; }
+  _ihJornadaAccepted = true;
+  const btn = document.getElementById('ih-btn-aceptar');
+  if(btn) { btn.disabled = true; btn.textContent = 'Jornada aceptada'; }
+  const st2 = document.getElementById('ih-aceptado-status');
+  if(st2) st2.textContent = '✅ Jornada aceptada. Ahora llena los criterios (JSON) y genera el prompt.';
+  ihActualizarParams();
+  const crit = document.getElementById('ih-criterios-card');
+  if(crit) crit.style.display = '';
+}
+
+function ihLimpiar() {
+  _ihJornada = null;
+  _ihJornadaAccepted = false;
+  try { localStorage.removeItem('asmqr_ih_jornada'); } catch(e) {}
+
+  const wrap = document.getElementById('ih-preview-wrap');
+  if(wrap) { wrap.innerHTML = ''; wrap.style.display = 'none'; }
+  const st = document.getElementById('ih-jornada-status');
+  if(st) st.textContent = '';
+  const st2 = document.getElementById('ih-aceptado-status');
+  if(st2) st2.textContent = '';
+  const btn = document.getElementById('ih-btn-aceptar');
+  if(btn) { btn.disabled = true; btn.textContent = 'Aceptar jornada'; }
+  const crit = document.getElementById('ih-criterios-card');
+  if(crit) crit.style.display = 'none';
+
+  const ids = ['ih-json-sections','ih-json-teachers','ih-json-demands','ih-json-locals','ih-json-constraints','ih-json-objective','ih-json-params','ih-out'];
+  ids.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  const st3 = document.getElementById('ih-status');
+  if(st3) st3.textContent = '';
+}
+
+function ihParseJson(id, label, fallback) {
+  const el = document.getElementById(id);
+  const raw = String(el?.value || '').trim();
+  if(!raw) return fallback;
+  try {
+    return JSON.parse(raw);
+  } catch(e) {
+    throw new Error(`${label}: JSON inválido`);
+  }
+}
+
+function ihBuildSolverPrompt(inputObj) {
+  const json = JSON.stringify(inputObj, null, 2);
+  return `Actúa como un generador avanzado de horarios escolares (school timetabling solver).
+
+Tu tarea:
+1) Validar factibilidad con el INPUT_JSON.
+2) Si es factible: construir un horario semanal 100% válido SIN conflictos, cumpliendo TODAS las restricciones.
+3) Si NO es factible: NO generes horario; explica exactamente por qué (qué restricción/qué dato lo hace imposible) y qué cambio mínimo lo arregla.
+
+DEFINICIONES
+- Días: los indicados en params.days.
+- Slots por día: 1..params.slots_per_day.
+- break_slots: esos slots son RECESO y deben quedar vacíos para TODAS las secciones.
+- Un docente no puede dictar 2 secciones en el mismo día/slot.
+- Si respect_travel_time=true: si un docente cambia de local entre dos clases consecutivas, debe existir espacio suficiente según travel_minutes_between_locals.
+- No más de max_consecutive_same_course horas seguidas del mismo course_id dentro de una sección.
+- Distribuir las horas de cada course_id en la semana (evitar concentrarlas en 1–2 días).
+
+INPUT_JSON (NO inventes nada fuera de este JSON):
+${json}
+
+SALIDA OBLIGATORIA
+A) HORARIO POR SECCIÓN:
+Para cada sections[i].id, tabla:
+Hora/Día | Lun | Mar | Mie | Jue | Vie
+Slot 1   | course_id (teacher_id) [local] | ...
+
+B) HORARIO POR DOCENTE:
+Para cada teachers[i].id:
+- Día, Slot, section_id, course_id, local
+
+C) VALIDACIÓN:
+- Confirmar: (1) sin choques de docente, (2) respeta recesos, (3) respeta disponibilidad, (4) respeta traslado, (5) cumple hours_per_week por section/course.
+- Reportar métricas: huecos por docente, cambios de local por docente, y máximas rachas por curso en cada sección.`;
 }
 
 async function ihGenerarPrompt() {
@@ -7990,10 +8230,27 @@ async function ihGenerarPrompt() {
   const st = document.getElementById('ih-status');
   const out = document.getElementById('ih-out');
   try {
+    if(!_ihJornadaAccepted) throw new Error('Primero acepta la jornada');
     if(btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
-    if(st) st.textContent = 'Generando prompt...';
-    const promptBase = ihBuildPromptBase();
-    if(out) out.value = promptBase;
+    if(st) st.textContent = 'Validando JSON...';
+
+    const sections = ihParseJson('ih-json-sections', 'Secciones (sections)', []);
+    const teachers = ihParseJson('ih-json-teachers', 'Docentes (teachers)', []);
+    const demands = ihParseJson('ih-json-demands', 'Cursos por sección (demands)', []);
+    const locals = ihParseJson('ih-json-locals', 'Locales (locals)', []);
+    const constraints = ihParseJson('ih-json-constraints', 'Restricciones (constraints)', {});
+    const objective = ihParseJson('ih-json-objective', 'Objetivo (objective)', {});
+    const params = ihGetParams();
+    if(!params) throw new Error('Jornada no definida');
+
+    if(!Array.isArray(sections) || !sections.length) throw new Error('Secciones (sections) vacío');
+    if(!Array.isArray(teachers) || !teachers.length) throw new Error('Docentes (teachers) vacío');
+    if(!Array.isArray(demands) || !demands.length) throw new Error('Cursos por sección (demands) vacío');
+    if(!Array.isArray(locals) || !locals.length) throw new Error('Locales (locals) vacío');
+
+    const inputObj = { sections, teachers, demands, locals, params, constraints, objective };
+    ihActualizarParams();
+    if(out) out.value = ihBuildSolverPrompt(inputObj);
     if(st) st.textContent = '✅ Prompt listo. Copia y pega en tu IA.';
     toast('✅ Prompt listo', 'success');
   } catch(e) {
