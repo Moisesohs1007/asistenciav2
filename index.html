@@ -3448,6 +3448,53 @@
     <div class="card" id="ih-criterios-card" style="display:none;">
       <div class="card-title"><span class="dot" style="background:var(--accent2)"></span>2) Criterios (JSON)</div>
 
+      <div style="margin-top:10px;border:1px solid var(--border);background:var(--surface2);border-radius:14px;padding:14px;">
+        <div style="font-weight:800;color:var(--text);margin-bottom:10px;">2.1) Catálogo de cursos (por colegio)</div>
+        <div style="display:grid;grid-template-columns:140px 1fr 160px;gap:10px;align-items:end;">
+          <div class="form-group" style="margin:0;">
+            <label>ID curso</label>
+            <input id="ih-course-id" type="text" placeholder="MAT" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9_]/g,'')">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Nombre</label>
+            <input id="ih-course-name" type="text" placeholder="Matemática">
+          </div>
+          <button class="btn btn-primary" onclick="ihAddCourse()" style="justify-content:center;">+ Agregar curso</button>
+        </div>
+        <div id="ih-courses-table" style="margin-top:10px;"></div>
+      </div>
+
+      <div style="margin-top:12px;border:1px solid var(--border);background:var(--surface2);border-radius:14px;padding:14px;">
+        <div style="font-weight:800;color:var(--text);margin-bottom:10px;">2.2) Cursos y horas por grado (todas las secciones iguales)</div>
+        <div style="display:grid;grid-template-columns:1fr 120px;gap:10px;align-items:end;">
+          <div class="form-group" style="margin:0;">
+            <label>Seleccionar grado</label>
+            <select id="ih-grade-select" onchange="ihSetActiveGrade()"></select>
+          </div>
+          <button class="btn btn-ghost" onclick="ihRefreshGrades()" style="justify-content:center;">Actualizar</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 160px 160px;gap:10px;align-items:end;margin-top:10px;">
+          <div class="form-group" style="margin:0;">
+            <label>Curso</label>
+            <select id="ih-grade-course"></select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Horas/semana</label>
+            <input id="ih-grade-hours" type="number" min="1" max="20" step="1" value="1">
+          </div>
+          <button class="btn btn-primary" onclick="ihAddGradeCourse()" style="justify-content:center;">+ Agregar</button>
+        </div>
+
+        <div id="ih-grade-table" style="margin-top:10px;"></div>
+
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="ihGenerateDemands(false)" style="justify-content:center;min-width:240px;">Generar demands del grado</button>
+          <button class="btn btn-ghost" onclick="ihGenerateDemands(true)" style="justify-content:center;">Generar demands de todos</button>
+        </div>
+        <div id="ih-curr-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
+      </div>
+
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:10px;">
         <div class="form-group" style="margin:0;">
           <label>Secciones (sections)</label>
@@ -8104,6 +8151,279 @@ function ihActualizarParams() {
   if(ta) ta.value = p ? JSON.stringify(p, null, 2) : '';
 }
 
+function ihKey(suffix) {
+  const cid = String(window.COLEGIO_ID || 'default').trim() || 'default';
+  return 'asmqr_ih_' + String(suffix || 'x') + '_' + cid;
+}
+
+let _ihCourses = null;
+let _ihGradePlans = null;
+let _ihActiveGrade = '';
+
+function ihLoadCourses() {
+  if(Array.isArray(_ihCourses)) return _ihCourses;
+  try {
+    const raw = localStorage.getItem(ihKey('courses')) || '[]';
+    const parsed = JSON.parse(raw);
+    _ihCourses = Array.isArray(parsed) ? parsed : [];
+  } catch(e) {
+    _ihCourses = [];
+  }
+  return _ihCourses;
+}
+
+function ihSaveCourses() {
+  try { localStorage.setItem(ihKey('courses'), JSON.stringify(ihLoadCourses())); } catch(e) {}
+}
+
+function ihLoadGradePlans() {
+  if(_ihGradePlans && typeof _ihGradePlans === 'object') return _ihGradePlans;
+  try {
+    const raw = localStorage.getItem(ihKey('grade_plans')) || '{}';
+    const parsed = JSON.parse(raw);
+    _ihGradePlans = (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch(e) {
+    _ihGradePlans = {};
+  }
+  return _ihGradePlans;
+}
+
+function ihSaveGradePlans() {
+  try { localStorage.setItem(ihKey('grade_plans'), JSON.stringify(ihLoadGradePlans())); } catch(e) {}
+}
+
+function ihRenderCourses() {
+  const wrap = document.getElementById('ih-courses-table');
+  if(!wrap) return;
+  const courses = ihLoadCourses().slice().sort((a,b)=>String(a.id||'').localeCompare(String(b.id||'')));
+  if(!courses.length) {
+    wrap.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Aún no hay cursos. Agrega el catálogo del colegio.</div>';
+    ihRefreshCourseSelect();
+    return;
+  }
+  wrap.innerHTML = `
+    <table class="table" style="width:100%;">
+      <thead><tr><th style="width:120px;">ID</th><th>Nombre</th><th style="width:110px;"></th></tr></thead>
+      <tbody>
+        ${courses.map(c => `
+          <tr>
+            <td style="font-weight:800;color:var(--text);">${_escHtml(String(c.id||''))}</td>
+            <td>${_escHtml(String(c.name||''))}</td>
+            <td style="text-align:right;">
+              <button class="btn btn-ghost" onclick="ihDeleteCourse('${String(c.id||'').replace(/'/g,"\\'")}')" style="padding:6px 10px;">Eliminar</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+  ihRefreshCourseSelect();
+}
+
+function ihRefreshCourseSelect() {
+  const sel = document.getElementById('ih-grade-course');
+  if(!sel) return;
+  const courses = ihLoadCourses().slice().sort((a,b)=>String(a.id||'').localeCompare(String(b.id||'')));
+  sel.innerHTML = courses.map(c => `<option value="${_escHtml(String(c.id||''))}">${_escHtml(String(c.id||''))} — ${_escHtml(String(c.name||''))}</option>`).join('');
+}
+
+function ihAddCourse() {
+  const idEl = document.getElementById('ih-course-id');
+  const nameEl = document.getElementById('ih-course-name');
+  const id = String(idEl?.value || '').trim().toUpperCase();
+  const name = String(nameEl?.value || '').trim();
+  if(!id) { toast('Ingresa ID del curso','warning'); return; }
+  if(!/^[A-Z0-9_]{2,12}$/.test(id)) { toast('ID inválido (usa 2–12 caracteres A-Z 0-9 _)','warning'); return; }
+  if(!name) { toast('Ingresa nombre del curso','warning'); return; }
+
+  const courses = ihLoadCourses();
+  const exists = courses.find(x => String(x.id||'') === id);
+  if(exists) {
+    exists.name = name;
+  } else {
+    courses.push({ id, name });
+  }
+  ihSaveCourses();
+  if(idEl) idEl.value = '';
+  if(nameEl) nameEl.value = '';
+  ihRenderCourses();
+  toast('✅ Curso guardado','success');
+}
+
+function ihDeleteCourse(id) {
+  const cid = String(id||'').trim().toUpperCase();
+  if(!cid) return;
+  const courses = ihLoadCourses();
+  const next = courses.filter(c => String(c.id||'') !== cid);
+  _ihCourses = next;
+  ihSaveCourses();
+
+  const plans = ihLoadGradePlans();
+  Object.keys(plans).forEach(k => {
+    const arr = Array.isArray(plans[k]) ? plans[k] : [];
+    plans[k] = arr.filter(x => String(x.course_id||'') !== cid);
+  });
+  ihSaveGradePlans();
+  ihRenderCourses();
+  ihRenderGradePlan();
+}
+
+function ihRefreshGrades() {
+  const sel = document.getElementById('ih-grade-select');
+  if(!sel) return;
+  let sections = [];
+  try { sections = ihParseJson('ih-json-sections', 'Secciones (sections)', []); } catch(e) { sections = []; }
+
+  const keys = {};
+  (Array.isArray(sections) ? sections : []).forEach(s => {
+    const nivel = String(s?.nivel || '').trim();
+    const grado = String(s?.grado || '').trim();
+    if(!nivel || !grado) return;
+    const k = nivel + '||' + grado;
+    keys[k] = { nivel, grado };
+  });
+  const list = Object.keys(keys).sort((a,b)=>a.localeCompare(b));
+  sel.innerHTML = list.map(k => {
+    const it = keys[k];
+    return `<option value="${_escHtml(k)}">${_escHtml(it.nivel)} — ${_escHtml(it.grado)}</option>`;
+  }).join('');
+  if(!_ihActiveGrade || !keys[_ihActiveGrade]) _ihActiveGrade = list[0] || '';
+  sel.value = _ihActiveGrade;
+  ihRenderGradePlan();
+}
+
+function ihSetActiveGrade() {
+  const sel = document.getElementById('ih-grade-select');
+  _ihActiveGrade = String(sel?.value || '').trim();
+  ihRenderGradePlan();
+}
+
+function ihGetPlan(gradeKey) {
+  const plans = ihLoadGradePlans();
+  const k = String(gradeKey||'').trim();
+  if(!k) return [];
+  if(!Array.isArray(plans[k])) plans[k] = [];
+  return plans[k];
+}
+
+function ihRenderGradePlan() {
+  const wrap = document.getElementById('ih-grade-table');
+  if(!wrap) return;
+  const k = String(_ihActiveGrade||'').trim();
+  if(!k) {
+    wrap.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Primero define “Secciones (sections)” para poder listar grados.</div>';
+    return;
+  }
+  const plan = ihGetPlan(k).slice().sort((a,b)=>String(a.course_id||'').localeCompare(String(b.course_id||'')));
+  if(!plan.length) {
+    wrap.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Aún no hay cursos para este grado.</div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <table class="table" style="width:100%;">
+      <thead><tr><th>Curso</th><th style="width:140px;">Horas/semana</th><th style="width:110px;"></th></tr></thead>
+      <tbody>
+        ${plan.map(p => `
+          <tr>
+            <td style="font-weight:800;color:var(--text);">${_escHtml(String(p.course_id||''))}</td>
+            <td>${_escHtml(String(p.hours_per_week||0))}</td>
+            <td style="text-align:right;">
+              <button class="btn btn-ghost" onclick="ihRemoveGradeCourse('${String(k).replace(/'/g,"\\'")}', '${String(p.course_id||'').replace(/'/g,"\\'")}')" style="padding:6px 10px;">Quitar</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function ihAddGradeCourse() {
+  const k = String(_ihActiveGrade||'').trim();
+  if(!k) { toast('Primero selecciona un grado','warning'); return; }
+  const cSel = document.getElementById('ih-grade-course');
+  const hEl = document.getElementById('ih-grade-hours');
+  const course_id = String(cSel?.value || '').trim().toUpperCase();
+  const hours = Math.max(1, parseInt(String(hEl?.value || '1'), 10) || 1);
+  if(!course_id) { toast('Selecciona un curso','warning'); return; }
+  const plan = ihGetPlan(k);
+  const ex = plan.find(x => String(x.course_id||'') === course_id);
+  if(ex) ex.hours_per_week = hours;
+  else plan.push({ course_id, hours_per_week: hours });
+  ihSaveGradePlans();
+  ihRenderGradePlan();
+}
+
+function ihRemoveGradeCourse(gradeKey, courseId) {
+  const k = String(gradeKey||'').trim();
+  const c = String(courseId||'').trim().toUpperCase();
+  if(!k || !c) return;
+  const plans = ihLoadGradePlans();
+  const arr = Array.isArray(plans[k]) ? plans[k] : [];
+  plans[k] = arr.filter(x => String(x.course_id||'') !== c);
+  ihSaveGradePlans();
+  ihRenderGradePlan();
+}
+
+function ihWeeklyCapacity() {
+  const p = ihGetParams();
+  if(!p) return null;
+  const days = Array.isArray(p.days) ? p.days.length : 5;
+  const slots = parseInt(p.slots_per_day, 10) || 0;
+  const breaks = Array.isArray(p.break_slots) ? p.break_slots.length : 0;
+  return Math.max(0, (slots - breaks) * days);
+}
+
+function ihGenerateDemands(allGrades) {
+  const st = document.getElementById('ih-curr-status');
+  try {
+    const sections = ihParseJson('ih-json-sections', 'Secciones (sections)', []);
+    if(!Array.isArray(sections) || !sections.length) throw new Error('Primero completa Secciones (sections)');
+    const cap = ihWeeklyCapacity();
+    if(cap === null) throw new Error('Primero define y acepta la jornada');
+
+    const plans = ihLoadGradePlans();
+    const keys = allGrades ? Object.keys(plans) : [String(_ihActiveGrade||'').trim()].filter(Boolean);
+    if(!keys.length) throw new Error('No hay grados para procesar');
+
+    const out = [];
+    const warnings = [];
+    keys.forEach(k => {
+      const plan = Array.isArray(plans[k]) ? plans[k] : [];
+      if(!plan.length) return;
+      const totalHours = plan.reduce((acc,x)=>acc + (parseInt(x.hours_per_week,10)||0), 0);
+      if(totalHours > cap) warnings.push(`⚠ ${k.replace('||',' — ')}: ${totalHours}h > capacidad ${cap}h`);
+      const [nivel, grado] = k.split('||');
+      const secs = sections.filter(s => String(s?.nivel||'').trim() === String(nivel||'').trim() && String(s?.grado||'').trim() === String(grado||'').trim());
+      secs.forEach(sec => {
+        plan.forEach(p => {
+          out.push({
+            section_id: String(sec.id||'').trim(),
+            course_id: String(p.course_id||'').trim(),
+            hours_per_week: parseInt(p.hours_per_week, 10) || 0,
+            teacher_id: ''
+          });
+        });
+      });
+    });
+
+    if(!out.length) throw new Error('No se generaron demands (revisa catálogo y malla por grado)');
+    const ta = document.getElementById('ih-json-demands');
+    if(ta) ta.value = JSON.stringify(out, null, 2);
+    if(st) st.textContent = (warnings.length ? warnings.join('  ') + '  ' : '') + `✅ demands generado (${out.length} filas). Ahora asigna teacher_id en demands.`;
+    toast('✅ demands generado', 'success');
+  } catch(e) {
+    if(st) st.textContent = '❌ ' + e.message;
+    toast('❌ ' + e.message, 'error');
+  }
+}
+
+function ihInitCurriculumUI() {
+  ihLoadCourses();
+  ihLoadGradePlans();
+  ihRenderCourses();
+  ihRefreshGrades();
+}
+
 function ihRenderPreview() {
   const wrap = document.getElementById('ih-preview-wrap');
   if(!wrap) return;
@@ -8154,12 +8474,14 @@ function ihAceptarJornada() {
   ihActualizarParams();
   const crit = document.getElementById('ih-criterios-card');
   if(crit) crit.style.display = '';
+  ihInitCurriculumUI();
 }
 
 function ihLimpiar() {
   _ihJornada = null;
   _ihJornadaAccepted = false;
   try { localStorage.removeItem('asmqr_ih_jornada'); } catch(e) {}
+  _ihActiveGrade = '';
 
   const wrap = document.getElementById('ih-preview-wrap');
   if(wrap) { wrap.innerHTML = ''; wrap.style.display = 'none'; }
@@ -8167,6 +8489,8 @@ function ihLimpiar() {
   if(st) st.textContent = '';
   const st2 = document.getElementById('ih-aceptado-status');
   if(st2) st2.textContent = '';
+  const stc = document.getElementById('ih-curr-status');
+  if(stc) stc.textContent = '';
   const btn = document.getElementById('ih-btn-aceptar');
   if(btn) { btn.disabled = true; btn.textContent = 'Aceptar jornada'; }
   const crit = document.getElementById('ih-criterios-card');
@@ -8247,6 +8571,19 @@ async function ihGenerarPrompt() {
     if(!Array.isArray(teachers) || !teachers.length) throw new Error('Docentes (teachers) vacío');
     if(!Array.isArray(demands) || !demands.length) throw new Error('Cursos por sección (demands) vacío');
     if(!Array.isArray(locals) || !locals.length) throw new Error('Locales (locals) vacío');
+
+    const tSet = new Set(teachers.map(t => String(t?.id || '').trim()).filter(Boolean));
+    for(const d of demands) {
+      const sid = String(d?.section_id || '').trim();
+      const cid = String(d?.course_id || '').trim();
+      const h = parseInt(d?.hours_per_week, 10) || 0;
+      const tid = String(d?.teacher_id || '').trim();
+      if(!sid) throw new Error('demands: falta section_id');
+      if(!cid) throw new Error('demands: falta course_id');
+      if(h <= 0) throw new Error('demands: hours_per_week debe ser mayor a 0');
+      if(!tid) throw new Error('demands: falta teacher_id (primero asigna docentes)');
+      if(!tSet.has(tid)) throw new Error('demands: teacher_id no existe en teachers: ' + tid);
+    }
 
     const inputObj = { sections, teachers, demands, locals, params, constraints, objective };
     ihActualizarParams();
