@@ -8788,7 +8788,7 @@ function ihUiRenderSections() {
             <td>${_escHtml(String(s.seccion||''))}</td>
             <td>${_escHtml(String(s.turno||''))}</td>
             <td>${_escHtml(String(s.local_base||''))}</td>
-            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteSection('${String(s.id||'').replace(/'/g,\"\\\\'\")}')" style="padding:6px 10px;">Quitar</button></td>
+            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteSection(${JSON.stringify(String(s.id||''))})" style="padding:6px 10px;">Quitar</button></td>
           </tr>
         `).join('')}
       </tbody>
@@ -8846,7 +8846,7 @@ function ihUiRenderTeachers() {
             <td>${_escHtml(String(t.nombre||''))}</td>
             <td>${_escHtml(String(t.local_base||''))}</td>
             <td>${_escHtml(String(t.max_horas_semana||0))}</td>
-            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteTeacher('${String(t.id||'').replace(/'/g,\"\\\\'\")}')" style="padding:6px 10px;">Quitar</button></td>
+            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteTeacher(${JSON.stringify(String(t.id||''))})" style="padding:6px 10px;">Quitar</button></td>
           </tr>
         `).join('')}
       </tbody>
@@ -8897,7 +8897,7 @@ function ihUiRenderLocals() {
           <tr>
             <td style="font-weight:800;color:var(--text);">${_escHtml(String(l.id||''))}</td>
             <td>${_escHtml(String(l.nombre||''))}</td>
-            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteLocal('${String(l.id||'').replace(/'/g,\"\\\\'\")}')" style="padding:6px 10px;">Quitar</button></td>
+            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteLocal(${JSON.stringify(String(l.id||''))})" style="padding:6px 10px;">Quitar</button></td>
           </tr>
         `).join('')}
       </tbody>
