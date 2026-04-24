@@ -3555,6 +3555,8 @@
 
       <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
         <button class="btn btn-primary" id="ih-btn-gen" onclick="ihGenerarPrompt()" style="flex:1;justify-content:center;min-width:200px;">🧠 Generar prompt</button>
+        <button class="btn btn-ghost" id="ih-btn-db-save" onclick="ihGuardarEnBD()" style="justify-content:center;border-color:var(--accent2);color:var(--accent2);">💾 Guardar en BD</button>
+        <button class="btn btn-ghost" id="ih-btn-db-run" onclick="ihGenerarHorarioBD()" style="justify-content:center;border-color:var(--accent2);color:var(--accent2);" disabled>🧩 Generar horario (BD)</button>
         <button class="btn btn-ghost" onclick="rexDescargarLogo()" style="justify-content:center;border-color:var(--accent2);color:var(--accent2);">⬇ Logo</button>
       </div>
       <div id="ih-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
@@ -8647,6 +8649,203 @@ async function ihCopiar() {
     toast('✅ Prompt copiado','success');
   } catch(e) {
     toast('No se pudo copiar. Mantén presionado y copia manualmente.','warning');
+  }
+}
+
+async function ihGetColegioIdFromSession() {
+  try {
+    const { data: { user } } = await window._sb.auth.getUser();
+    const cid = String(user?.app_metadata?.colegio_id || '').trim();
+    if(cid) return cid;
+  } catch(e) {}
+  return String(window.COLEGIO_ID || '').trim();
+}
+
+function ihNormalizeArray(val) {
+  if(Array.isArray(val)) return val;
+  if(typeof val === 'string') {
+    const s = val.trim();
+    if(!s) return [];
+    return s.split(',').map(x => x.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+async function ihGuardarEnBD() {
+  const st = document.getElementById('ih-status');
+  const btnSave = document.getElementById('ih-btn-db-save');
+  const btnRun = document.getElementById('ih-btn-db-run');
+  try {
+    if(!_ihJornadaAccepted) throw new Error('Primero acepta la jornada');
+    if(btnSave) { btnSave.disabled = true; btnSave.style.opacity = '0.7'; }
+    if(st) st.textContent = 'Validando y guardando en base de datos...';
+
+    const colegio_id = await ihGetColegioIdFromSession();
+    if(!colegio_id) throw new Error('No se pudo obtener colegio_id de la sesión');
+
+    const sections = ihParseJson('ih-json-sections', 'Secciones (sections)', []);
+    const teachers = ihParseJson('ih-json-teachers', 'Docentes (teachers)', []);
+    const demands = ihParseJson('ih-json-demands', 'Cursos por sección (demands)', []);
+    let locals = ihParseJson('ih-json-locals', 'Locales (locals)', []);
+    const params = ihGetParams();
+
+    if(!Array.isArray(sections) || !sections.length) throw new Error('Secciones (sections) vacío');
+    if(!Array.isArray(teachers) || !teachers.length) throw new Error('Docentes (teachers) vacío');
+    if(!Array.isArray(demands) || !demands.length) throw new Error('Cursos por sección (demands) vacío');
+    if(!params) throw new Error('Jornada no definida');
+
+    if(!Array.isArray(locals)) locals = [];
+    if(!locals.length) locals = [{ id: 'MAIN', nombre: 'Local principal' }];
+
+    const slots = Array.isArray(params.slot_times) ? params.slot_times : [];
+    if(!slots.length) throw new Error('Jornada inválida: no hay bloques');
+    const days = Array.isArray(params.days) ? params.days : ['Lun','Mar','Mie','Jue','Vie'];
+
+    const coursesCatalog = ihLoadCourses().map(c => ({ id: String(c?.id||'').trim().toUpperCase(), name: String(c?.name||'').trim() })).filter(c => c.id);
+    const demandCourseIds = new Set(demands.map(d => String(d?.course_id||'').trim().toUpperCase()).filter(Boolean));
+    const coursesMap = new Map(coursesCatalog.map(c => [c.id, c.name || c.id]));
+    for(const cid of demandCourseIds) if(!coursesMap.has(cid)) coursesMap.set(cid, cid);
+    const coursesRows = Array.from(coursesMap.entries()).map(([id, name]) => ({ colegio_id, id, nombre: name, tipo: '' }));
+
+    const localsRows = locals.map(l => ({
+      colegio_id,
+      id: String(l?.id || '').trim() || 'MAIN',
+      nombre: String(l?.nombre || l?.id || 'Local').trim() || 'Local',
+      direccion: String(l?.direccion || '').trim(),
+    })).filter(l => l.id);
+
+    const sectionsRows = sections.map(s => ({
+      colegio_id,
+      id: String(s?.id || '').trim(),
+      nivel: String(s?.nivel || '').trim() || '-',
+      grado: String(s?.grado || '').trim() || '-',
+      seccion: String(s?.seccion || '').trim() || '-',
+      turno: String(s?.turno || '').trim(),
+      local_base: String(s?.local_base || '').trim(),
+      capacidad: Number.isFinite(Number(s?.capacidad)) ? Math.max(0, Math.floor(Number(s?.capacidad))) : 0,
+    })).filter(s => s.id);
+
+    const teachersRows = teachers.map(t => ({
+      colegio_id,
+      id: String(t?.id || '').trim(),
+      nombre: String(t?.nombre || '').trim() || String(t?.id || '').trim(),
+      telefono: String(t?.telefono || '').trim(),
+      local_base: String(t?.local_base || '').trim(),
+      locales_permitidos: ihNormalizeArray(t?.locales_permitidos || t?.localesPermitidos).map(x => String(x).trim()).filter(Boolean),
+      max_horas_semana: Number.isFinite(Number(t?.max_horas_semana)) ? Math.max(0, Math.floor(Number(t?.max_horas_semana))) : 0,
+      preferencias: (t?.preferencias && typeof t.preferencias === 'object') ? t.preferencias : {},
+    })).filter(t => t.id);
+
+    const availRows = teachers
+      .filter(t => t?.availability && typeof t.availability === 'object')
+      .map(t => ({ colegio_id, teacher_id: String(t?.id || '').trim(), availability: t.availability }))
+      .filter(a => a.teacher_id);
+
+    const slotsRows = [];
+    for(const d of days) {
+      for(const b of slots) {
+        const slot_index = Math.max(1, parseInt(String(b?.slot||''),10) || 0);
+        const start_time = String(b?.start || '').trim();
+        const end_time = String(b?.end || '').trim();
+        const is_break = String(b?.type||'').toUpperCase() === 'RECESO';
+        if(!slot_index || !start_time || !end_time) continue;
+        slotsRows.push({ colegio_id, day: String(d).trim(), slot_index, start_time, end_time, is_break });
+      }
+    }
+    if(!slotsRows.length) throw new Error('No se pudo construir horario_slots desde la jornada');
+
+    const demandsRows = demands.map(d => ({
+      colegio_id,
+      section_id: String(d?.section_id || '').trim(),
+      course_id: String(d?.course_id || '').trim().toUpperCase(),
+      teacher_id: String(d?.teacher_id || '').trim(),
+      hours_per_week: Math.max(0, Math.floor(Number(d?.hours_per_week) || 0)),
+      required_room_type: String(d?.required_room_type || '').trim(),
+      required_local_id: String(d?.required_local_id || '').trim(),
+    })).filter(d => d.section_id && d.course_id && d.teacher_id && d.hours_per_week > 0);
+
+    if(!demandsRows.length) throw new Error('Demands inválido: faltan campos (section_id/course_id/teacher_id/hours_per_week)');
+
+    const chunk = async (rows, size, fn) => {
+      for(let i=0;i<rows.length;i+=size) await fn(rows.slice(i,i+size));
+    };
+
+    const sb = window._sb;
+
+    if(st) st.textContent = 'Guardando locales/cursos/secciones/docentes...';
+    if(localsRows.length) {
+      const { error } = await sb.from('horario_locales').upsert(localsRows, { onConflict: 'colegio_id,id' });
+      if(error) throw new Error(error.message);
+    }
+    if(coursesRows.length) {
+      const { error } = await sb.from('horario_courses').upsert(coursesRows, { onConflict: 'colegio_id,id' });
+      if(error) throw new Error(error.message);
+    }
+    if(sectionsRows.length) {
+      const { error } = await sb.from('horario_sections').upsert(sectionsRows, { onConflict: 'colegio_id,id' });
+      if(error) throw new Error(error.message);
+    }
+    if(teachersRows.length) {
+      const { error } = await sb.from('horario_teachers').upsert(teachersRows, { onConflict: 'colegio_id,id' });
+      if(error) throw new Error(error.message);
+    }
+    if(availRows.length) {
+      const { error } = await sb.from('horario_teacher_availability').upsert(availRows, { onConflict: 'colegio_id,teacher_id' });
+      if(error) throw new Error(error.message);
+    }
+
+    if(st) st.textContent = 'Guardando jornada (horario_slots)...';
+    {
+      const { error: delErr } = await sb.from('horario_slots').delete().eq('colegio_id', colegio_id);
+      if(delErr) throw new Error(delErr.message);
+      await chunk(slotsRows, 500, async (part) => {
+        const { error } = await sb.from('horario_slots').insert(part);
+        if(error) throw new Error(error.message);
+      });
+    }
+
+    if(st) st.textContent = 'Guardando demands (horario_demands)...';
+    {
+      const { error: delErr } = await sb.from('horario_demands').delete().eq('colegio_id', colegio_id);
+      if(delErr) throw new Error(delErr.message);
+      await chunk(demandsRows, 500, async (part) => {
+        const { error } = await sb.from('horario_demands').insert(part);
+        if(error) throw new Error(error.message);
+      });
+    }
+
+    if(btnRun) btnRun.disabled = false;
+    if(st) st.textContent = '✅ Guardado en BD listo. Ya puedes generar el horario desde BD.';
+    toast('✅ Guardado en BD', 'success');
+  } catch(e) {
+    if(st) st.textContent = '❌ ' + (e?.message || e);
+    toast('❌ ' + (e?.message || e), 'error');
+  } finally {
+    if(btnSave) { btnSave.disabled = false; btnSave.style.opacity = ''; }
+  }
+}
+
+async function ihGenerarHorarioBD() {
+  const st = document.getElementById('ih-status');
+  const btnRun = document.getElementById('ih-btn-db-run');
+  try {
+    if(btnRun) { btnRun.disabled = true; btnRun.style.opacity = '0.7'; }
+    if(st) st.textContent = 'Generando horario desde BD...';
+    const { data, error } = await window._sb.functions.invoke('generar-horario', { body: { loadFromDb: true, attempts: 50 } });
+    if(error) {
+      let msg = error.message || 'Error';
+      try { msg = (await error.context?.text()) || msg; } catch(e) {}
+      throw new Error(msg);
+    }
+    const ok = !!data?.ok;
+    const runId = String(data?.run_id || '').trim();
+    if(st) st.textContent = (ok ? '✅ ' : '⚠️ ') + `Horario generado. run_id: ${runId || '-'}`;
+    toast(ok ? '✅ Horario generado' : '⚠️ Horario generado con pendientes', ok ? 'success' : 'warning');
+  } catch(e) {
+    if(st) st.textContent = '❌ ' + (e?.message || e);
+    toast('❌ ' + (e?.message || e), 'error');
+  } finally {
+    if(btnRun) { btnRun.disabled = false; btnRun.style.opacity = ''; }
   }
 }
 
