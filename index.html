@@ -3525,8 +3525,8 @@
             <div style="font-size:0.78rem;color:var(--muted);line-height:1.25;">Completa con formularios. El sistema actualizará el JSON automáticamente.</div>
           </div>
 
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:12px;">
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin-top:12px;">
+            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;min-width:0;">
               <div style="font-weight:800;color:var(--text);margin-bottom:8px;">Secciones</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;">
                 <div class="form-group" style="margin:0;">
@@ -3559,10 +3559,10 @@
                 </div>
                 <button class="btn btn-primary" onclick="ihUiAddSection()" style="justify-content:center;">+ Agregar</button>
               </div>
-              <div id="ih-ui-sections-table" style="margin-top:10px;"></div>
+              <div id="ih-ui-sections-table" style="margin-top:10px;overflow:auto;max-height:260px;"></div>
             </div>
 
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;min-width:0;">
               <div style="font-weight:800;color:var(--text);margin-bottom:8px;">Docentes</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;">
                 <div class="form-group" style="margin:0;">
@@ -3584,10 +3584,10 @@
                 <button class="btn btn-primary" onclick="ihUiAddTeacher()" style="justify-content:center;">+ Agregar</button>
                 <div style="font-size:0.76rem;color:var(--muted);line-height:1.25;">Disponibilidad: por defecto puede en todos los bloques. (Se configura más adelante si se requiere)</div>
               </div>
-              <div id="ih-ui-teachers-table" style="margin-top:10px;"></div>
+              <div id="ih-ui-teachers-table" style="margin-top:10px;overflow:auto;max-height:260px;"></div>
             </div>
 
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;min-width:0;">
               <div style="font-weight:800;color:var(--text);margin-bottom:8px;">Locales</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;">
                 <div class="form-group" style="margin:0;">
@@ -3601,10 +3601,10 @@
                 <button class="btn btn-primary" onclick="ihUiAddLocal()" style="justify-content:center;">+ Agregar</button>
                 <button class="btn btn-ghost" onclick="ihUiEnsureDefaultLocal()" style="justify-content:center;">Crear MAIN</button>
               </div>
-              <div id="ih-ui-locals-table" style="margin-top:10px;"></div>
+              <div id="ih-ui-locals-table" style="margin-top:10px;overflow:auto;max-height:260px;"></div>
             </div>
 
-            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;min-width:0;">
               <div style="font-weight:800;color:var(--text);margin-bottom:8px;">Demands (carga por sección)</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;">
                 <div class="form-group" style="margin:0;">
@@ -3626,7 +3626,7 @@
                 <button class="btn btn-primary" onclick="ihUiAddDemand()" style="justify-content:center;">+ Agregar</button>
                 <button class="btn btn-ghost" onclick="ihUiRenderDemandsFromJson()" style="justify-content:center;">Sincronizar</button>
               </div>
-              <div id="ih-ui-demands-table" style="margin-top:10px;"></div>
+              <div id="ih-ui-demands-table" style="margin-top:10px;overflow:auto;max-height:260px;"></div>
               <div style="margin-top:8px;font-size:0.76rem;color:var(--muted);line-height:1.25;">Tip: usa “Generar demands…” arriba y luego asigna docentes en esta tabla.</div>
             </div>
           </div>
@@ -8694,6 +8694,7 @@ function ihUiInit() {
   _ihUiLocals = Array.isArray(ihUiSafeJsonParse('ih-json-locals', [])) ? ihUiSafeJsonParse('ih-json-locals', []) : [];
   if(!_ihUiLocals.length) ihUiEnsureDefaultLocal();
   ihUiRenderAll();
+  try { ihRefreshGrades(); } catch(e) {}
 }
 
 function ihUiRenderAll() {
@@ -8774,6 +8775,7 @@ function ihUiRenderSections() {
   if(!wrap) return;
   if(!_ihUiSections.length) {
     wrap.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Aún no hay secciones.</div>';
+    try { ihRefreshGrades(); } catch(e) {}
     return;
   }
   wrap.innerHTML = `
@@ -8788,12 +8790,13 @@ function ihUiRenderSections() {
             <td>${_escHtml(String(s.seccion||''))}</td>
             <td>${_escHtml(String(s.turno||''))}</td>
             <td>${_escHtml(String(s.local_base||''))}</td>
-            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteSection(${JSON.stringify(String(s.id||''))})" style="padding:6px 10px;">Quitar</button></td>
+            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteSection('${String(s.id||'')}')" style="padding:6px 10px;">Quitar</button></td>
           </tr>
         `).join('')}
       </tbody>
     </table>
   `;
+  try { ihRefreshGrades(); } catch(e) {}
 }
 
 function ihUiAddSection() {
@@ -8809,6 +8812,7 @@ function ihUiAddSection() {
     if(ex) Object.assign(ex, { nivel, grado, seccion, turno, local_base });
     else _ihUiSections.push({ id, nivel, grado, seccion, turno, local_base });
     ihUiRenderAll();
+    try { ihRefreshGrades(); } catch(e) {}
     toast('✅ Sección guardada','success');
   } catch(e) {
     toast('❌ ' + (e?.message || e), 'error');
@@ -8820,6 +8824,7 @@ function ihUiDeleteSection(id) {
   _ihUiSections = (_ihUiSections || []).filter(s => String(s.id||'') !== sid);
   _ihUiDemands = (_ihUiDemands || []).filter(d => String(d.section_id||'') !== sid);
   ihUiRenderAll();
+  try { ihRefreshGrades(); } catch(e) {}
 }
 
 function ihUiRenderTeachers() {
@@ -8846,7 +8851,7 @@ function ihUiRenderTeachers() {
             <td>${_escHtml(String(t.nombre||''))}</td>
             <td>${_escHtml(String(t.local_base||''))}</td>
             <td>${_escHtml(String(t.max_horas_semana||0))}</td>
-            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteTeacher(${JSON.stringify(String(t.id||''))})" style="padding:6px 10px;">Quitar</button></td>
+            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteTeacher('${String(t.id||'')}')" style="padding:6px 10px;">Quitar</button></td>
           </tr>
         `).join('')}
       </tbody>
@@ -8897,7 +8902,7 @@ function ihUiRenderLocals() {
           <tr>
             <td style="font-weight:800;color:var(--text);">${_escHtml(String(l.id||''))}</td>
             <td>${_escHtml(String(l.nombre||''))}</td>
-            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteLocal(${JSON.stringify(String(l.id||''))})" style="padding:6px 10px;">Quitar</button></td>
+            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteLocal('${String(l.id||'')}')" style="padding:6px 10px;">Quitar</button></td>
           </tr>
         `).join('')}
       </tbody>
