@@ -3038,6 +3038,29 @@
           </div>
           <button class="btn btn-ghost" id="btn-configurar-privilegios" onclick="abrirModalPrivilegios()" style="padding:6px 12px;font-size:0.8rem;" disabled>⚙ Configurar</button>
         </div>
+        <div style="margin-top:14px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;">
+            <input type="checkbox" id="u-es-tutor" onchange="toggleTutorFields()" style="accent-color:var(--accent);width:16px;height:16px;">
+            Es tutor (recibe alertas de asistencia)
+          </label>
+          <div id="u-tutor-fields" style="display:none;margin-top:10px;">
+            <div class="form-group" style="margin:0 0 10px 0;">
+              <label>Aula (Grado)</label>
+              <select id="u-tutor-grado" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:var(--font-body);font-size:0.88rem;width:100%;display:block;-webkit-appearance:menulist;appearance:menulist;cursor:pointer;">
+                <option value="" disabled selected>-- Grado --</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label>Aula (Sección)</label>
+              <select id="u-tutor-seccion" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:var(--font-body);font-size:0.88rem;width:100%;display:block;-webkit-appearance:menulist;appearance:menulist;cursor:pointer;">
+                <option value="" disabled selected>-- Sección --</option>
+              </select>
+            </div>
+            <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;">
+              Se usará esta aula para enviar automáticamente alertas semanales/mensuales al tutor.
+            </div>
+          </div>
+        </div>
       </div>
 
       <div style="display:flex;gap:10px;margin-top:20px;">
@@ -10445,6 +10468,30 @@ function toast(msg, type='success') {
 // ============================================================
 let editingUsuarioId = null;
 
+async function poblarTutorAulaSelects({ grado = null, seccion = null } = {}) {
+  const gEl = document.getElementById('u-tutor-grado');
+  const sEl = document.getElementById('u-tutor-seccion');
+  if(!gEl || !sEl) return;
+  const cfg = await getConfig();
+  const todosGrados = [...new Set(Object.values(cfg.grados||{}).flat())].filter(Boolean);
+  const secciones = (cfg.secciones || ['A','B','C','D']).filter(Boolean);
+  gEl.innerHTML = `<option value="" disabled ${!grado?'selected':''}>-- Grado --</option>` + todosGrados.map(g => `<option value="${g}" ${grado===g?'selected':''}>${g}</option>`).join('');
+  sEl.innerHTML = `<option value="" disabled ${!seccion?'selected':''}>-- Sección --</option>` + secciones.map(s => `<option value="${s}" ${seccion===s?'selected':''}>${s}</option>`).join('');
+}
+
+function toggleTutorFields() {
+  const chk = document.getElementById('u-es-tutor');
+  const fields = document.getElementById('u-tutor-fields');
+  if(!chk || !fields) return;
+  fields.style.display = chk.checked ? '' : 'none';
+  if(!chk.checked) {
+    const gEl = document.getElementById('u-tutor-grado');
+    const sEl = document.getElementById('u-tutor-seccion');
+    if(gEl) gEl.value = '';
+    if(sEl) sEl.value = '';
+  }
+}
+
 async function openModalUsuario(uid, nombre, rol, email) {
   editingUsuarioId = uid || null;
   document.getElementById('modal-usuario-title').textContent = uid ? 'Editar Usuario' : 'Nuevo Usuario';
@@ -10470,6 +10517,9 @@ async function openModalUsuario(uid, nombre, rol, email) {
       const cargo = uData.cargo || '';
       // Cargar teléfono
       document.getElementById('u-telefono').value = uData.telefono || '';
+      await poblarTutorAulaSelects({ grado: uData.tutorGrado || null, seccion: uData.tutorSeccion || null });
+      document.getElementById('u-es-tutor').checked = !!uData.esTutor;
+      toggleTutorFields();
       // Mostrar botón recuperar solo si tiene teléfono
       document.getElementById('u-recuperar-msg').style.display = 'none';
       const cargoSel = document.getElementById('u-cargo-select');
@@ -10502,6 +10552,9 @@ async function openModalUsuario(uid, nombre, rol, email) {
     document.getElementById('u-cargo').value = '';
     tempAsignaciones = {};
     document.getElementById('u-restringir').checked = false;
+    await poblarTutorAulaSelects();
+    document.getElementById('u-es-tutor').checked = false;
+    toggleTutorFields();
   }
 
   // Cargar checkboxes de privilegios
@@ -10528,24 +10581,54 @@ async function saveUsuario() {
     // Obtener asignaciones si es profesor
     const restringir = rol === 'profesor' ? document.getElementById('u-restringir').checked : false;
     const asignaciones = (rol === 'profesor' && restringir) ? tempAsignaciones : {};
+    const esTutor = rol === 'profesor' ? !!document.getElementById('u-es-tutor')?.checked : false;
+    const telefonoVal = document.getElementById('u-telefono').value.trim();
+    const tutorGrado = esTutor ? (document.getElementById('u-tutor-grado')?.value || '') : '';
+    const tutorSeccion = esTutor ? (document.getElementById('u-tutor-seccion')?.value || '') : '';
+    if(esTutor) {
+      if(!telefonoVal) { toast('Completa el teléfono del tutor','warning'); return; }
+      if(!tutorGrado) { toast('Selecciona el grado del tutor','warning'); return; }
+      if(!tutorSeccion) { toast('Selecciona la sección del tutor','warning'); return; }
+    }
 
     if(!editingUsuarioId) {
       // NUEVO usuario
       if(!pass || pass.length < 6){ toast('La contraseña debe tener al menos 6 caracteres','warning'); return; }
-      const secondaryApp = firebase.initializeApp(firebaseConfig, 'secondary_' + Date.now());
-      const secondaryAuth = secondaryApp.auth();
-      const cred = await secondaryAuth.createUserWithEmailAndPassword(email, pass);
-      const uid = cred.user.uid;
-      await secondaryAuth.signOut();
-      await secondaryApp.delete();
-      const telefono3 = document.getElementById('u-telefono').value.trim();
-      await db.collection('usuarios').doc(uid).set({ nombre, email, rol, cargo, telefono: telefono3, restringir, asignaciones, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      const { data: { session } } = await _sb.auth.getSession();
+      const jwt = session?.access_token;
+      if(!jwt) { toast('Inicia sesión nuevamente','warning'); return; }
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-crear-usuario`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwt}`,
+          'apikey': SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({
+          email,
+          password: pass,
+          rol,
+          nombre,
+          cargo,
+          telefono: telefonoVal,
+          restringir,
+          asignaciones,
+          esTutor,
+          tutorGrado,
+          tutorSeccion
+        })
+      });
+      const body = await res.json().catch(() => ({}));
+      if(!res.ok) {
+        if(body?.code === 'auth/email-already-in-use' || res.status === 409) toast('Ese correo ya está registrado','error');
+        else toast('Error: ' + (body?.error || ('HTTP ' + res.status)),'error');
+        return;
+      }
       _invalidarUsuarios();
       toast('Usuario creado correctamente','success');
     } else {
       // EDITAR usuario
-      const telefonoEdit = document.getElementById('u-telefono').value.trim();
-      await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol, cargo, telefono: telefonoEdit, restringir, asignaciones });
+      await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol, cargo, telefono: telefonoVal, restringir, asignaciones, esTutor, tutorGrado: esTutor ? tutorGrado : null, tutorSeccion: esTutor ? tutorSeccion : null });
       _invalidarUsuarios();
       // Mostrar/ocultar botón recuperar según teléfono
       // Si se ingresó nueva contraseña, cambiarla
@@ -10573,7 +10656,20 @@ async function deleteUsuario(uid) {
   if(uid === currentUser.uid){ toast('No puedes eliminar tu propia cuenta','warning'); return; }
   if(!confirm('¿Eliminar este usuario? No podrá ingresar al sistema.')) return;
   try {
-    await db.collection('usuarios').doc(uid).delete();
+    const { data: { session } } = await _sb.auth.getSession();
+    const jwt = session?.access_token;
+    if(!jwt) { toast('Inicia sesión nuevamente','warning'); return; }
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-eliminar-usuario`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${jwt}`,
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({ uid })
+    });
+    const body = await res.json().catch(() => ({}));
+    if(!res.ok) { toast('Error: ' + (body?.error || ('HTTP ' + res.status)),'error'); return; }
     _invalidarUsuarios();
     toast('Usuario eliminado','info');
     renderUsuarios();
@@ -10608,7 +10704,7 @@ async function renderUsuarios() {
       return `<tr>
         <td style="font-weight:500;">${u.nombre}${esYo}</td>
         <td style="color:var(--muted);font-size:0.85rem;">${u.email}</td>
-        <td><span style="color:${rolColors[u.rol]||'#fff'};font-weight:600;">${rolLabels[u.rol]||u.rol}</span>${u.cargo?`<br><span style="font-size:0.72rem;color:var(--muted);">${u.cargo}</span>`:''} ${u.rol==='profesor'&&u.restringir?`<br><span style="font-size:0.72rem;color:var(--accent);">Restringido: ${Object.keys(u.asignaciones||{}).join(', ')||'sin asignar'}</span>`:''}</td>
+        <td><span style="color:${rolColors[u.rol]||'#fff'};font-weight:600;">${rolLabels[u.rol]||u.rol}</span>${u.cargo?`<br><span style="font-size:0.72rem;color:var(--muted);">${u.cargo}</span>`:''} ${u.rol==='profesor'&&u.restringir?`<br><span style="font-size:0.72rem;color:var(--accent);">Restringido: ${Object.keys(u.asignaciones||{}).join(', ')||'sin asignar'}</span>`:''}${u.esTutor&&u.tutorGrado&&u.tutorSeccion?`<br><span style="font-size:0.72rem;color:#60a5fa;">Tutor: ${u.tutorGrado} ${u.tutorSeccion}</span>`:''}</td>
         <td style="display:flex;gap:6px;">
           <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalUsuario('${u.uid}','${u.nombre}','${u.rol}','${u.email}')">✏</button>
           ${u.uid !== currentUser.uid ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteUsuario('${u.uid}')">✕</button>` : ''}

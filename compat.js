@@ -177,18 +177,6 @@ class _DocRef {
   async get() {
     if (this._col === 'config') return _getConfig(this._id);
 
-    // Para usuarios: usar RPC con SECURITY DEFINER para evitar problemas de RLS
-    if (this._col === 'usuarios') {
-      const { data, error } = await _sb.rpc('get_mi_perfil');
-      console.log('[compat.get] get_mi_perfil data:', data, 'error:', error);
-      if (error) throw new Error(error.message);
-      return {
-        exists: !!data,
-        id:     this._id,
-        data:   () => data ? _rowToDoc(data) : null,
-      };
-    }
-
     const { data, error } = await _sb.from(this._col).select('*')
       .eq('colegio_id', COLEGIO_ID).eq('id', this._id).maybeSingle();
     console.log('[compat.get]', this._col, this._id, 'data:', data, 'error:', error);
