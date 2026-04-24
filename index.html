@@ -3519,21 +3519,139 @@
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:10px;">
-        <div class="form-group" style="margin:0;">
-          <label>Secciones (sections)</label>
-          <textarea id="ih-json-sections" rows="6" placeholder='[{"id":"PRI-1A","nivel":"Primaria","grado":"1","seccion":"A","local_base":"A"}]' style="resize:vertical;"></textarea>
-        </div>
-        <div class="form-group" style="margin:0;">
-          <label>Docentes (teachers)</label>
-          <textarea id="ih-json-teachers" rows="6" placeholder='[{"id":"D1","nombre":"Juan Pérez","courses":["MAT"],"local_base":"A","availability":{"Lun":[1,2,4,5,6]}}]' style="resize:vertical;"></textarea>
-        </div>
-        <div class="form-group" style="margin:0;">
-          <label>Cursos por sección (demands)</label>
-          <textarea id="ih-json-demands" rows="6" placeholder='[{"section_id":"PRI-1A","course_id":"MAT","hours_per_week":5,"teacher_id":"D1"}]' style="resize:vertical;"></textarea>
-        </div>
-        <div class="form-group" style="margin:0;">
-          <label>Locales (locals)</label>
-          <textarea id="ih-json-locals" rows="6" placeholder='[{"id":"A","niveles":["Inicial","Primaria"]},{"id":"B","niveles":["Secundaria"]}]' style="resize:vertical;"></textarea>
+        <div style="grid-column:1/-1;border:1px solid var(--border);background:var(--surface2);border-radius:14px;padding:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+            <div style="font-weight:800;color:var(--text);">2.3) Datos del horario (sin JSON)</div>
+            <div style="font-size:0.78rem;color:var(--muted);line-height:1.25;">Completa con formularios. El sistema actualizará el JSON automáticamente.</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:12px;">
+            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+              <div style="font-weight:800;color:var(--text);margin-bottom:8px;">Secciones</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;">
+                <div class="form-group" style="margin:0;">
+                  <label>Nivel</label>
+                  <select id="ih-ui-sec-nivel">
+                    <option>Inicial</option>
+                    <option>Primaria</option>
+                    <option selected>Secundaria</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>Grado</label>
+                  <input id="ih-ui-sec-grado" type="text" placeholder="1">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>Sección</label>
+                  <input id="ih-ui-sec-seccion" type="text" placeholder="A">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>Turno</label>
+                  <select id="ih-ui-sec-turno">
+                    <option value="">(Opcional)</option>
+                    <option value="Mañana">Mañana</option>
+                    <option value="Tarde">Tarde</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>Local base</label>
+                  <select id="ih-ui-sec-local"></select>
+                </div>
+                <button class="btn btn-primary" onclick="ihUiAddSection()" style="justify-content:center;">+ Agregar</button>
+              </div>
+              <div id="ih-ui-sections-table" style="margin-top:10px;"></div>
+            </div>
+
+            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+              <div style="font-weight:800;color:var(--text);margin-bottom:8px;">Docentes</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;">
+                <div class="form-group" style="margin:0;">
+                  <label>ID</label>
+                  <input id="ih-ui-tea-id" type="text" placeholder="T1" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9_]/g,'')">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>Nombre</label>
+                  <input id="ih-ui-tea-nombre" type="text" placeholder="Juan Pérez">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>Local base</label>
+                  <select id="ih-ui-tea-local"></select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>Max horas/semana</label>
+                  <input id="ih-ui-tea-max" type="number" min="0" max="60" step="1" value="0">
+                </div>
+                <button class="btn btn-primary" onclick="ihUiAddTeacher()" style="justify-content:center;">+ Agregar</button>
+                <div style="font-size:0.76rem;color:var(--muted);line-height:1.25;">Disponibilidad: por defecto puede en todos los bloques. (Se configura más adelante si se requiere)</div>
+              </div>
+              <div id="ih-ui-teachers-table" style="margin-top:10px;"></div>
+            </div>
+
+            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+              <div style="font-weight:800;color:var(--text);margin-bottom:8px;">Locales</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;">
+                <div class="form-group" style="margin:0;">
+                  <label>ID</label>
+                  <input id="ih-ui-loc-id" type="text" placeholder="MAIN" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9_]/g,'')">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>Nombre</label>
+                  <input id="ih-ui-loc-nombre" type="text" placeholder="Local principal">
+                </div>
+                <button class="btn btn-primary" onclick="ihUiAddLocal()" style="justify-content:center;">+ Agregar</button>
+                <button class="btn btn-ghost" onclick="ihUiEnsureDefaultLocal()" style="justify-content:center;">Crear MAIN</button>
+              </div>
+              <div id="ih-ui-locals-table" style="margin-top:10px;"></div>
+            </div>
+
+            <div style="border:1px solid var(--border);border-radius:12px;padding:12px;">
+              <div style="font-weight:800;color:var(--text);margin-bottom:8px;">Demands (carga por sección)</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;">
+                <div class="form-group" style="margin:0;">
+                  <label>Sección</label>
+                  <select id="ih-ui-dem-sec"></select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>Curso</label>
+                  <select id="ih-ui-dem-course"></select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>Docente</label>
+                  <select id="ih-ui-dem-teacher"></select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>Horas/semana</label>
+                  <input id="ih-ui-dem-hours" type="number" min="1" max="20" step="1" value="1">
+                </div>
+                <button class="btn btn-primary" onclick="ihUiAddDemand()" style="justify-content:center;">+ Agregar</button>
+                <button class="btn btn-ghost" onclick="ihUiRenderDemandsFromJson()" style="justify-content:center;">Sincronizar</button>
+              </div>
+              <div id="ih-ui-demands-table" style="margin-top:10px;"></div>
+              <div style="margin-top:8px;font-size:0.76rem;color:var(--muted);line-height:1.25;">Tip: usa “Generar demands…” arriba y luego asigna docentes en esta tabla.</div>
+            </div>
+          </div>
+
+          <details style="margin-top:12px;">
+            <summary style="cursor:pointer;color:var(--accent2);font-weight:800;">Modo avanzado (JSON)</summary>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:10px;">
+              <div class="form-group" style="margin:0;">
+                <label>Secciones (sections)</label>
+                <textarea id="ih-json-sections" rows="6" placeholder='[{"id":"PRI-1A","nivel":"Primaria","grado":"1","seccion":"A","local_base":"A"}]' style="resize:vertical;"></textarea>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label>Docentes (teachers)</label>
+                <textarea id="ih-json-teachers" rows="6" placeholder='[{"id":"D1","nombre":"Juan Pérez","local_base":"A","availability":{"Lun":[1,2,4,5,6]}}]' style="resize:vertical;"></textarea>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label>Cursos por sección (demands)</label>
+                <textarea id="ih-json-demands" rows="6" placeholder='[{"section_id":"PRI-1A","course_id":"MAT","hours_per_week":5,"teacher_id":"D1"}]' style="resize:vertical;"></textarea>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label>Locales (locals)</label>
+                <textarea id="ih-json-locals" rows="6" placeholder='[{"id":"A","nombre":"Local A"},{"id":"B","nombre":"Local B"}]' style="resize:vertical;"></textarea>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -8465,6 +8583,7 @@ function ihInitCurriculumUI() {
   ihLoadGradePlans();
   ihRenderCourses();
   ihRefreshGrades();
+  ihUiInit();
 }
 
 function ihRenderPreview() {
@@ -8543,6 +8662,354 @@ function ihLimpiar() {
   ids.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   const st3 = document.getElementById('ih-status');
   if(st3) st3.textContent = '';
+  ihUiInit();
+}
+
+let _ihUiSections = [];
+let _ihUiTeachers = [];
+let _ihUiDemands = [];
+let _ihUiLocals = [];
+
+function ihUiSafeJsonParse(elId, fallback) {
+  try { return JSON.parse(String(document.getElementById(elId)?.value || '').trim() || ''); } catch(e) { return fallback; }
+}
+
+function ihUiWriteJson(elId, value) {
+  const el = document.getElementById(elId);
+  if(el) el.value = JSON.stringify(value, null, 2);
+}
+
+function ihUiEnsureDefaultLocal() {
+  const exists = _ihUiLocals.find(l => String(l?.id || '').toUpperCase() === 'MAIN');
+  if(exists) return;
+  _ihUiLocals.push({ id: 'MAIN', nombre: 'Local principal' });
+  ihUiSyncLocalsToJson();
+  ihUiRenderAll();
+}
+
+function ihUiInit() {
+  _ihUiSections = Array.isArray(ihUiSafeJsonParse('ih-json-sections', [])) ? ihUiSafeJsonParse('ih-json-sections', []) : [];
+  _ihUiTeachers = Array.isArray(ihUiSafeJsonParse('ih-json-teachers', [])) ? ihUiSafeJsonParse('ih-json-teachers', []) : [];
+  _ihUiDemands = Array.isArray(ihUiSafeJsonParse('ih-json-demands', [])) ? ihUiSafeJsonParse('ih-json-demands', []) : [];
+  _ihUiLocals = Array.isArray(ihUiSafeJsonParse('ih-json-locals', [])) ? ihUiSafeJsonParse('ih-json-locals', []) : [];
+  if(!_ihUiLocals.length) ihUiEnsureDefaultLocal();
+  ihUiRenderAll();
+}
+
+function ihUiRenderAll() {
+  ihUiRenderLocalSelects();
+  ihUiRenderSections();
+  ihUiRenderTeachers();
+  ihUiRenderDemands();
+  ihUiRenderLocals();
+}
+
+function ihUiRenderLocalSelects() {
+  const locs = (_ihUiLocals || []).slice().sort((a,b)=>String(a.id||'').localeCompare(String(b.id||'')));
+  const opts = locs.map(l => `<option value="${_escHtml(String(l.id||''))}">${_escHtml(String(l.id||''))} — ${_escHtml(String(l.nombre||l.id||''))}</option>`).join('');
+  const secLocal = document.getElementById('ih-ui-sec-local');
+  const teaLocal = document.getElementById('ih-ui-tea-local');
+  if(secLocal) secLocal.innerHTML = opts;
+  if(teaLocal) teaLocal.innerHTML = opts;
+}
+
+function ihUiSyncSectionsToJson() {
+  const cleaned = (_ihUiSections || []).map(s => ({
+    id: String(s?.id||'').trim(),
+    nivel: String(s?.nivel||'').trim(),
+    grado: String(s?.grado||'').trim(),
+    seccion: String(s?.seccion||'').trim(),
+    turno: String(s?.turno||'').trim(),
+    local_base: String(s?.local_base||'').trim(),
+    capacidad: (Number.isFinite(Number(s?.capacidad)) ? Math.max(0, Math.floor(Number(s?.capacidad))) : undefined),
+  })).filter(s => s.id);
+  _ihUiSections = cleaned;
+  ihUiWriteJson('ih-json-sections', cleaned);
+}
+
+function ihUiSyncTeachersToJson() {
+  const cleaned = (_ihUiTeachers || []).map(t => ({
+    id: String(t?.id||'').trim().toUpperCase(),
+    nombre: String(t?.nombre||'').trim(),
+    local_base: String(t?.local_base||'').trim(),
+    max_horas_semana: (Number.isFinite(Number(t?.max_horas_semana)) ? Math.max(0, Math.floor(Number(t?.max_horas_semana))) : 0),
+    availability: (t?.availability && typeof t.availability === 'object') ? t.availability : undefined,
+    locales_permitidos: Array.isArray(t?.locales_permitidos) ? t.locales_permitidos : undefined,
+  })).filter(t => t.id);
+  _ihUiTeachers = cleaned;
+  ihUiWriteJson('ih-json-teachers', cleaned);
+}
+
+function ihUiSyncLocalsToJson() {
+  const cleaned = (_ihUiLocals || []).map(l => ({
+    id: String(l?.id||'').trim().toUpperCase(),
+    nombre: String(l?.nombre||'').trim() || String(l?.id||'').trim().toUpperCase(),
+  })).filter(l => l.id);
+  _ihUiLocals = cleaned;
+  ihUiWriteJson('ih-json-locals', cleaned);
+}
+
+function ihUiSyncDemandsToJson() {
+  const cleaned = (_ihUiDemands || []).map(d => ({
+    section_id: String(d?.section_id||'').trim(),
+    course_id: String(d?.course_id||'').trim().toUpperCase(),
+    teacher_id: String(d?.teacher_id||'').trim().toUpperCase(),
+    hours_per_week: Math.max(0, Math.floor(Number(d?.hours_per_week)||0)),
+    required_local_id: String(d?.required_local_id||'').trim(),
+    required_room_type: String(d?.required_room_type||'').trim(),
+  })).filter(d => d.section_id && d.course_id && d.teacher_id && d.hours_per_week > 0);
+  _ihUiDemands = cleaned;
+  ihUiWriteJson('ih-json-demands', cleaned);
+}
+
+function ihUiRenderSections() {
+  ihUiSyncSectionsToJson();
+  const wrap = document.getElementById('ih-ui-sections-table');
+  const sel = document.getElementById('ih-ui-dem-sec');
+  if(sel) {
+    const opts = (_ihUiSections || []).slice().sort((a,b)=>String(a.id||'').localeCompare(String(b.id||'')))
+      .map(s => `<option value="${_escHtml(String(s.id||''))}">${_escHtml(String(s.id||''))} — ${_escHtml(String(s.nivel||''))} ${_escHtml(String(s.grado||''))}${_escHtml(String(s.seccion||''))}</option>`).join('');
+    sel.innerHTML = opts;
+  }
+  if(!wrap) return;
+  if(!_ihUiSections.length) {
+    wrap.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Aún no hay secciones.</div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <table class="table" style="width:100%;">
+      <thead><tr><th>ID</th><th>Nivel</th><th>Grado</th><th>Sección</th><th>Turno</th><th>Local</th><th style="width:90px;"></th></tr></thead>
+      <tbody>
+        ${_ihUiSections.map(s => `
+          <tr>
+            <td style="font-weight:800;color:var(--text);">${_escHtml(String(s.id||''))}</td>
+            <td>${_escHtml(String(s.nivel||''))}</td>
+            <td>${_escHtml(String(s.grado||''))}</td>
+            <td>${_escHtml(String(s.seccion||''))}</td>
+            <td>${_escHtml(String(s.turno||''))}</td>
+            <td>${_escHtml(String(s.local_base||''))}</td>
+            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteSection('${String(s.id||'').replace(/'/g,\"\\\\'\")}')" style="padding:6px 10px;">Quitar</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function ihUiAddSection() {
+  try {
+    const nivel = String(document.getElementById('ih-ui-sec-nivel')?.value || '').trim();
+    const grado = String(document.getElementById('ih-ui-sec-grado')?.value || '').trim();
+    const seccion = String(document.getElementById('ih-ui-sec-seccion')?.value || '').trim().toUpperCase();
+    const turno = String(document.getElementById('ih-ui-sec-turno')?.value || '').trim();
+    const local_base = String(document.getElementById('ih-ui-sec-local')?.value || '').trim();
+    if(!nivel || !grado || !seccion) throw new Error('Completa nivel, grado y sección');
+    const id = `${grado}${seccion}`;
+    const ex = _ihUiSections.find(s => String(s.id||'') === id);
+    if(ex) Object.assign(ex, { nivel, grado, seccion, turno, local_base });
+    else _ihUiSections.push({ id, nivel, grado, seccion, turno, local_base });
+    ihUiRenderAll();
+    toast('✅ Sección guardada','success');
+  } catch(e) {
+    toast('❌ ' + (e?.message || e), 'error');
+  }
+}
+
+function ihUiDeleteSection(id) {
+  const sid = String(id||'').trim();
+  _ihUiSections = (_ihUiSections || []).filter(s => String(s.id||'') !== sid);
+  _ihUiDemands = (_ihUiDemands || []).filter(d => String(d.section_id||'') !== sid);
+  ihUiRenderAll();
+}
+
+function ihUiRenderTeachers() {
+  ihUiSyncTeachersToJson();
+  const wrap = document.getElementById('ih-ui-teachers-table');
+  const sel = document.getElementById('ih-ui-dem-teacher');
+  if(sel) {
+    const opts = (_ihUiTeachers || []).slice().sort((a,b)=>String(a.id||'').localeCompare(String(b.id||'')))
+      .map(t => `<option value="${_escHtml(String(t.id||''))}">${_escHtml(String(t.id||''))} — ${_escHtml(String(t.nombre||t.id||''))}</option>`).join('');
+    sel.innerHTML = opts;
+  }
+  if(!wrap) return;
+  if(!_ihUiTeachers.length) {
+    wrap.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Aún no hay docentes.</div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <table class="table" style="width:100%;">
+      <thead><tr><th>ID</th><th>Nombre</th><th>Local</th><th>Max</th><th style="width:90px;"></th></tr></thead>
+      <tbody>
+        ${_ihUiTeachers.map(t => `
+          <tr>
+            <td style="font-weight:800;color:var(--text);">${_escHtml(String(t.id||''))}</td>
+            <td>${_escHtml(String(t.nombre||''))}</td>
+            <td>${_escHtml(String(t.local_base||''))}</td>
+            <td>${_escHtml(String(t.max_horas_semana||0))}</td>
+            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteTeacher('${String(t.id||'').replace(/'/g,\"\\\\'\")}')" style="padding:6px 10px;">Quitar</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function ihUiAddTeacher() {
+  try {
+    const id = String(document.getElementById('ih-ui-tea-id')?.value || '').trim().toUpperCase();
+    const nombre = String(document.getElementById('ih-ui-tea-nombre')?.value || '').trim();
+    const local_base = String(document.getElementById('ih-ui-tea-local')?.value || '').trim();
+    const max_horas_semana = Math.max(0, parseInt(String(document.getElementById('ih-ui-tea-max')?.value || '0'),10) || 0);
+    if(!id) throw new Error('Ingresa ID del docente');
+    if(!nombre) throw new Error('Ingresa nombre del docente');
+    const ex = _ihUiTeachers.find(t => String(t.id||'').toUpperCase() === id);
+    if(ex) Object.assign(ex, { id, nombre, local_base, max_horas_semana });
+    else _ihUiTeachers.push({ id, nombre, local_base, max_horas_semana });
+    const idEl = document.getElementById('ih-ui-tea-id'); if(idEl) idEl.value = '';
+    const nEl = document.getElementById('ih-ui-tea-nombre'); if(nEl) nEl.value = '';
+    ihUiRenderAll();
+    toast('✅ Docente guardado','success');
+  } catch(e) {
+    toast('❌ ' + (e?.message || e), 'error');
+  }
+}
+
+function ihUiDeleteTeacher(id) {
+  const tid = String(id||'').trim().toUpperCase();
+  _ihUiTeachers = (_ihUiTeachers || []).filter(t => String(t.id||'').toUpperCase() !== tid);
+  _ihUiDemands = (_ihUiDemands || []).filter(d => String(d.teacher_id||'').toUpperCase() !== tid);
+  ihUiRenderAll();
+}
+
+function ihUiRenderLocals() {
+  ihUiSyncLocalsToJson();
+  const wrap = document.getElementById('ih-ui-locals-table');
+  if(!wrap) return;
+  if(!_ihUiLocals.length) {
+    wrap.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Aún no hay locales.</div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <table class="table" style="width:100%;">
+      <thead><tr><th>ID</th><th>Nombre</th><th style="width:90px;"></th></tr></thead>
+      <tbody>
+        ${_ihUiLocals.map(l => `
+          <tr>
+            <td style="font-weight:800;color:var(--text);">${_escHtml(String(l.id||''))}</td>
+            <td>${_escHtml(String(l.nombre||''))}</td>
+            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteLocal('${String(l.id||'').replace(/'/g,\"\\\\'\")}')" style="padding:6px 10px;">Quitar</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+  ihUiRenderLocalSelects();
+}
+
+function ihUiAddLocal() {
+  try {
+    const id = String(document.getElementById('ih-ui-loc-id')?.value || '').trim().toUpperCase();
+    const nombre = String(document.getElementById('ih-ui-loc-nombre')?.value || '').trim();
+    if(!id) throw new Error('Ingresa ID del local');
+    if(!nombre) throw new Error('Ingresa nombre del local');
+    const ex = _ihUiLocals.find(l => String(l.id||'').toUpperCase() === id);
+    if(ex) Object.assign(ex, { id, nombre });
+    else _ihUiLocals.push({ id, nombre });
+    const idEl = document.getElementById('ih-ui-loc-id'); if(idEl) idEl.value = '';
+    const nEl = document.getElementById('ih-ui-loc-nombre'); if(nEl) nEl.value = '';
+    ihUiRenderAll();
+    toast('✅ Local guardado','success');
+  } catch(e) {
+    toast('❌ ' + (e?.message || e), 'error');
+  }
+}
+
+function ihUiDeleteLocal(id) {
+  const lid = String(id||'').trim().toUpperCase();
+  _ihUiLocals = (_ihUiLocals || []).filter(l => String(l.id||'').toUpperCase() !== lid);
+  if(!_ihUiLocals.length) ihUiEnsureDefaultLocal();
+  ihUiRenderAll();
+}
+
+function ihUiRenderCoursesSelect() {
+  const sel = document.getElementById('ih-ui-dem-course');
+  if(!sel) return;
+  const courses = ihLoadCourses().slice().sort((a,b)=>String(a.id||'').localeCompare(String(b.id||'')));
+  if(!courses.length) {
+    sel.innerHTML = '';
+    return;
+  }
+  sel.innerHTML = courses.map(c => `<option value="${_escHtml(String(c.id||''))}">${_escHtml(String(c.id||''))} — ${_escHtml(String(c.name||''))}</option>`).join('');
+}
+
+function ihUiRenderDemandsFromJson() {
+  _ihUiDemands = Array.isArray(ihUiSafeJsonParse('ih-json-demands', [])) ? ihUiSafeJsonParse('ih-json-demands', []) : [];
+  ihUiRenderAll();
+}
+
+function ihUiRenderDemands() {
+  ihUiRenderCoursesSelect();
+  ihUiSyncDemandsToJson();
+  const wrap = document.getElementById('ih-ui-demands-table');
+  if(!wrap) return;
+  if(!_ihUiDemands.length) {
+    wrap.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Aún no hay demands.</div>';
+    return;
+  }
+  const teacherOpts = (_ihUiTeachers || []).slice().sort((a,b)=>String(a.id||'').localeCompare(String(b.id||'')))
+    .map(t => `<option value="${_escHtml(String(t.id||''))}">${_escHtml(String(t.id||''))} — ${_escHtml(String(t.nombre||t.id||''))}</option>`).join('');
+  wrap.innerHTML = `
+    <table class="table" style="width:100%;">
+      <thead><tr><th>Sección</th><th>Curso</th><th>Horas</th><th>Docente</th><th style="width:90px;"></th></tr></thead>
+      <tbody>
+        ${_ihUiDemands.map((d, idx) => `
+          <tr>
+            <td style="font-weight:800;color:var(--text);">${_escHtml(String(d.section_id||''))}</td>
+            <td>${_escHtml(String(d.course_id||''))}</td>
+            <td>${_escHtml(String(d.hours_per_week||0))}</td>
+            <td>
+              <select onchange="ihUiSetDemandTeacher(${idx}, this.value)" style="width:100%;">
+                <option value="">(Selecciona)</option>
+                ${teacherOpts.replace(`value=\"${_escHtml(String(d.teacher_id||''))}\"`, `value=\"${_escHtml(String(d.teacher_id||''))}\" selected`)}
+              </select>
+            </td>
+            <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteDemand(${idx})" style="padding:6px 10px;">Quitar</button></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function ihUiSetDemandTeacher(idx, teacherId) {
+  const i = Number(idx);
+  if(!Number.isFinite(i) || i < 0 || i >= (_ihUiDemands||[]).length) return;
+  _ihUiDemands[i].teacher_id = String(teacherId||'').trim().toUpperCase();
+  ihUiSyncDemandsToJson();
+}
+
+function ihUiAddDemand() {
+  try {
+    const section_id = String(document.getElementById('ih-ui-dem-sec')?.value || '').trim();
+    const course_id = String(document.getElementById('ih-ui-dem-course')?.value || '').trim().toUpperCase();
+    const teacher_id = String(document.getElementById('ih-ui-dem-teacher')?.value || '').trim().toUpperCase();
+    const hours_per_week = Math.max(1, parseInt(String(document.getElementById('ih-ui-dem-hours')?.value || '1'),10) || 1);
+    if(!section_id || !course_id || !teacher_id) throw new Error('Selecciona sección, curso y docente');
+    const ex = _ihUiDemands.find(d => String(d.section_id||'')===section_id && String(d.course_id||'').toUpperCase()===course_id);
+    if(ex) Object.assign(ex, { section_id, course_id, teacher_id, hours_per_week });
+    else _ihUiDemands.push({ section_id, course_id, teacher_id, hours_per_week });
+    ihUiRenderAll();
+    toast('✅ Demand guardado','success');
+  } catch(e) {
+    toast('❌ ' + (e?.message || e), 'error');
+  }
+}
+
+function ihUiDeleteDemand(idx) {
+  const i = Number(idx);
+  if(!Number.isFinite(i)) return;
+  _ihUiDemands.splice(i, 1);
+  ihUiRenderAll();
 }
 
 function ihParseJson(id, label, fallback) {
