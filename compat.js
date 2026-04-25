@@ -75,7 +75,7 @@ function _docToRow(data, colegioId) {
 // Supabase los guarda como columnas JSONB en la tabla colegios.
 // ============================================================
 const _CONFIG_FIELD_MAP = {
-  general:    ['nombre','anio','eslogan','logo_url','apo_domain','niveles','grados','secciones','banner_imagenes'],
+  general:    ['nombre','anio','eslogan','logo_url','apo_domain','niveles','grados','secciones','banner_imagenes','rol_examenes_config'],
   factiliza:  ['factiliza_token','factiliza_instancia'],
   alumnos_ts: [], // solo se usaba como señal — Realtime lo reemplaza
 };
@@ -99,7 +99,7 @@ async function _getConfig(docId) {
   }
   const { data, error } = await _sb
     .from('colegios')
-    .select('id,nombre,anio,eslogan,logo_url,apo_domain,niveles,grados,secciones,banner_imagenes')
+    .select('id,nombre,anio,eslogan,logo_url,apo_domain,niveles,grados,secciones,banner_imagenes,rol_examenes_config')
     .eq('id', COLEGIO_ID)
     .single();
   if (error || !data) return { exists: false, data: () => ({}) };
@@ -116,6 +116,9 @@ async function _getConfig(docId) {
       grados:        typeof data.grados === 'object'? data.grados   : JSON.parse(data.grados    || '{}'),
       secciones:     Array.isArray(data.secciones) ? data.secciones : JSON.parse(data.secciones || '[]'),
       bannerImagenes: Array.isArray(data.banner_imagenes) ? data.banner_imagenes : JSON.parse(data.banner_imagenes || '[]'),
+      rolExamenesConfig: (data.rol_examenes_config && typeof data.rol_examenes_config === 'object')
+        ? data.rol_examenes_config
+        : JSON.parse(data.rol_examenes_config || '{}'),
     })
   };
 }
@@ -138,6 +141,7 @@ async function _setConfig(docId, data, options = {}) {
     if (data.eslogan !== undefined) update.eslogan = data.eslogan;
     if (data.logoUrl !== undefined) update.logo_url = data.logoUrl;
     if (data.apoDomain !== undefined) update.apo_domain = data.apoDomain;
+    if (data.rolExamenesConfig !== undefined) update.rol_examenes_config = data.rolExamenesConfig;
   }
   if (!Object.keys(update).length) return;
   update.updated_at = new Date().toISOString();
