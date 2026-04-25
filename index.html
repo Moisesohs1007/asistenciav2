@@ -2088,7 +2088,7 @@
           <span></span>
         </div><span class="msb-sublabel">Horarios por grado</span>
       </button>
-      <button class="msb-subitem" onclick="msbPickSub(this,'rol-examenes','comunicacion','📝 Rol de Exámenes')" style="display:none;">
+      <button class="msb-subitem" onclick="msbPickSub(this,'rol-examenes','comunicacion','📝 Rol de Exámenes')">
         <div class="msb-dot msb-dot-ico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 11h6"/>
@@ -2409,7 +2409,7 @@
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('ia-horarios');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h7"/></svg>🧩 Horarios</div>
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('horarios-grado');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/><path d="M7 13h10"/><path d="M7 17h7"/></svg>🗂️ Horarios por grado</div>
         <div class="nav-drop-sep"></div>
-        <div class="nav-drop-item" style="display:none;" onclick="event.stopPropagation();showSection('rol-examenes');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11h6"/><path d="M9 15h6"/><path d="M7 3h10a2 2 0 0 1 2 2v16l-3-2-3 2-3-2-3 2V5a2 2 0 0 1 2-2z"/></svg>📝 Rol de Exámenes</div>
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('rol-examenes');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11h6"/><path d="M9 15h6"/><path d="M7 3h10a2 2 0 0 1 2 2v16l-3-2-3 2-3-2-3 2V5a2 2 0 0 1 2-2z"/></svg>📝 Rol de Exámenes</div>
       </div>
     </button>
     <!-- Configuración -->
@@ -3388,7 +3388,7 @@
 
   <div class="section" id="sec-rol-examenes" onfocusin="initRolExamenes()" style="display:none;">
     <div class="page-title">Rol de Exámenes</div>
-    <div class="page-sub">Completa el formulario y genera el prompt para copiar en cualquier IA de generación</div>
+    <div class="page-sub">Completa el formulario, previsualiza y descarga en PDF o imagen</div>
 
     <div class="rex-layout">
       <div class="card">
@@ -3431,31 +3431,19 @@
         </div>
 
         <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
-          <button class="btn btn-primary" id="rex-btn-guardar" onclick="rexGuardar()" style="flex:1;justify-content:center;min-width:160px;">🧠 Generar prompt</button>
+          <button class="btn btn-primary" id="rex-btn-guardar" onclick="rexActualizar()" style="flex:1;justify-content:center;min-width:220px;">👁️ Actualizar vista previa</button>
           <button class="btn btn-ghost" onclick="rexReset()" style="justify-content:center;">Limpiar</button>
         </div>
         <div id="rex-ia-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
         <div class="divider"></div>
-        <div class="card-title" style="margin-top:0;"><span class="dot" style="background:var(--accent2)"></span>Prompt para IA</div>
-        <textarea id="rex-prompt-out" rows="9" readonly style="margin-top:10px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);width:100%;padding:10px;font-size:0.82rem;"></textarea>
+        <div class="card-title" style="margin-top:0;"><span class="dot" style="background:var(--accent2)"></span>Vista previa</div>
+        <div class="rex-preview-wrap" style="margin-top:10px;">
+          <div id="rex-preview"></div>
+        </div>
         <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
-          <button class="btn btn-ghost" onclick="rexCopiarPrompt()" style="border-color:var(--accent2);color:var(--accent2);">Copiar</button>
-          <button class="btn btn-ghost" onclick="rexDescargarLogo()" style="border-color:var(--accent2);color:var(--accent2);">⬇ Logo</button>
-        </div>
-        <div style="margin-top:8px;font-size:0.78rem;color:var(--muted);line-height:1.3;">
-          1) Presiona <b>⬇ Logo</b> y guarda la insignia. 2) En tu IA, adjunta ese logo junto con el prompt para que aparezca como insignia y marca de agua.
-        </div>
-        <div style="margin-top:10px;background:var(--surface2);border:1px dashed var(--border);border-radius:10px;padding:10px;font-size:0.82rem;line-height:1.35;color:var(--muted);">
-          <div style="font-weight:800;color:var(--text);margin-bottom:6px;">IA recomendadas para diseñar imágenes (pega el prompt y adjunta el logo)</div>
-          <div style="display:flex;flex-wrap:wrap;gap:10px;">
-            <a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;">ChatGPT (Imágenes)</a>
-            <a href="https://gemini.google.com/" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;">Gemini</a>
-            <a href="https://www.midjourney.com/" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;">Midjourney</a>
-            <a href="https://ideogram.ai/" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;">Ideogram (texto)</a>
-            <a href="https://firefly.adobe.com/" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;">Adobe Firefly</a>
-            <a href="https://leonardo.ai/" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;">Leonardo AI</a>
-            <a href="https://www.canva.com/ai-image-generator/" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;">Canva</a>
-          </div>
+          <button class="btn btn-ghost" onclick="rexDownloadPNG()" style="border-color:var(--accent2);color:var(--accent2);">⬇ Imagen (PNG)</button>
+          <button class="btn btn-ghost" onclick="rexDownloadPDF()" style="border-color:var(--accent2);color:var(--accent2);">⬇ PDF</button>
+          <button class="btn btn-ghost" onclick="rexPrint()" style="border-color:var(--accent2);color:var(--accent2);">🖨 Imprimir</button>
         </div>
       </div>
     </div>
@@ -7987,6 +7975,12 @@ function _escHtml(s) {
 }
 
 function initRolExamenes() {
+  if(!_rexState) {
+    try {
+      const raw = localStorage.getItem('rex_state_last');
+      if(raw) _rexState = JSON.parse(raw);
+    } catch(e) {}
+  }
   if(!_rexState) _rexState = _rexDefaultState();
   _rexState = _rexNormalizeState(_rexState);
   if(_rexInited) return;
@@ -8003,6 +7997,7 @@ function initRolExamenes() {
     if(opv) opv.textContent = String(_rexState.wmOpacity || 10) + '%';
   } catch(e) {}
   rexRenderDays();
+  try { rexRenderPreview(); } catch(e) {}
 }
 
 function rexReset() {
@@ -8011,10 +8006,10 @@ function rexReset() {
   initRolExamenes();
   try { localStorage.removeItem('rex_state_last'); } catch(e) {}
   try {
-    const out = document.getElementById('rex-prompt-out');
     const st = document.getElementById('rex-ia-status');
-    if(out) out.value = '';
     if(st) st.textContent = '';
+    const prev = document.getElementById('rex-preview');
+    if(prev) prev.innerHTML = '';
   } catch(e) {}
 }
 
@@ -8098,6 +8093,26 @@ function rexSyncFromInputs() {
     _rexState.msg = document.getElementById('rex-msg')?.value || '';
     _rexState.wmOpacity = parseInt(document.getElementById('rex-wm-opacity')?.value || '10', 10) || 10;
   } catch(e) {}
+}
+
+async function rexActualizar() {
+  if(!_rexInited) initRolExamenes();
+  _rexEnsureState();
+  rexSyncFromInputs();
+  const btn = document.getElementById('rex-btn-guardar');
+  const st = document.getElementById('rex-ia-status');
+  try {
+    if(btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
+    if(st) st.textContent = 'Actualizando vista previa...';
+    try { localStorage.setItem('rex_state_last', JSON.stringify(_rexState)); } catch(e) {}
+    await rexRenderPreview();
+    if(st) st.textContent = '✅ Vista previa lista';
+  } catch(e) {
+    if(st) st.textContent = '❌ Error: ' + e.message;
+    toast('❌ Error: ' + e.message, 'error');
+  } finally {
+    if(btn) { btn.disabled = false; btn.style.opacity = ''; }
+  }
 }
 
 function rexAuditLocal(entry) {
@@ -9983,6 +9998,48 @@ async function rexDownloadPNG() {
     toast('Descarga lista','success');
   } catch(e) {
     toast('Error al descargar: ' + e.message, 'error');
+  } finally {
+    document.body.removeChild(el);
+    try { window.scrollTo({ top: sy, left: 0, behavior: 'instant' }); } catch(e) { window.scrollTo(0, sy); }
+  }
+}
+
+async function rexDownloadPDF() {
+  if(!_rexInited) initRolExamenes();
+  _rexEnsureState();
+  rexSyncFromInputs();
+  const sy = window.scrollY || 0;
+  if (!window.html2canvas) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  if(!window.jspdf){ toast('Error cargando jsPDF','error'); return; }
+  const { jsPDF } = window.jspdf;
+  let logoB64 = null;
+  try { logoB64 = await cargarLogoBase64(); } catch(e) { logoB64 = null; }
+  const logoSrc = logoB64 || (getLogo ? getLogo() : COLEGIO_LOGO);
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;left:0;top:0;width:794px;background:#ffffff;padding:0;margin:0;transform:translateX(-200vw);';
+  el.innerHTML = rexBuildDocHTML(logoSrc, _rexState.wmOpacity);
+  document.body.appendChild(el);
+  try {
+    const docEl = el.querySelector('.rex-doc');
+    if(docEl) { docEl.style.width = '794px'; docEl.style.minHeight = '1123px'; docEl.style.margin = '0'; }
+  } catch(e) {}
+  try {
+    const canvas = await html2canvas(el, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#ffffff' });
+    const imgData = canvas.toDataURL('image/png');
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    doc.addImage(imgData, 'PNG', 0, 0, 210, 297);
+    const ymd = new Date().toISOString().slice(0,10);
+    doc.save(`rol-examenes-${ymd}.pdf`);
+    toast('Descarga lista','success');
+  } catch(e) {
+    toast('Error al generar PDF: ' + e.message, 'error');
   } finally {
     document.body.removeChild(el);
     try { window.scrollTo({ top: sy, left: 0, behavior: 'instant' }); } catch(e) { window.scrollTo(0, sy); }
