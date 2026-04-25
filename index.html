@@ -3631,27 +3631,12 @@
             </div>
           </div>
 
-          <details style="margin-top:12px;">
-            <summary style="cursor:pointer;color:var(--accent2);font-weight:800;">Modo avanzado (JSON)</summary>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:10px;">
-              <div class="form-group" style="margin:0;">
-                <label>Secciones (sections)</label>
-                <textarea id="ih-json-sections" rows="6" placeholder='[{"id":"PRI-1A","nivel":"Primaria","grado":"1","seccion":"A","local_base":"A"}]' style="resize:vertical;"></textarea>
-              </div>
-              <div class="form-group" style="margin:0;">
-                <label>Docentes (teachers)</label>
-                <textarea id="ih-json-teachers" rows="6" placeholder='[{"id":"D1","nombre":"Juan Pérez","local_base":"A","availability":{"Lun":[1,2,4,5,6]}}]' style="resize:vertical;"></textarea>
-              </div>
-              <div class="form-group" style="margin:0;">
-                <label>Cursos por sección (demands)</label>
-                <textarea id="ih-json-demands" rows="6" placeholder='[{"section_id":"PRI-1A","course_id":"MAT","hours_per_week":5,"teacher_id":"D1"}]' style="resize:vertical;"></textarea>
-              </div>
-              <div class="form-group" style="margin:0;">
-                <label>Locales (locals)</label>
-                <textarea id="ih-json-locals" rows="6" placeholder='[{"id":"A","nombre":"Local A"},{"id":"B","nombre":"Local B"}]' style="resize:vertical;"></textarea>
-              </div>
-            </div>
-          </details>
+          <div style="display:none;">
+            <textarea id="ih-json-sections" rows="2"></textarea>
+            <textarea id="ih-json-teachers" rows="2"></textarea>
+            <textarea id="ih-json-demands" rows="2"></textarea>
+            <textarea id="ih-json-locals" rows="2"></textarea>
+          </div>
         </div>
       </div>
 
@@ -8670,6 +8655,28 @@ let _ihUiTeachers = [];
 let _ihUiDemands = [];
 let _ihUiLocals = [];
 
+function ihUiTeacherHoursAssigned(teacherId, excludeIdx) {
+  const tid = String(teacherId || '').trim().toUpperCase();
+  let sum = 0;
+  for (let i = 0; i < (_ihUiDemands || []).length; i++) {
+    if (excludeIdx !== undefined && i === excludeIdx) continue;
+    const d = _ihUiDemands[i];
+    if (String(d?.teacher_id || '').trim().toUpperCase() !== tid) continue;
+    sum += Math.max(0, Math.floor(Number(d?.hours_per_week) || 0));
+  }
+  return sum;
+}
+
+function ihUiCanAssignTeacherForDemand(teacherId, demandHours, excludeIdx) {
+  const tid = String(teacherId || '').trim().toUpperCase();
+  if (!tid) return true;
+  const t = (_ihUiTeachers || []).find(x => String(x?.id || '').trim().toUpperCase() === tid);
+  const max = Math.max(0, Math.floor(Number(t?.max_horas_semana) || 0));
+  if (!max) return true;
+  const used = ihUiTeacherHoursAssigned(tid, excludeIdx);
+  return (used + Math.max(0, Math.floor(Number(demandHours) || 0))) <= max;
+}
+
 function ihUiSafeJsonParse(elId, fallback) {
   try { return JSON.parse(String(document.getElementById(elId)?.value || '').trim() || ''); } catch(e) { return fallback; }
 }
@@ -8961,36 +8968,60 @@ function ihUiRenderDemands() {
     wrap.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Aún no hay demands.</div>';
     return;
   }
-  const teacherOpts = (_ihUiTeachers || []).slice().sort((a,b)=>String(a.id||'').localeCompare(String(b.id||'')))
-    .map(t => `<option value="${_escHtml(String(t.id||''))}">${_escHtml(String(t.id||''))} — ${_escHtml(String(t.nombre||t.id||''))}</option>`).join('');
+  const teachersSorted = (_ihUiTeachers || []).slice().sort((a,b)=>String(a.id||'').localeCompare(String(b.id||'')));
   wrap.innerHTML = `
     <table class="table" style="width:100%;">
       <thead><tr><th>Sección</th><th>Curso</th><th>Horas</th><th>Docente</th><th style="width:90px;"></th></tr></thead>
       <tbody>
-        ${_ihUiDemands.map((d, idx) => `
+        ${_ihUiDemands.map((d, idx) => {
+          const hours = Math.max(0, Math.floor(Number(d?.hours_per_week) || 0));
+          const curTid = String(d?.teacher_id || '').trim().toUpperCase();
+          const options = teachersSorted.map(t => {
+            const tid = String(t?.id || '').trim().toUpperCase();
+            const max = Math.max(0, Math.floor(Number(t?.max_horas_semana) || 0));
+            const used = ihUiTeacherHoursAssigned(tid, idx);
+            const wouldExceed = max ? (used + hours > max) : false;
+            const disabled = wouldExceed && tid !== curTid;
+            const label = `${tid} — ${String(t?.nombre || tid)}${max ? ` (${used}/${max})` : (used ? ` (${used})` : '')}`;
+            return `<option value="${_escHtml(tid)}"${tid===curTid?' selected':''}${disabled?' disabled':''}>${_escHtml(label)}</option>`;
+          }).join('');
+          return `
           <tr>
             <td style="font-weight:800;color:var(--text);">${_escHtml(String(d.section_id||''))}</td>
             <td>${_escHtml(String(d.course_id||''))}</td>
             <td>${_escHtml(String(d.hours_per_week||0))}</td>
             <td>
-              <select onchange="ihUiSetDemandTeacher(${idx}, this.value)" style="width:100%;">
+              <select onchange="ihUiSetDemandTeacher(${idx}, this.value, this)" style="width:100%;">
                 <option value="">(Selecciona)</option>
-                ${teacherOpts.replace(`value=\"${_escHtml(String(d.teacher_id||''))}\"`, `value=\"${_escHtml(String(d.teacher_id||''))}\" selected`)}
+                ${options}
               </select>
             </td>
             <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteDemand(${idx})" style="padding:6px 10px;">Quitar</button></td>
           </tr>
-        `).join('')}
+        `;
+        }).join('')}
       </tbody>
     </table>
   `;
 }
 
-function ihUiSetDemandTeacher(idx, teacherId) {
+function ihUiSetDemandTeacher(idx, teacherId, el) {
   const i = Number(idx);
   if(!Number.isFinite(i) || i < 0 || i >= (_ihUiDemands||[]).length) return;
-  _ihUiDemands[i].teacher_id = String(teacherId||'').trim().toUpperCase();
+  const nextTid = String(teacherId||'').trim().toUpperCase();
+  const prevTid = String(_ihUiDemands[i]?.teacher_id || '').trim().toUpperCase();
+  const hours = Math.max(0, Math.floor(Number(_ihUiDemands[i]?.hours_per_week) || 0));
+  if(nextTid && !ihUiCanAssignTeacherForDemand(nextTid, hours, i)) {
+    const t = (_ihUiTeachers || []).find(x => String(x?.id || '').trim().toUpperCase() === nextTid);
+    const max = Math.max(0, Math.floor(Number(t?.max_horas_semana) || 0));
+    const used = ihUiTeacherHoursAssigned(nextTid, i);
+    if(el) el.value = prevTid;
+    toast(`❌ ${nextTid}: excede máximo (${used}+${hours} > ${max})`, 'error');
+    return;
+  }
+  _ihUiDemands[i].teacher_id = nextTid;
   ihUiSyncDemandsToJson();
+  ihUiRenderDemands();
 }
 
 function ihUiAddDemand() {
@@ -9001,6 +9032,13 @@ function ihUiAddDemand() {
     const hours_per_week = Math.max(1, parseInt(String(document.getElementById('ih-ui-dem-hours')?.value || '1'),10) || 1);
     if(!section_id || !course_id || !teacher_id) throw new Error('Selecciona sección, curso y docente');
     const ex = _ihUiDemands.find(d => String(d.section_id||'')===section_id && String(d.course_id||'').toUpperCase()===course_id);
+    const excludeIdx = ex ? _ihUiDemands.indexOf(ex) : undefined;
+    if(!ihUiCanAssignTeacherForDemand(teacher_id, hours_per_week, excludeIdx)) {
+      const t = (_ihUiTeachers || []).find(x => String(x?.id || '').trim().toUpperCase() === teacher_id);
+      const max = Math.max(0, Math.floor(Number(t?.max_horas_semana) || 0));
+      const used = ihUiTeacherHoursAssigned(teacher_id, excludeIdx);
+      throw new Error(`${teacher_id}: excede máximo (${used}+${hours_per_week} > ${max})`);
+    }
     if(ex) Object.assign(ex, { section_id, course_id, teacher_id, hours_per_week });
     else _ihUiDemands.push({ section_id, course_id, teacher_id, hours_per_week });
     ihUiRenderAll();
@@ -9230,13 +9268,29 @@ async function ihGuardarEnBD() {
       colegio_id,
       section_id: String(d?.section_id || '').trim(),
       course_id: String(d?.course_id || '').trim().toUpperCase(),
-      teacher_id: String(d?.teacher_id || '').trim(),
+      teacher_id: String(d?.teacher_id || '').trim().toUpperCase(),
       hours_per_week: Math.max(0, Math.floor(Number(d?.hours_per_week) || 0)),
       required_room_type: String(d?.required_room_type || '').trim(),
       required_local_id: String(d?.required_local_id || '').trim(),
     })).filter(d => d.section_id && d.course_id && d.teacher_id && d.hours_per_week > 0);
 
     if(!demandsRows.length) throw new Error('Demands inválido: faltan campos (section_id/course_id/teacher_id/hours_per_week)');
+
+    {
+      const maxMap = new Map(teachersRows.map(t => [String(t.id || '').trim().toUpperCase(), Math.max(0, Math.floor(Number(t.max_horas_semana) || 0))]));
+      const nameMap = new Map(teachersRows.map(t => [String(t.id || '').trim().toUpperCase(), String(t.nombre || t.id || '').trim()]));
+      const sumMap = new Map();
+      for (const d of demandsRows) {
+        const tid = String(d.teacher_id || '').trim().toUpperCase();
+        sumMap.set(tid, (sumMap.get(tid) || 0) + Math.max(0, Math.floor(Number(d.hours_per_week) || 0)));
+      }
+      const bad = [];
+      for (const [tid, used] of sumMap.entries()) {
+        const max = maxMap.get(tid) || 0;
+        if (max && used > max) bad.push(`${tid} (${nameMap.get(tid) || tid}): ${used}/${max}`);
+      }
+      if (bad.length) throw new Error('Horas máximas excedidas: ' + bad.join(' | '));
+    }
 
     const chunk = async (rows, size, fn) => {
       for(let i=0;i<rows.length;i+=size) await fn(rows.slice(i,i+size));
