@@ -3467,6 +3467,43 @@
 
     <div class="card">
       <div class="card-title"><span class="dot"></span>1) Jornada (horas y recesos)</div>
+      <div style="margin-top:10px;border:1px solid var(--border);background:var(--surface2);border-radius:14px;padding:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <div style="font-weight:800;color:var(--text);">Jornadas (por nivel / especiales / virtual)</div>
+          <div style="font-size:0.78rem;color:var(--muted);line-height:1.25;">Crea varias jornadas y luego asigna cada sección a su jornada.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end;margin-top:10px;">
+          <div class="form-group" style="margin:0;">
+            <label>ID jornada</label>
+            <input id="ih-jor-id" type="text" placeholder="DEFAULT / PRIM_AM / SEC_PM / VIRTUAL" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9_]/g,'')">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Nombre</label>
+            <input id="ih-jor-nombre" type="text" placeholder="Primaria (Mañana)">
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Tipo</label>
+            <select id="ih-jor-tipo">
+              <option value="normal" selected>Normal</option>
+              <option value="especial">Especial</option>
+              <option value="virtual">Virtual</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label>Grupo comparación</label>
+            <input id="ih-jor-compare" type="text" placeholder="MAÑANA / TARDE (para choques de docente)" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9_ÁÉÍÓÚÑ -]/g,'')">
+          </div>
+          <button class="btn btn-primary" onclick="ihUiUpsertJornadaMeta()" style="justify-content:center;">+ Guardar</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 180px;gap:10px;align-items:end;margin-top:10px;">
+          <div class="form-group" style="margin:0;">
+            <label>Jornada activa (la que editas abajo)</label>
+            <select id="ih-jornada-select" onchange="ihUiSelectJornada(this.value)"></select>
+          </div>
+          <button class="btn btn-ghost" onclick="ihUiSelectJornada(document.getElementById('ih-jornada-select')?.value || 'DEFAULT')" style="justify-content:center;">Recargar</button>
+        </div>
+        <div id="ih-jornadas-table" style="margin-top:10px;overflow:auto;max-height:180px;"></div>
+      </div>
       <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="ihOpenJornadaModal()" style="justify-content:center;min-width:220px;">⏱️ Definir horas y recesos</button>
         <button class="btn btn-ghost" onclick="ihRenderPreview()" style="justify-content:center;">🗓️ Generar cuadro semanal</button>
@@ -3540,7 +3577,7 @@
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin-top:12px;">
             <div style="border:1px solid var(--border);border-radius:12px;padding:12px;min-width:0;">
               <div style="font-weight:800;color:var(--text);margin-bottom:8px;">Secciones</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;align-items:end;">
                 <div class="form-group" style="margin:0;">
                   <label>Nivel</label>
                   <select id="ih-ui-sec-nivel">
@@ -3556,6 +3593,10 @@
                 <div class="form-group" style="margin:0;">
                   <label>Sección</label>
                   <input id="ih-ui-sec-seccion" type="text" placeholder="A">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>Jornada</label>
+                  <select id="ih-ui-sec-jornada"></select>
                 </div>
                 <div class="form-group" style="margin:0;">
                   <label>Turno</label>
@@ -3601,7 +3642,7 @@
 
             <div style="border:1px solid var(--border);border-radius:12px;padding:12px;min-width:0;">
               <div style="font-weight:800;color:var(--text);margin-bottom:8px;">Locales</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;align-items:end;">
                 <div class="form-group" style="margin:0;">
                   <label>ID</label>
                   <input id="ih-ui-loc-id" type="text" placeholder="MAIN" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9_]/g,'')">
@@ -3609,6 +3650,13 @@
                 <div class="form-group" style="margin:0;">
                   <label>Nombre</label>
                   <input id="ih-ui-loc-nombre" type="text" placeholder="Local principal">
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>Virtual</label>
+                  <select id="ih-ui-loc-virtual">
+                    <option value="0" selected>No</option>
+                    <option value="1">Sí</option>
+                  </select>
                 </div>
                 <button class="btn btn-primary" onclick="ihUiAddLocal()" style="justify-content:center;">+ Agregar</button>
                 <button class="btn btn-ghost" onclick="ihUiEnsureDefaultLocal()" style="justify-content:center;">Crear MAIN</button>
@@ -3618,7 +3666,7 @@
 
             <div style="border:1px solid var(--border);border-radius:12px;padding:12px;min-width:0;">
               <div style="font-weight:800;color:var(--text);margin-bottom:8px;">Demands (carga por sección)</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end;">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;align-items:end;">
                 <div class="form-group" style="margin:0;">
                   <label>Sección</label>
                   <select id="ih-ui-dem-sec"></select>
@@ -3630,6 +3678,10 @@
                 <div class="form-group" style="margin:0;">
                   <label>Docente</label>
                   <select id="ih-ui-dem-teacher"></select>
+                </div>
+                <div class="form-group" style="margin:0;">
+                  <label>Local</label>
+                  <select id="ih-ui-dem-local"></select>
                 </div>
                 <div class="form-group" style="margin:0;">
                   <label>Horas/semana</label>
@@ -3644,6 +3696,7 @@
           </div>
 
           <div style="display:none;">
+            <textarea id="ih-json-jornadas" rows="2"></textarea>
             <textarea id="ih-json-sections" rows="2"></textarea>
             <textarea id="ih-json-teachers" rows="2"></textarea>
             <textarea id="ih-json-demands" rows="2"></textarea>
@@ -8184,6 +8237,8 @@ async function rexCopiarPrompt() {
 
 let _ihJornada = null;
 let _ihJornadaAccepted = false;
+let _ihUiJornadas = [];
+let _ihActiveJornadaId = 'DEFAULT';
 
 function ihOpenJornadaModal() {
   ihModalRenderRows();
@@ -8195,7 +8250,9 @@ function ihOpenJornadaModal() {
 }
 
 function ihModalRenderRows() {
-  const n = Math.max(4, Math.min(12, parseInt(document.getElementById('ih-md-slots')?.value || '6', 10) || 6));
+  const preset = (_ihJornada && Array.isArray(_ihJornada.blocks) && _ihJornada.blocks.length) ? _ihJornada.blocks : null;
+  const nFromInput = Math.max(4, Math.min(12, parseInt(document.getElementById('ih-md-slots')?.value || '6', 10) || 6));
+  const n = preset ? Math.max(4, Math.min(12, preset.length)) : nFromInput;
   const wrap = document.getElementById('ih-md-rows');
   const st = document.getElementById('ih-md-status');
   if(!wrap) return;
@@ -8203,9 +8260,10 @@ function ihModalRenderRows() {
 
   let t = '08:00';
   for(let i=1;i<=n;i++) {
-    const isBreak = i === 3;
-    const dur = isBreak ? 15 : 45;
-    const end = ihAddMinutes(t, dur);
+    const p = preset ? preset[i - 1] : null;
+    const isBreak = p ? (String(p.type||'').toUpperCase() === 'RECESO') : (i === 3);
+    const start = p ? String(p.start||'') : t;
+    const end = p ? String(p.end||'') : ihAddMinutes(t, (isBreak ? 15 : 45));
     const row = document.createElement('div');
     row.style.cssText = 'display:grid;grid-template-columns:90px 140px 1fr 1fr;gap:10px;align-items:center;';
     row.innerHTML = `
@@ -8214,11 +8272,11 @@ function ihModalRenderRows() {
         <option value="CLASE"${isBreak?'':' selected'}>Clase</option>
         <option value="RECESO"${isBreak?' selected':''}>Receso</option>
       </select>
-      <input id="ih-md-start-${i}" type="time" value="${t}">
+      <input id="ih-md-start-${i}" type="time" value="${start}">
       <input id="ih-md-end-${i}" type="time" value="${end}">
     `;
     wrap.appendChild(row);
-    t = end;
+    t = end || t;
   }
   if(st) st.textContent = 'Completa o ajusta los bloques. Marca los recesos como “Receso”.';
 }
@@ -8266,6 +8324,8 @@ function ihGuardarJornada() {
   _ihJornadaAccepted = false;
   try { localStorage.setItem('asmqr_ih_jornada', JSON.stringify(_ihJornada)); } catch(e) {}
 
+  try { ihUiUpsertActiveJornadaSchedule(false); } catch(e) {}
+
   closeModal('modal-ih-jornada');
   ihRenderPreview();
   ihActualizarParams();
@@ -8294,6 +8354,146 @@ function ihActualizarParams() {
   const ta = document.getElementById('ih-json-params');
   const p = ihGetParams();
   if(ta) ta.value = p ? JSON.stringify(p, null, 2) : '';
+}
+
+function ihUiEnsureDefaultJornada() {
+  if(!Array.isArray(_ihUiJornadas)) _ihUiJornadas = [];
+  const ex = _ihUiJornadas.find(j => String(j?.id||'').trim().toUpperCase() === 'DEFAULT');
+  if(ex) return;
+  _ihUiJornadas.unshift({ id: 'DEFAULT', nombre: 'Jornada', tipo: 'normal', compare_group: 'DEFAULT', days: ['Lun','Mar','Mie','Jue','Vie'], blocks: [] });
+}
+
+function ihUiSyncJornadasToJson() {
+  const cleaned = (_ihUiJornadas || []).map(j => ({
+    id: String(j?.id||'').trim().toUpperCase(),
+    nombre: String(j?.nombre||'').trim() || String(j?.id||'').trim().toUpperCase(),
+    tipo: String(j?.tipo||'normal').trim() || 'normal',
+    nivel: String(j?.nivel||'').trim(),
+    compare_group: String(j?.compare_group||'').trim().toUpperCase() || String(j?.id||'').trim().toUpperCase(),
+    days: Array.isArray(j?.days) ? j.days.map(x => String(x||'').trim()).filter(Boolean) : ['Lun','Mar','Mie','Jue','Vie'],
+    blocks: Array.isArray(j?.blocks) ? j.blocks.map(b => ({
+      slot: Math.max(1, parseInt(String(b?.slot||''),10) || 0),
+      type: String(b?.type||'CLASE').toUpperCase() === 'RECESO' ? 'RECESO' : 'CLASE',
+      start: String(b?.start||'').trim(),
+      end: String(b?.end||'').trim(),
+    })).filter(b => b.slot && b.start && b.end) : [],
+    accepted: !!j?.accepted,
+  })).filter(j => j.id);
+  _ihUiJornadas = cleaned;
+  ihUiWriteJson('ih-json-jornadas', cleaned);
+}
+
+function ihUiRenderJornadas() {
+  ihUiSyncJornadasToJson();
+  ihUiEnsureDefaultJornada();
+  ihUiSyncJornadasToJson();
+
+  const sel = document.getElementById('ih-jornada-select');
+  const secSel = document.getElementById('ih-ui-sec-jornada');
+  const wrap = document.getElementById('ih-jornadas-table');
+  const opts = (_ihUiJornadas || []).slice().sort((a,b)=>String(a.id||'').localeCompare(String(b.id||'')))
+    .map(j => {
+      const id = String(j.id||'').trim().toUpperCase();
+      const nombre = String(j.nombre||j.id||'').trim();
+      const tipo = String(j.tipo||'normal').trim();
+      const cg = String(j.compare_group||id).trim();
+      const tag = (j.accepted ? '✅' : '⏳');
+      return `<option value="${_escHtml(id)}"${id===String(_ihActiveJornadaId||'DEFAULT').toUpperCase()?' selected':''}>${_escHtml(tag+' '+id+' — '+nombre+' ['+tipo+'] ('+cg+')')}</option>`;
+    }).join('');
+  if(sel) sel.innerHTML = opts;
+  if(secSel) secSel.innerHTML = opts.replaceAll('✅ ','').replaceAll('⏳ ','');
+
+  if(!wrap) return;
+  if(!_ihUiJornadas.length) {
+    wrap.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Aún no hay jornadas.</div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <table class="table" style="width:100%;">
+      <thead><tr><th>ID</th><th>Nombre</th><th>Tipo</th><th>Comparación</th><th style="width:140px;"></th></tr></thead>
+      <tbody>
+        ${_ihUiJornadas.map(j => `
+          <tr>
+            <td style="font-weight:800;color:var(--text);">${_escHtml(String(j.id||''))}</td>
+            <td>${_escHtml(String(j.nombre||''))}</td>
+            <td>${_escHtml(String(j.tipo||''))}</td>
+            <td>${_escHtml(String(j.compare_group||j.id||''))}</td>
+            <td style="text-align:right;">
+              <button class="btn btn-ghost" onclick="ihUiSelectJornada('${String(j.id||'')}')" style="padding:6px 10px;">Editar</button>
+              <button class="btn btn-ghost" onclick="ihUiDeleteJornada('${String(j.id||'')}')" style="padding:6px 10px;">Quitar</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function ihUiUpsertJornadaMeta() {
+  try {
+    const id = String(document.getElementById('ih-jor-id')?.value || '').trim().toUpperCase();
+    const nombre = String(document.getElementById('ih-jor-nombre')?.value || '').trim();
+    const tipo = String(document.getElementById('ih-jor-tipo')?.value || 'normal').trim();
+    const compare_group = String(document.getElementById('ih-jor-compare')?.value || '').trim().toUpperCase();
+    if(!id) throw new Error('Ingresa ID de jornada');
+    const ex = (_ihUiJornadas || []).find(j => String(j?.id||'').trim().toUpperCase() === id);
+    if(ex) Object.assign(ex, { id, nombre: (nombre || ex.nombre || id), tipo, compare_group: (compare_group || ex.compare_group || id) });
+    else _ihUiJornadas.push({ id, nombre: (nombre || id), tipo, compare_group: (compare_group || id), days: ['Lun','Mar','Mie','Jue','Vie'], blocks: [] });
+    _ihActiveJornadaId = id;
+    ihUiSelectJornada(id);
+    const idEl = document.getElementById('ih-jor-id'); if(idEl) idEl.value = '';
+    const nEl = document.getElementById('ih-jor-nombre'); if(nEl) nEl.value = '';
+    toast('✅ Jornada guardada','success');
+  } catch(e) {
+    toast('❌ ' + (e?.message || e), 'error');
+  }
+}
+
+function ihUiDeleteJornada(id) {
+  const jid = String(id||'').trim().toUpperCase();
+  if(!jid) return;
+  if(jid === 'DEFAULT') { toast('No se puede quitar DEFAULT','warning'); return; }
+  _ihUiJornadas = (_ihUiJornadas || []).filter(j => String(j?.id||'').trim().toUpperCase() !== jid);
+  _ihUiSections = (_ihUiSections || []).map(s => (String(s?.jornada_id||'').trim().toUpperCase() === jid ? { ...s, jornada_id: 'DEFAULT' } : s));
+  if(String(_ihActiveJornadaId||'DEFAULT').toUpperCase() === jid) _ihActiveJornadaId = 'DEFAULT';
+  ihUiSelectJornada(_ihActiveJornadaId);
+}
+
+function ihUiUpsertActiveJornadaSchedule(markAccepted) {
+  const jid = String(_ihActiveJornadaId||'DEFAULT').trim().toUpperCase() || 'DEFAULT';
+  const ex = (_ihUiJornadas || []).find(j => String(j?.id||'').trim().toUpperCase() === jid);
+  if(!ex) return;
+  if(_ihJornada && Array.isArray(_ihJornada.blocks)) {
+    ex.days = Array.isArray(_ihJornada.days) ? _ihJornada.days : ['Lun','Mar','Mie','Jue','Vie'];
+    ex.blocks = _ihJornada.blocks;
+  }
+  if(markAccepted) ex.accepted = true;
+  ihUiRenderJornadas();
+}
+
+function ihUiSelectJornada(id) {
+  const jid = String(id||'DEFAULT').trim().toUpperCase() || 'DEFAULT';
+  _ihActiveJornadaId = jid;
+  ihUiEnsureDefaultJornada();
+  const ex = (_ihUiJornadas || []).find(j => String(j?.id||'').trim().toUpperCase() === jid);
+  if(ex && Array.isArray(ex.blocks) && ex.blocks.length) {
+    _ihJornada = { days: Array.isArray(ex.days)&&ex.days.length ? ex.days : ['Lun','Mar','Mie','Jue','Vie'], blocks: ex.blocks };
+    _ihJornadaAccepted = !!ex.accepted;
+    ihRenderPreview();
+    ihActualizarParams();
+    const btn = document.getElementById('ih-btn-aceptar');
+    if(btn) { btn.disabled = _ihJornadaAccepted; btn.textContent = _ihJornadaAccepted ? 'Jornada aceptada' : 'Aceptar jornada'; }
+  } else {
+    _ihJornada = null;
+    _ihJornadaAccepted = false;
+    const wrap = document.getElementById('ih-preview-wrap');
+    if(wrap) { wrap.innerHTML = ''; wrap.style.display = 'none'; }
+    ihActualizarParams();
+    const btn = document.getElementById('ih-btn-aceptar');
+    if(btn) { btn.disabled = true; btn.textContent = 'Aceptar jornada'; }
+  }
+  ihUiRenderJornadas();
+  ihUiRenderAll();
 }
 
 function ihKey(suffix) {
@@ -8613,10 +8813,11 @@ function ihRenderPreview() {
 function ihAceptarJornada() {
   if(!_ihJornada) { toast('Primero define la jornada','warning'); return; }
   _ihJornadaAccepted = true;
+  try { ihUiUpsertActiveJornadaSchedule(true); } catch(e) {}
   const btn = document.getElementById('ih-btn-aceptar');
   if(btn) { btn.disabled = true; btn.textContent = 'Jornada aceptada'; }
   const st2 = document.getElementById('ih-aceptado-status');
-  if(st2) st2.textContent = '✅ Jornada aceptada. Ahora llena los criterios (JSON) y genera el prompt.';
+  if(st2) st2.textContent = '✅ Jornada aceptada. Ahora llena la configuración y guarda en BD.';
   ihActualizarParams();
   const crit = document.getElementById('ih-criterios-card');
   if(crit) crit.style.display = '';
@@ -8626,6 +8827,8 @@ function ihAceptarJornada() {
 function ihLimpiar() {
   _ihJornada = null;
   _ihJornadaAccepted = false;
+  _ihUiJornadas = [];
+  _ihActiveJornadaId = 'DEFAULT';
   try { localStorage.removeItem('asmqr_ih_jornada'); } catch(e) {}
   _ihActiveGrade = '';
 
@@ -8642,7 +8845,7 @@ function ihLimpiar() {
   const crit = document.getElementById('ih-criterios-card');
   if(crit) crit.style.display = 'none';
 
-  const ids = ['ih-json-sections','ih-json-teachers','ih-json-demands','ih-json-locals','ih-json-constraints','ih-json-objective','ih-json-params','ih-out'];
+  const ids = ['ih-json-jornadas','ih-json-sections','ih-json-teachers','ih-json-demands','ih-json-locals','ih-json-constraints','ih-json-objective','ih-json-params','ih-out'];
   ids.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   const st3 = document.getElementById('ih-status');
   if(st3) st3.textContent = '';
@@ -8694,16 +8897,25 @@ function ihUiEnsureDefaultLocal() {
 }
 
 function ihUiInit() {
+  _ihUiJornadas = Array.isArray(ihUiSafeJsonParse('ih-json-jornadas', [])) ? ihUiSafeJsonParse('ih-json-jornadas', []) : [];
+  ihUiEnsureDefaultJornada();
+  if(!(_ihUiJornadas||[]).length) _ihUiJornadas = [{ id: 'DEFAULT', nombre: 'Jornada', tipo: 'normal', compare_group: 'DEFAULT', days: ['Lun','Mar','Mie','Jue','Vie'], blocks: [] }];
+  if(!_ihActiveJornadaId) _ihActiveJornadaId = 'DEFAULT';
+  if(!(_ihUiJornadas||[]).some(j => String(j?.id||'').trim().toUpperCase() === String(_ihActiveJornadaId||'DEFAULT').trim().toUpperCase())) _ihActiveJornadaId = 'DEFAULT';
+
   _ihUiSections = Array.isArray(ihUiSafeJsonParse('ih-json-sections', [])) ? ihUiSafeJsonParse('ih-json-sections', []) : [];
+  _ihUiSections = (_ihUiSections || []).map(s => ({ ...s, jornada_id: String(s?.jornada_id||'DEFAULT').trim().toUpperCase() || 'DEFAULT' }));
   _ihUiTeachers = Array.isArray(ihUiSafeJsonParse('ih-json-teachers', [])) ? ihUiSafeJsonParse('ih-json-teachers', []) : [];
   _ihUiDemands = Array.isArray(ihUiSafeJsonParse('ih-json-demands', [])) ? ihUiSafeJsonParse('ih-json-demands', []) : [];
   _ihUiLocals = Array.isArray(ihUiSafeJsonParse('ih-json-locals', [])) ? ihUiSafeJsonParse('ih-json-locals', []) : [];
   if(!_ihUiLocals.length) ihUiEnsureDefaultLocal();
+  ihUiRenderJornadas();
   ihUiRenderAll();
   try { ihRefreshGrades(); } catch(e) {}
 }
 
 function ihUiRenderAll() {
+  ihUiRenderJornadas();
   ihUiRenderLocalSelects();
   ihUiRenderSections();
   ihUiRenderTeachers();
@@ -8716,8 +8928,10 @@ function ihUiRenderLocalSelects() {
   const opts = locs.map(l => `<option value="${_escHtml(String(l.id||''))}">${_escHtml(String(l.id||''))} — ${_escHtml(String(l.nombre||l.id||''))}</option>`).join('');
   const secLocal = document.getElementById('ih-ui-sec-local');
   const teaLocal = document.getElementById('ih-ui-tea-local');
+  const demLocal = document.getElementById('ih-ui-dem-local');
   if(secLocal) secLocal.innerHTML = opts;
   if(teaLocal) teaLocal.innerHTML = opts;
+  if(demLocal) demLocal.innerHTML = `<option value="">(Opcional)</option>` + opts;
 }
 
 function ihUiSyncSectionsToJson() {
@@ -8726,6 +8940,7 @@ function ihUiSyncSectionsToJson() {
     nivel: String(s?.nivel||'').trim(),
     grado: String(s?.grado||'').trim(),
     seccion: String(s?.seccion||'').trim(),
+    jornada_id: String(s?.jornada_id||'DEFAULT').trim().toUpperCase() || 'DEFAULT',
     turno: String(s?.turno||'').trim(),
     local_base: String(s?.local_base||'').trim(),
     capacidad: (Number.isFinite(Number(s?.capacidad)) ? Math.max(0, Math.floor(Number(s?.capacidad))) : undefined),
@@ -8751,6 +8966,7 @@ function ihUiSyncLocalsToJson() {
   const cleaned = (_ihUiLocals || []).map(l => ({
     id: String(l?.id||'').trim().toUpperCase(),
     nombre: String(l?.nombre||'').trim() || String(l?.id||'').trim().toUpperCase(),
+    is_virtual: !!l?.is_virtual,
   })).filter(l => l.id);
   _ihUiLocals = cleaned;
   ihUiWriteJson('ih-json-locals', cleaned);
@@ -8775,7 +8991,7 @@ function ihUiRenderSections() {
   const sel = document.getElementById('ih-ui-dem-sec');
   if(sel) {
     const opts = (_ihUiSections || []).slice().sort((a,b)=>String(a.id||'').localeCompare(String(b.id||'')))
-      .map(s => `<option value="${_escHtml(String(s.id||''))}">${_escHtml(String(s.id||''))} — ${_escHtml(String(s.nivel||''))} ${_escHtml(String(s.grado||''))}${_escHtml(String(s.seccion||''))}</option>`).join('');
+      .map(s => `<option value="${_escHtml(String(s.id||''))}">${_escHtml(String(s.id||''))} — ${_escHtml(String(s.nivel||''))} ${_escHtml(String(s.grado||''))}${_escHtml(String(s.seccion||''))} (${_escHtml(String(s.jornada_id||'DEFAULT'))})</option>`).join('');
     sel.innerHTML = opts;
   }
   if(!wrap) return;
@@ -8786,7 +9002,7 @@ function ihUiRenderSections() {
   }
   wrap.innerHTML = `
     <table class="table" style="width:100%;">
-      <thead><tr><th>ID</th><th>Nivel</th><th>Grado</th><th>Sección</th><th>Turno</th><th>Local</th><th style="width:90px;"></th></tr></thead>
+      <thead><tr><th>ID</th><th>Nivel</th><th>Grado</th><th>Sección</th><th>Jornada</th><th>Turno</th><th>Local</th><th style="width:90px;"></th></tr></thead>
       <tbody>
         ${_ihUiSections.map(s => `
           <tr>
@@ -8794,6 +9010,7 @@ function ihUiRenderSections() {
             <td>${_escHtml(String(s.nivel||''))}</td>
             <td>${_escHtml(String(s.grado||''))}</td>
             <td>${_escHtml(String(s.seccion||''))}</td>
+            <td>${_escHtml(String(s.jornada_id||'DEFAULT'))}</td>
             <td>${_escHtml(String(s.turno||''))}</td>
             <td>${_escHtml(String(s.local_base||''))}</td>
             <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteSection('${String(s.id||'')}')" style="padding:6px 10px;">Quitar</button></td>
@@ -8810,13 +9027,14 @@ function ihUiAddSection() {
     const nivel = String(document.getElementById('ih-ui-sec-nivel')?.value || '').trim();
     const grado = String(document.getElementById('ih-ui-sec-grado')?.value || '').trim();
     const seccion = String(document.getElementById('ih-ui-sec-seccion')?.value || '').trim().toUpperCase();
+    const jornada_id = String(document.getElementById('ih-ui-sec-jornada')?.value || 'DEFAULT').trim().toUpperCase() || 'DEFAULT';
     const turno = String(document.getElementById('ih-ui-sec-turno')?.value || '').trim();
     const local_base = String(document.getElementById('ih-ui-sec-local')?.value || '').trim();
     if(!nivel || !grado || !seccion) throw new Error('Completa nivel, grado y sección');
     const id = `${grado}${seccion}`;
     const ex = _ihUiSections.find(s => String(s.id||'') === id);
-    if(ex) Object.assign(ex, { nivel, grado, seccion, turno, local_base });
-    else _ihUiSections.push({ id, nivel, grado, seccion, turno, local_base });
+    if(ex) Object.assign(ex, { nivel, grado, seccion, jornada_id, turno, local_base });
+    else _ihUiSections.push({ id, nivel, grado, seccion, jornada_id, turno, local_base });
     ihUiRenderAll();
     try { ihRefreshGrades(); } catch(e) {}
     toast('✅ Sección guardada','success');
@@ -8902,12 +9120,13 @@ function ihUiRenderLocals() {
   }
   wrap.innerHTML = `
     <table class="table" style="width:100%;">
-      <thead><tr><th>ID</th><th>Nombre</th><th style="width:90px;"></th></tr></thead>
+      <thead><tr><th>ID</th><th>Nombre</th><th>Virtual</th><th style="width:90px;"></th></tr></thead>
       <tbody>
         ${_ihUiLocals.map(l => `
           <tr>
             <td style="font-weight:800;color:var(--text);">${_escHtml(String(l.id||''))}</td>
             <td>${_escHtml(String(l.nombre||''))}</td>
+            <td>${l.is_virtual ? 'Sí' : 'No'}</td>
             <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteLocal('${String(l.id||'')}')" style="padding:6px 10px;">Quitar</button></td>
           </tr>
         `).join('')}
@@ -8921,11 +9140,12 @@ function ihUiAddLocal() {
   try {
     const id = String(document.getElementById('ih-ui-loc-id')?.value || '').trim().toUpperCase();
     const nombre = String(document.getElementById('ih-ui-loc-nombre')?.value || '').trim();
+    const is_virtual = String(document.getElementById('ih-ui-loc-virtual')?.value || '0') === '1';
     if(!id) throw new Error('Ingresa ID del local');
     if(!nombre) throw new Error('Ingresa nombre del local');
     const ex = _ihUiLocals.find(l => String(l.id||'').toUpperCase() === id);
-    if(ex) Object.assign(ex, { id, nombre });
-    else _ihUiLocals.push({ id, nombre });
+    if(ex) Object.assign(ex, { id, nombre, is_virtual });
+    else _ihUiLocals.push({ id, nombre, is_virtual });
     const idEl = document.getElementById('ih-ui-loc-id'); if(idEl) idEl.value = '';
     const nEl = document.getElementById('ih-ui-loc-nombre'); if(nEl) nEl.value = '';
     ihUiRenderAll();
@@ -8967,14 +9187,17 @@ function ihUiRenderDemands() {
     wrap.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Aún no hay demands.</div>';
     return;
   }
+  const locsSorted = (_ihUiLocals || []).slice().sort((a,b)=>String(a.id||'').localeCompare(String(b.id||'')));
+  const localOptions = `<option value="">(Opcional)</option>` + locsSorted.map(l => `<option value="${_escHtml(String(l.id||''))}">${_escHtml(String(l.id||''))} — ${_escHtml(String(l.nombre||l.id||''))}</option>`).join('');
   const teachersSorted = (_ihUiTeachers || []).slice().sort((a,b)=>String(a.id||'').localeCompare(String(b.id||'')));
   wrap.innerHTML = `
     <table class="table" style="width:100%;">
-      <thead><tr><th>Sección</th><th>Curso</th><th>Horas</th><th>Docente</th><th style="width:90px;"></th></tr></thead>
+      <thead><tr><th>Sección</th><th>Curso</th><th>Horas</th><th>Docente</th><th>Local</th><th style="width:90px;"></th></tr></thead>
       <tbody>
         ${_ihUiDemands.map((d, idx) => {
           const hours = Math.max(0, Math.floor(Number(d?.hours_per_week) || 0));
           const curTid = String(d?.teacher_id || '').trim().toUpperCase();
+          const curLoc = String(d?.required_local_id || '').trim().toUpperCase();
           const options = teachersSorted.map(t => {
             const tid = String(t?.id || '').trim().toUpperCase();
             const max = Math.max(0, Math.floor(Number(t?.max_horas_semana) || 0));
@@ -8993,6 +9216,11 @@ function ihUiRenderDemands() {
               <select onchange="ihUiSetDemandTeacher(${idx}, this.value, this)" style="width:100%;">
                 <option value="">(Selecciona)</option>
                 ${options}
+              </select>
+            </td>
+            <td>
+              <select onchange="ihUiSetDemandLocal(${idx}, this.value)" style="width:100%;">
+                ${localOptions.replace(`value="${_escHtml(curLoc)}"`, `value="${_escHtml(curLoc)}" selected`)}
               </select>
             </td>
             <td style="text-align:right;"><button class="btn btn-ghost" onclick="ihUiDeleteDemand(${idx})" style="padding:6px 10px;">Quitar</button></td>
@@ -9023,11 +9251,19 @@ function ihUiSetDemandTeacher(idx, teacherId, el) {
   ihUiRenderDemands();
 }
 
+function ihUiSetDemandLocal(idx, localId) {
+  const i = Number(idx);
+  if(!Number.isFinite(i) || i < 0 || i >= (_ihUiDemands||[]).length) return;
+  _ihUiDemands[i].required_local_id = String(localId||'').trim().toUpperCase();
+  ihUiSyncDemandsToJson();
+}
+
 function ihUiAddDemand() {
   try {
     const section_id = String(document.getElementById('ih-ui-dem-sec')?.value || '').trim();
     const course_id = String(document.getElementById('ih-ui-dem-course')?.value || '').trim().toUpperCase();
     const teacher_id = String(document.getElementById('ih-ui-dem-teacher')?.value || '').trim().toUpperCase();
+    const required_local_id = String(document.getElementById('ih-ui-dem-local')?.value || '').trim().toUpperCase();
     const hours_per_week = Math.max(1, parseInt(String(document.getElementById('ih-ui-dem-hours')?.value || '1'),10) || 1);
     if(!section_id || !course_id || !teacher_id) throw new Error('Selecciona sección, curso y docente');
     const ex = _ihUiDemands.find(d => String(d.section_id||'')===section_id && String(d.course_id||'').toUpperCase()===course_id);
@@ -9038,8 +9274,8 @@ function ihUiAddDemand() {
       const used = ihUiTeacherHoursAssigned(teacher_id, excludeIdx);
       throw new Error(`${teacher_id}: excede máximo (${used}+${hours_per_week} > ${max})`);
     }
-    if(ex) Object.assign(ex, { section_id, course_id, teacher_id, hours_per_week });
-    else _ihUiDemands.push({ section_id, course_id, teacher_id, hours_per_week });
+    if(ex) Object.assign(ex, { section_id, course_id, teacher_id, hours_per_week, required_local_id });
+    else _ihUiDemands.push({ section_id, course_id, teacher_id, hours_per_week, required_local_id });
     ihUiRenderAll();
     toast('✅ Demand guardado','success');
   } catch(e) {
@@ -9185,30 +9421,41 @@ async function ihGuardarEnBD() {
   const btnSave = document.getElementById('ih-btn-db-save');
   const btnRun = document.getElementById('ih-btn-db-run');
   try {
-    if(!_ihJornadaAccepted) throw new Error('Primero acepta la jornada');
     if(btnSave) { btnSave.disabled = true; btnSave.style.opacity = '0.7'; }
     if(st) st.textContent = 'Validando y guardando en base de datos...';
 
     const colegio_id = await ihGetColegioIdFromSession();
     if(!colegio_id) throw new Error('No se pudo obtener colegio_id de la sesión');
 
+    const jornadas = ihParseJson('ih-json-jornadas', 'Jornadas (jornadas)', []);
     const sections = ihParseJson('ih-json-sections', 'Secciones (sections)', []);
     const teachers = ihParseJson('ih-json-teachers', 'Docentes (teachers)', []);
     const demands = ihParseJson('ih-json-demands', 'Cursos por sección (demands)', []);
     let locals = ihParseJson('ih-json-locals', 'Locales (locals)', []);
-    const params = ihGetParams();
 
+    if(!Array.isArray(jornadas) || !jornadas.length) throw new Error('Jornadas vacío: crea al menos 1 jornada y define sus horas/recesos');
     if(!Array.isArray(sections) || !sections.length) throw new Error('Secciones (sections) vacío');
     if(!Array.isArray(teachers) || !teachers.length) throw new Error('Docentes (teachers) vacío');
     if(!Array.isArray(demands) || !demands.length) throw new Error('Cursos por sección (demands) vacío');
-    if(!params) throw new Error('Jornada no definida');
 
     if(!Array.isArray(locals)) locals = [];
     if(!locals.length) locals = [{ id: 'MAIN', nombre: 'Local principal' }];
 
-    const slots = Array.isArray(params.slot_times) ? params.slot_times : [];
-    if(!slots.length) throw new Error('Jornada inválida: no hay bloques');
-    const days = Array.isArray(params.days) ? params.days : ['Lun','Mar','Mie','Jue','Vie'];
+    const jornadasRows = jornadas.map(j => {
+      const id = String(j?.id || '').trim().toUpperCase();
+      const compare_group = String(j?.compare_group || '').trim().toUpperCase() || id;
+      return {
+        colegio_id,
+        id,
+        nombre: String(j?.nombre || id).trim() || id,
+        tipo: String(j?.tipo || 'normal').trim() || 'normal',
+        nivel: String(j?.nivel || '').trim(),
+        compare_group,
+        descripcion: String(j?.descripcion || '').trim(),
+        is_default: id === 'DEFAULT',
+      };
+    }).filter(j => j.id);
+    if(!jornadasRows.length) throw new Error('Jornadas inválido: falta id');
 
     const coursesCatalog = ihLoadCourses().map(c => ({ id: String(c?.id||'').trim().toUpperCase(), name: String(c?.name||'').trim() })).filter(c => c.id);
     const demandCourseIds = new Set(demands.map(d => String(d?.course_id||'').trim().toUpperCase()).filter(Boolean));
@@ -9221,6 +9468,7 @@ async function ihGuardarEnBD() {
       id: String(l?.id || '').trim() || 'MAIN',
       nombre: String(l?.nombre || l?.id || 'Local').trim() || 'Local',
       direccion: String(l?.direccion || '').trim(),
+      is_virtual: !!l?.is_virtual,
     })).filter(l => l.id);
 
     const sectionsRows = sections.map(s => ({
@@ -9229,6 +9477,7 @@ async function ihGuardarEnBD() {
       nivel: String(s?.nivel || '').trim() || '-',
       grado: String(s?.grado || '').trim() || '-',
       seccion: String(s?.seccion || '').trim() || '-',
+      jornada_id: String(s?.jornada_id || 'DEFAULT').trim().toUpperCase() || 'DEFAULT',
       turno: String(s?.turno || '').trim(),
       local_base: String(s?.local_base || '').trim(),
       capacidad: Number.isFinite(Number(s?.capacidad)) ? Math.max(0, Math.floor(Number(s?.capacidad))) : 0,
@@ -9251,17 +9500,27 @@ async function ihGuardarEnBD() {
       .filter(a => a.teacher_id);
 
     const slotsRows = [];
-    for(const d of days) {
-      for(const b of slots) {
-        const slot_index = Math.max(1, parseInt(String(b?.slot||''),10) || 0);
-        const start_time = String(b?.start || '').trim();
-        const end_time = String(b?.end || '').trim();
-        const is_break = String(b?.type||'').toUpperCase() === 'RECESO';
-        if(!slot_index || !start_time || !end_time) continue;
-        slotsRows.push({ colegio_id, day: String(d).trim(), slot_index, start_time, end_time, is_break });
+    const jornadasSet = new Set(jornadasRows.map(j => String(j.id||'').trim().toUpperCase()));
+    const usedJornadas = new Set(sectionsRows.map(s => String(s.jornada_id||'DEFAULT').trim().toUpperCase() || 'DEFAULT'));
+    for(const jid of usedJornadas) if(!jornadasSet.has(jid)) throw new Error(`Secciones usan jornada "${jid}" pero no existe en Jornadas`);
+    for(const j of jornadas) {
+      const jid = String(j?.id || '').trim().toUpperCase();
+      if(!jid) continue;
+      const jdays = Array.isArray(j?.days) && j.days.length ? j.days : ['Lun','Mar','Mie','Jue','Vie'];
+      const jblocks = Array.isArray(j?.blocks) ? j.blocks : [];
+      if(usedJornadas.has(jid) && !jblocks.length) throw new Error(`Jornada "${jid}" no tiene bloques: entra a "Definir horas y recesos" y guarda`);
+      for(const d of jdays) {
+        for(const b of jblocks) {
+          const slot_index = Math.max(1, parseInt(String(b?.slot||''),10) || 0);
+          const start_time = String(b?.start || '').trim();
+          const end_time = String(b?.end || '').trim();
+          const is_break = String(b?.type||'').toUpperCase() === 'RECESO';
+          if(!slot_index || !start_time || !end_time) continue;
+          slotsRows.push({ colegio_id, jornada_id: jid, day: String(d).trim(), slot_index, start_time, end_time, is_break });
+        }
       }
     }
-    if(!slotsRows.length) throw new Error('No se pudo construir horario_slots desde la jornada');
+    if(!slotsRows.length) throw new Error('No se pudo construir horario_slots desde Jornadas');
 
     const demandsRows = demands.map(d => ({
       colegio_id,
@@ -9297,10 +9556,14 @@ async function ihGuardarEnBD() {
 
     const sb = window._sb;
 
-    if(st) st.textContent = 'Guardando locales/cursos/secciones/docentes...';
+    if(st) st.textContent = 'Guardando jornadas/locales/cursos/secciones/docentes...';
+    if(jornadasRows.length) {
+      const { error } = await sb.from('horario_jornadas').upsert(jornadasRows, { onConflict: 'colegio_id,id' });
+      if(error) throw new Error(error.message.includes('horario_jornadas') ? ('Falta migración multi-jornada en la BD. Ejecuta horarios_multi_jornada_migracion.sql. Detalle: ' + error.message) : error.message);
+    }
     if(localsRows.length) {
       const { error } = await sb.from('horario_locales').upsert(localsRows, { onConflict: 'colegio_id,id' });
-      if(error) throw new Error(error.message);
+      if(error) throw new Error(error.message.includes('is_virtual') ? ('Falta migración multi-jornada en la BD (is_virtual). Ejecuta horarios_multi_jornada_migracion.sql. Detalle: ' + error.message) : error.message);
     }
     if(coursesRows.length) {
       const { error } = await sb.from('horario_courses').upsert(coursesRows, { onConflict: 'colegio_id,id' });
@@ -9308,7 +9571,7 @@ async function ihGuardarEnBD() {
     }
     if(sectionsRows.length) {
       const { error } = await sb.from('horario_sections').upsert(sectionsRows, { onConflict: 'colegio_id,id' });
-      if(error) throw new Error(error.message);
+      if(error) throw new Error(error.message.includes('jornada_id') ? ('Falta migración multi-jornada en la BD (jornada_id). Ejecuta horarios_multi_jornada_migracion.sql. Detalle: ' + error.message) : error.message);
     }
     if(teachersRows.length) {
       const { error } = await sb.from('horario_teachers').upsert(teachersRows, { onConflict: 'colegio_id,id' });
@@ -9319,13 +9582,13 @@ async function ihGuardarEnBD() {
       if(error) throw new Error(error.message);
     }
 
-    if(st) st.textContent = 'Guardando jornada (horario_slots)...';
+    if(st) st.textContent = 'Guardando slots por jornada (horario_slots)...';
     {
       const { error: delErr } = await sb.from('horario_slots').delete().eq('colegio_id', colegio_id);
       if(delErr) throw new Error(delErr.message);
       await chunk(slotsRows, 500, async (part) => {
         const { error } = await sb.from('horario_slots').insert(part);
-        if(error) throw new Error(error.message);
+        if(error) throw new Error(error.message.includes('jornada_id') ? ('Falta migración multi-jornada en la BD (horario_slots.jornada_id). Ejecuta horarios_multi_jornada_migracion.sql. Detalle: ' + error.message) : error.message);
       });
     }
 

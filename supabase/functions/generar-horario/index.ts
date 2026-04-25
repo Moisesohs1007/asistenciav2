@@ -28,21 +28,28 @@ function asInt(n: unknown, def = 0) {
 }
 
 async function buildModelFromDb(supabaseAdmin: any, colegioId: string): Promise<InputModel> {
-  const [{ data: slots }, { data: sections }, { data: teachers }, { data: demands }, { data: locales }, { data: travel }, { data: events }, { data: avail }] =
+  const [{ data: jornadas }, { data: slots }, { data: sections }, { data: teachers }, { data: demands }, { data: locales }, { data: travel }, { data: events }, { data: avail }] =
     await Promise.all([
-      supabaseAdmin.from('horario_slots').select('day,slot_index,is_break').eq('colegio_id', colegioId),
-      supabaseAdmin.from('horario_sections').select('id,nivel,grado,seccion,turno,local_base').eq('colegio_id', colegioId),
+      supabaseAdmin.from('horario_jornadas').select('id,nombre,tipo,nivel,compare_group,is_default').eq('colegio_id', colegioId),
+      supabaseAdmin.from('horario_slots').select('jornada_id,day,slot_index,is_break').eq('colegio_id', colegioId),
+      supabaseAdmin.from('horario_sections').select('id,nivel,grado,seccion,turno,local_base,jornada_id').eq('colegio_id', colegioId),
       supabaseAdmin.from('horario_teachers').select('id,nombre,local_base,locales_permitidos,max_horas_semana,preferencias').eq('colegio_id', colegioId),
       supabaseAdmin.from('horario_demands').select('section_id,course_id,teacher_id,hours_per_week,required_local_id,required_room_type').eq('colegio_id', colegioId),
-      supabaseAdmin.from('horario_locales').select('id,nombre').eq('colegio_id', colegioId),
+      supabaseAdmin.from('horario_locales').select('id,nombre,is_virtual').eq('colegio_id', colegioId),
       supabaseAdmin.from('horario_travel_times').select('from_local,to_local,minutes').eq('colegio_id', colegioId),
-      supabaseAdmin.from('horario_events').select('scope,target_id,day,slot_index').eq('colegio_id', colegioId),
+      supabaseAdmin.from('horario_events').select('scope,target_id,jornada_id,day,slot_index').eq('colegio_id', colegioId),
       supabaseAdmin.from('horario_teacher_availability').select('teacher_id,availability').eq('colegio_id', colegioId),
     ]);
 
-  const days = [...new Set((slots || []).map((s: any) => String(s.day)))].filter(Boolean);
-  const slotsPerDay = Math.max(1, ...((slots || []).map((s: any) => Number(s.slot_index) || 0)));
-  const break_slots = (slots || []).filter((s: any) => !!s.is_break).map((s: any) => Number(s.slot_index));
+  const jornadasOut = (jornadas && Array.isArray(jornadas) && jornadas.length)
+    ? jornadas.map((j: any) => ({
+      id: String(j.id || '').trim() || 'DEFAULT',
+      nombre: j.nombre || '',
+      tipo: j.tipo || 'normal',
+      nivel: j.nivel || '',
+      compare_group: String(j.compare_group || '').trim() || (String(j.id || '').trim() || 'DEFAULT'),
+    }))
+    : [{ id: 'DEFAULT', nombre: 'Jornada', tipo: 'normal', compare_group: 'DEFAULT' }];
 
   const travelMap: Record<string, number> = {};
   for (const t of (travel || [])) {
@@ -64,18 +71,23 @@ async function buildModelFromDb(supabaseAdmin: any, colegioId: string): Promise<
   const eventsOut = (events || []).map((e: any) => ({
     scope: (String(e.scope || 'global') as any),
     target_id: e.target_id ? String(e.target_id) : undefined,
+    jornada_id: e.jornada_id ? String(e.jornada_id) : undefined,
     day: String(e.day),
     slot: Number(e.slot_index) || 0,
   }));
 
   return {
     colegio_id: colegioId,
-    days,
-    slots_per_day: slotsPerDay,
-    break_slots,
+    jornadas: jornadasOut,
+    slots: (slots || []).map((s: any) => ({
+      jornada_id: String(s.jornada_id || 'DEFAULT'),
+      day: String(s.day),
+      slot: Number(s.slot_index) || 0,
+      is_break: !!s.is_break,
+    })).filter((s: any) => s.jornada_id && s.day && s.slot > 0),
     travel_minutes_between_locals: 0,
     max_consecutive_same_course: 2,
-    sections: (sections || []).map((s: any) => ({ id: String(s.id), nivel: s.nivel, grado: s.grado, seccion: s.seccion, turno: s.turno, local_base: s.local_base })),
+    sections: (sections || []).map((s: any) => ({ id: String(s.id), nivel: s.nivel, grado: s.grado, seccion: s.seccion, turno: s.turno, local_base: s.local_base, jornada_id: s.jornada_id ? String(s.jornada_id) : 'DEFAULT' })),
     teachers: teachersOut,
     demands: (demands || []).map((d: any) => ({
       section_id: String(d.section_id),
@@ -85,7 +97,7 @@ async function buildModelFromDb(supabaseAdmin: any, colegioId: string): Promise<
       required_local_id: d.required_local_id ? String(d.required_local_id) : '',
       required_room_type: d.required_room_type ? String(d.required_room_type) : '',
     })),
-    locals: (locales || []).map((l: any) => ({ id: String(l.id), nombre: l.nombre || '' })),
+    locals: (locales || []).map((l: any) => ({ id: String(l.id), nombre: l.nombre || '', is_virtual: !!l.is_virtual })),
     travel: travelMap,
     events: eventsOut,
   };
@@ -178,6 +190,7 @@ serve(async (req) => {
             run_id: runId,
             colegio_id: colegioId,
             section_id,
+            jornada_id: asg.jornada_id || 'DEFAULT',
             day,
             slot_index,
             course_id: asg.course_id,
