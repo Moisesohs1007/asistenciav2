@@ -176,8 +176,9 @@ function mostrarAvisoCamara() {
 let currentRol = null; // admin | director | profesor | portero
 let _repContextoPDF = {}; // contexto guardado para exportar PDF de reportes
 
-// ── Auto-logout por inactividad (20 minutos) ─────────────────
-const INACTIVIDAD_MS = 20 * 60 * 1000; // 20 minutos
+// ── Auto-logout por inactividad (desactivado) ────────────────
+const ENABLE_AUTO_LOGOUT = false;
+const INACTIVIDAD_MS = 20 * 60 * 1000; // (no se usa si ENABLE_AUTO_LOGOUT=false)
 let _inactTimer = null;
 let _inactWarning = null;
 const WARN_MS = 2 * 60 * 1000; // avisar 2 min antes
@@ -188,6 +189,7 @@ function resetInactTimer() {
   // Ocultar aviso si estaba visible
   const warn = document.getElementById('inact-warning');
   if(warn) warn.style.display = 'none';
+  if(!ENABLE_AUTO_LOGOUT) return;
   if(!currentUser) return;
   // Aviso 2 min antes
   _inactWarning = setTimeout(() => {
@@ -204,9 +206,11 @@ function resetInactTimer() {
 }
 
 // Detectar cualquier actividad del usuario
-['mousemove','mousedown','keydown','touchstart','scroll','click'].forEach(evt => {
-  document.addEventListener(evt, resetInactTimer, { passive: true });
-});
+if(ENABLE_AUTO_LOGOUT) {
+  ['mousemove','mousedown','keydown','touchstart','scroll','click'].forEach(evt => {
+    document.addEventListener(evt, resetInactTimer, { passive: true });
+  });
+}
 
 // ============================================================
 // LOGIN / AUTH
@@ -1103,6 +1107,37 @@ let lastScanTime = 0;
 let pendingStudent = null;
 let currentSection = 'scan';
 
+let _cameraIdleTimer = null;
+const CAMERA_IDLE_MS = 3 * 60 * 1000;
+
+function _isMobileLike() {
+  try {
+    if(window.matchMedia && window.matchMedia('(pointer:coarse)').matches) return true;
+  } catch(e) {}
+  const ua = String(navigator.userAgent || '');
+  return /Android|iPhone|iPad|iPod|Mobi/i.test(ua);
+}
+
+function _resetCameraIdleTimer() {
+  if(_cameraIdleTimer) { clearTimeout(_cameraIdleTimer); _cameraIdleTimer = null; }
+  if(!_isMobileLike()) return;
+  if(!scannerRunning || !videoStream) return;
+  _cameraIdleTimer = setTimeout(() => {
+    if(scannerRunning) {
+      stopScanner();
+      const st = document.getElementById('scan-status');
+      if(st) st.textContent = 'Cámara detenida por inactividad — presiona Iniciar para escanear';
+      toast('Cámara desactivada por inactividad', 'warning');
+    }
+  }, CAMERA_IDLE_MS);
+}
+
+['touchstart','mousemove','keydown','click','scroll'].forEach(evt => {
+  document.addEventListener(evt, () => {
+    if(scannerRunning) _resetCameraIdleTimer();
+  }, { passive: true });
+});
+
 // ── SET DE REGISTROS DEL DÍA (pre-cargado al iniciar cámara) ──
 // Evita consultar Firestore en cada escaneo
 // Estructura: { alumnoId: { ingreso: bool, salida: bool } }
@@ -1196,6 +1231,7 @@ function startScanner() {
         setUIScanning(true);
         document.getElementById('scan-status').textContent = '🟢 Cámara activa — apunta al QR';
         anunciarCamaraActiva();
+        _resetCameraIdleTimer();
         startScanLoop();
       };
       video.onloadedmetadata = onReady;
@@ -1215,6 +1251,7 @@ function stopScanner() {
   if(scanInterval) { clearInterval(scanInterval); scanInterval = null; }
   detenerHoyRegsListener();
   if(videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
+  if(_cameraIdleTimer) { clearTimeout(_cameraIdleTimer); _cameraIdleTimer = null; }
   const video = document.getElementById('qr-video');
   if(video) video.srcObject = null;
   setUIScanning(false);
@@ -1329,6 +1366,7 @@ function startScanLoop() {
 }
 
 function onQRSuccess(text) {
+  _resetCameraIdleTimer();
   processQR(text.trim());
 }
 
@@ -1452,6 +1490,7 @@ async function processQR(rawId) {
 function manualRegister() {
   const id = document.getElementById('manual-id').value.trim();
   if(!id){ toast('Ingresa un ID', 'warning'); return; }
+  _resetCameraIdleTimer();
   processQR(id);
   document.getElementById('manual-id').value = '';
 }
