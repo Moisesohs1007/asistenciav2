@@ -7997,7 +7997,7 @@ function initRolExamenes() {
     if(opv) opv.textContent = String(_rexState.wmOpacity || 10) + '%';
   } catch(e) {}
   rexRenderDays();
-  try { rexRenderPreview(); } catch(e) {}
+  try { rexRenderPreview().catch(()=>{}); } catch(e) {}
 }
 
 function rexReset() {
@@ -9830,7 +9830,7 @@ async function rexRenderPreview() {
   if(!target) return;
   let logoB64 = null;
   try { logoB64 = await cargarLogoBase64(); } catch(e) { logoB64 = null; }
-  const logoSrc = logoB64 || (getLogo ? getLogo() : COLEGIO_LOGO);
+  const logoSrc = logoB64 || (typeof getLogo === 'function' ? getLogo() : COLEGIO_LOGO);
   target.innerHTML = rexBuildDocHTML(logoSrc, _rexState.wmOpacity);
   const wm = target.querySelector('.rex-watermark img');
   if(wm) wm.style.opacity = String(Math.max(0.05, Math.min(0.15, (_rexState.wmOpacity||10)/100)));
@@ -9972,7 +9972,7 @@ async function rexDownloadPNG() {
   }
   let logoB64 = null;
   try { logoB64 = await cargarLogoBase64(); } catch(e) { logoB64 = null; }
-  const logoSrc = logoB64 || (getLogo ? getLogo() : COLEGIO_LOGO);
+  const logoSrc = logoB64 || (typeof getLogo === 'function' ? getLogo() : COLEGIO_LOGO);
 
   const el = document.createElement('div');
   el.style.cssText = 'position:fixed;left:0;top:0;width:794px;background:#ffffff;padding:0;margin:0;transform:translateX(-200vw);';
@@ -10021,7 +10021,7 @@ async function rexDownloadPDF() {
   const { jsPDF } = window.jspdf;
   let logoB64 = null;
   try { logoB64 = await cargarLogoBase64(); } catch(e) { logoB64 = null; }
-  const logoSrc = logoB64 || (getLogo ? getLogo() : COLEGIO_LOGO);
+  const logoSrc = logoB64 || (typeof getLogo === 'function' ? getLogo() : COLEGIO_LOGO);
   const el = document.createElement('div');
   el.style.cssText = 'position:fixed;left:0;top:0;width:794px;background:#ffffff;padding:0;margin:0;transform:translateX(-200vw);';
   el.innerHTML = rexBuildDocHTML(logoSrc, _rexState.wmOpacity);
@@ -13795,7 +13795,7 @@ function msbInit() {
   if(tb) tb.style.display = 'flex';
   // Logo
   try {
-    const logo = getLogo ? getLogo() : COLEGIO_LOGO;
+    const logo = (typeof getLogo === 'function' ? getLogo() : COLEGIO_LOGO);
     const img = document.getElementById('msb-logo-img');
     if(img && logo) img.src = logo;
   } catch(e){}
