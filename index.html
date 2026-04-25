@@ -11101,6 +11101,156 @@ async function renderReportes(anioCompleto=false) {
   } catch(e) { console.error('renderReportes:', e); }
 }
 
+let _repAlertasCache = { weekStart:'', weekEnd:'', mes:'', tardTh:3, ausTh:3, tardyRows:[], absentRows:[] };
+
+function _repIsoToDate(iso) {
+  const s = String(iso||'');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function _repDateToIso(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function _repWeekMonFri(iso) {
+  const d = _repIsoToDate(iso) || _repIsoToDate(hoy());
+  const dow = d.getDay();
+  const deltaMon = (dow === 0) ? -6 : (1 - dow);
+  const mon = new Date(d); mon.setDate(mon.getDate() + deltaMon);
+  const fri = new Date(mon); fri.setDate(fri.getDate() + 4);
+  return { weekStart: _repDateToIso(mon), weekEnd: _repDateToIso(fri) };
+}
+
+async function _repGetAlumnosActuales() {
+  const nivel   = document.getElementById('rep-nivel')?.value   || '';
+  const grado   = document.getElementById('rep-grado')?.value   || '';
+  const seccion = document.getElementById('rep-seccion')?.value || '';
+  const q       = (document.getElementById('rep-search')?.value || '').toLowerCase().trim();
+  let alumnos = await getAlumnosFiltrados();
+  if(nivel)   alumnos = alumnos.filter(a => a.turno   === nivel);
+  if(grado)   alumnos = alumnos.filter(a => a.grado   === grado);
+  if(seccion) alumnos = alumnos.filter(a => a.seccion === seccion);
+  if(q)       alumnos = alumnos.filter(a =>
+    (a.nombres+' '+a.apellidos).toLowerCase().includes(q) || (a.id||'').includes(q)
+  );
+  return alumnos;
+}
+
+async function generarAlertasAsistencia() {
+  const status = document.getElementById('rep-alertas-status');
+  const wrap = document.getElementById('rep-alertas-wrap');
+  try {
+    const tardTh = Math.max(1, parseInt(document.getElementById('rep-alert-tard')?.value || '3', 10) || 3);
+    const ausTh  = Math.max(1, parseInt(document.getElementById('rep-alert-aus')?.value  || '3', 10) || 3);
+    const mesSel = document.getElementById('rep-mes-select')?.value || mesActual();
+    const diaRef = document.getElementById('rep-dia-select')?.value || hoy();
+    const { weekStart, weekEnd } = _repWeekMonFri(diaRef);
+
+    if(status) status.textContent = 'Calculando alertas...';
+    if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
+
+    const alumnos = await _repGetAlumnosActuales();
+    const alumnosIds = new Set(alumnos.map(a=>a.id));
+    if(!alumnos.length) throw new Error('No hay alumnos con los filtros actuales');
+
+    const regsSemana = await DB.getRegistros({ desde: weekStart, hasta: weekEnd });
+    const tardMap = {};
+    regsSemana
+      .filter(r => alumnosIds.has(r.alumnoId) && r.tipo === 'INGRESO' && r.estado === 'Tardanza')
+      .forEach(r => { tardMap[r.alumnoId] = (tardMap[r.alumnoId] || 0) + 1; });
+    const tardyRows = alumnos
+      .map(a => ({ alumnoId: a.id, nombre: (a.apellidos+' '+a.nombres).trim(), grado: a.grado, seccion: a.seccion, nivel: a.turno, tardanzas: tardMap[a.id] || 0 }))
+      .filter(x => x.tardanzas >= tardTh)
+      .sort((a,b) => b.tardanzas - a.tardanzas || a.nombre.localeCompare(b.nombre));
+
+    const diasHab = _calcDiasHabilesHasta(mesSel);
+    const resumen = await DB.getResumenMes(mesSel);
+    const resMap = {};
+    resumen.forEach(r => { if(alumnosIds.has(r.alumnoId)) resMap[r.alumnoId] = { puntual: r.puntual||0, tardanza: r.tardanza||0 }; });
+    const absentRows = alumnos
+      .map(a => {
+        const r = resMap[a.id] || { puntual: 0, tardanza: 0 };
+        const aus = Math.max(0, diasHab - (r.puntual + r.tardanza));
+        return { alumnoId: a.id, nombre: (a.apellidos+' '+a.nombres).trim(), grado: a.grado, seccion: a.seccion, nivel: a.turno, ausencias: aus };
+      })
+      .filter(x => x.ausencias >= ausTh)
+      .sort((a,b) => b.ausencias - a.ausencias || a.nombre.localeCompare(b.nombre));
+
+    _repAlertasCache = { weekStart, weekEnd, mes: mesSel, tardTh, ausTh, tardyRows, absentRows };
+
+    const mkTable = (title, cols, rows) => {
+      if(!rows.length) return `<div style="color:var(--muted);font-size:.85rem;margin-top:6px;">${title}: sin resultados.</div>`;
+      return `
+        <div style="margin-top:10px;">
+          <div style="font-weight:800;color:var(--text);margin-bottom:8px;">${title}</div>
+          <div style="overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface2);">
+            <table class="table" style="width:100%;">
+              <thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+              <tbody>
+                ${rows.map(r => `
+                  <tr>
+                    <td>${_escHtml(r.alumnoId)}</td>
+                    <td>${_escHtml(r.nombre)}</td>
+                    <td>${_escHtml(String(r.grado||''))}</td>
+                    <td>${_escHtml(String(r.seccion||''))}</td>
+                    <td>${_escHtml(String(r.nivel||''))}</td>
+                    <td style="font-weight:800;">${_escHtml(String(r.tardanzas ?? r.ausencias ?? ''))}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    };
+
+    const html = [];
+    html.push(`<div style="font-size:0.82rem;color:var(--muted);">Semana: ${weekStart} a ${weekEnd} · Mes: ${mesSel} · Días hábiles (mes): ${diasHab}</div>`);
+    html.push(mkTable(`Tardanzas ≥ ${tardTh} (semana)`, ['DNI','Alumno','Grado','Sección','Nivel','Tardanzas'], tardyRows));
+    html.push(mkTable(`Ausencias ≥ ${ausTh} (mes)`, ['DNI','Alumno','Grado','Sección','Nivel','Ausencias'], absentRows));
+
+    if(wrap) { wrap.innerHTML = html.join(''); wrap.style.display = ''; }
+    if(status) status.textContent = `✅ Alertas generadas: ${tardyRows.length} con tardanzas y ${absentRows.length} con ausencias.`;
+  } catch(e) {
+    if(status) status.textContent = '❌ ' + e.message;
+    if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
+    toast('❌ ' + e.message, 'error');
+  }
+}
+
+async function exportarAlertasAsistenciaXLSX() {
+  try {
+    if(!_repAlertasCache?.weekStart) {
+      await generarAlertasAsistencia();
+      if(!_repAlertasCache?.weekStart) return;
+    }
+    if(!window.XLSX) {
+      toast('Cargando libreria Excel...','info');
+      await new Promise((res,rej) => {
+        const s=document.createElement('script');
+        s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        s.onload=res; s.onerror=()=>rej(new Error('Error'));
+        document.head.appendChild(s);
+      });
+    }
+    const { weekStart, weekEnd, mes, tardTh, ausTh, tardyRows, absentRows } = _repAlertasCache;
+    const wb = XLSX.utils.book_new();
+
+    const aoa1 = [['DNI','Alumno','Grado','Sección','Nivel','Tardanzas','SemanaInicio','SemanaFin','Umbral'], ...tardyRows.map(r => [r.alumnoId,r.nombre,r.grado,r.seccion,r.nivel,r.tardanzas,weekStart,weekEnd,tardTh])];
+    const ws1 = XLSX.utils.aoa_to_sheet(aoa1);
+    XLSX.utils.book_append_sheet(wb, ws1, 'TardanzasSemana');
+
+    const aoa2 = [['DNI','Alumno','Grado','Sección','Nivel','Ausencias','Mes','Umbral'], ...absentRows.map(r => [r.alumnoId,r.nombre,r.grado,r.seccion,r.nivel,r.ausencias,mes,ausTh])];
+    const ws2 = XLSX.utils.aoa_to_sheet(aoa2);
+    XLSX.utils.book_append_sheet(wb, ws2, 'AusenciasMes');
+
+    XLSX.writeFile(wb, `alertas_asistencia_${weekStart}_${mes}.xlsx`);
+    toast('✅ Excel de alertas generado','success');
+  } catch(e) {
+    toast('❌ Error: ' + e.message, 'error');
+  }
+}
+
 
 // ============================================================
 // STATS
