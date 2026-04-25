@@ -1206,6 +1206,151 @@
   .rex-doc .rex-illus{ display:flex; align-items:flex-end; justify-content:space-between; gap: 10px; }
   .rex-doc .rex-illus .block{ width: 32%; min-width: 140px; }
   .rex-doc .rex-illus svg{ width: 100%; height: auto; display:block; }
+  .rex-doc-template {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  .rex-doc-template::before{ display:none; }
+  .rex-doc-template .rex-decor{ display:none; }
+  .rex-doc-template .rex-watermark img{ filter: none; transform: rotate(-12deg); opacity: var(--rex-wm); }
+  .rex-doc-template .rex-tpl-layer{
+    position:absolute;
+    inset:0;
+    z-index: 2;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  }
+  .rex-doc-template .rex-tpl-school{
+    position:absolute;
+    left: 18%;
+    top: 6.2%;
+    width: 64%;
+    text-align:center;
+    font-weight: 950;
+    font-size: 16px;
+    color: #0f3b7a;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .rex-doc-template .rex-tpl-title{
+    position:absolute;
+    left: 12%;
+    top: 18.2%;
+    width: 76%;
+    text-align:center;
+    font-weight: 1000;
+    font-size: 34px;
+    color: #0f3b7a;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    text-shadow: 0 2px 0 rgba(255,255,255,0.6), 0 6px 14px rgba(15,59,122,0.20);
+  }
+  .rex-doc-template .rex-tpl-pill{
+    position:absolute;
+    left: 32%;
+    width: 36%;
+    text-align:center;
+    border-radius: 16px;
+    padding: 9px 12px;
+    font-weight: 950;
+    color: #fff;
+    background: #0f3b7a;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    box-shadow: 0 10px 18px rgba(15,59,122,0.18);
+  }
+  .rex-doc-template .rex-tpl-bim{ top: 25.2%; }
+  .rex-doc-template .rex-tpl-grade{ top: 30.1%; background:#2a76d2; }
+  .rex-doc-template .rex-tpl-tutor{
+    position:absolute;
+    left: 20%;
+    top: 35.3%;
+    width: 60%;
+    text-align:center;
+    font-weight: 900;
+    font-size: 13px;
+    color: #0f3b7a;
+    background: rgba(15,59,122,0.10);
+    border: 2px solid rgba(15,59,122,0.18);
+    border-radius: 14px;
+    padding: 8px 10px;
+  }
+  .rex-doc-template .rex-tpl-head{
+    position:absolute;
+    left: 8.2%;
+    top: 43.6%;
+    width: 83.6%;
+    display:grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    font-weight: 950;
+    font-size: 12px;
+    color: #fff;
+  }
+  .rex-doc-template .rex-tpl-th{
+    text-align:center;
+    padding: 10px 4px;
+    background: rgba(15,59,122,0.92);
+    border-right: 1px solid rgba(255,255,255,0.22);
+  }
+  .rex-doc-template .rex-tpl-th span{ display:block; opacity: 0.95; margin-top: 2px; }
+  .rex-doc-template .rex-tpl-grid{
+    position:absolute;
+    left: 8.2%;
+    top: 50.8%;
+    width: 83.6%;
+    height: 18.5%;
+    display:grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-auto-rows: 1fr;
+    gap: 0;
+    color: rgba(11,18,32,0.92);
+    font-weight: 950;
+    font-size: 14px;
+  }
+  .rex-doc-template .rex-tpl-td{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 2px 6px;
+    text-align:center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-right: 1px solid rgba(15,59,122,0.12);
+    border-bottom: 1px solid rgba(15,59,122,0.12);
+  }
+  .rex-doc-template .rex-tpl-obs{
+    position:absolute;
+    left: 12%;
+    top: 72.6%;
+    width: 76%;
+    font-size: 12.5px;
+    color: rgba(59,75,102,0.98);
+    font-weight: 650;
+    line-height: 1.35;
+    background: rgba(255,255,255,0.82);
+    border: 2px solid rgba(15,59,122,0.18);
+    border-radius: 14px;
+    padding: 10px 12px;
+  }
+  .rex-doc-template .rex-tpl-obs span{ font-weight: 1000; color:#0f3b7a; }
+  .rex-doc-template .rex-tpl-msg{
+    position:absolute;
+    left: 18%;
+    top: 83.4%;
+    width: 64%;
+    text-align:center;
+    font-weight: 950;
+    font-size: 16px;
+    color: #fff;
+    background: rgba(15,59,122,0.92);
+    border-radius: 18px;
+    padding: 10px 14px;
+    box-shadow: 0 10px 18px rgba(15,59,122,0.18);
+  }
   @media (max-width: 700px) {
     .rex-doc { min-width: 0; }
     .rex-doc .rex-top { grid-template-columns: 120px 1fr 78px; }
@@ -3411,6 +3556,21 @@
           <div style="display:flex;align-items:center;gap:10px;">
             <input id="rex-wm-opacity" type="range" min="5" max="15" step="1" value="10" oninput="document.getElementById('rex-wm-opacity-val').textContent=this.value+'%';">
             <div style="min-width:48px;color:var(--muted);font-size:0.85rem;" id="rex-wm-opacity-val">10%</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Plantilla (imagen de fondo)</label>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.86rem;color:var(--text);">
+              <input id="rex-template-mode" type="checkbox" onchange="rexOnTemplateModeChange(this.checked)">
+              Usar plantilla
+            </label>
+            <input id="rex-template-file" type="file" accept="image/*" onchange="rexOnTemplateFileChange()" style="max-width:320px;">
+            <button class="btn btn-ghost" type="button" onclick="rexClearTemplate()" style="justify-content:center;">Quitar</button>
+          </div>
+          <div style="margin-top:6px;font-size:0.78rem;color:var(--muted);line-height:1.3;">
+            Sube la imagen del diseño (como tu ejemplo) y el sistema colocará los textos encima para que se vea igual.
           </div>
         </div>
 
@@ -7932,6 +8092,8 @@ function _rexDefaultState() {
     grado: '',
     tutor: '',
     wmOpacity: 10,
+    templateEnabled: false,
+    templateBg: '',
     obs: '',
     msg: '',
     days: [
@@ -7952,6 +8114,8 @@ function _rexNormalizeState(s) {
   s.tutor = String(s.tutor || '');
   s.obs = String(s.obs || '');
   s.msg = String(s.msg || '');
+  s.templateEnabled = !!s.templateEnabled;
+  s.templateBg = String(s.templateBg || '');
   const op = parseInt(String(s.wmOpacity ?? '10'), 10);
   s.wmOpacity = Math.max(5, Math.min(15, isFinite(op) ? op : 10));
   const srcDays = Array.isArray(s.days) ? s.days : [];
@@ -7995,6 +8159,8 @@ function initRolExamenes() {
     const opv = document.getElementById('rex-wm-opacity-val');
     if(op) op.value = String(_rexState.wmOpacity || 10);
     if(opv) opv.textContent = String(_rexState.wmOpacity || 10) + '%';
+    const tm = document.getElementById('rex-template-mode');
+    if(tm) tm.checked = !!_rexState.templateEnabled;
   } catch(e) {}
   rexRenderDays();
   try { rexRenderPreview().catch(()=>{}); } catch(e) {}
@@ -8092,7 +8258,51 @@ function rexSyncFromInputs() {
     _rexState.obs = document.getElementById('rex-obs')?.value || '';
     _rexState.msg = document.getElementById('rex-msg')?.value || '';
     _rexState.wmOpacity = parseInt(document.getElementById('rex-wm-opacity')?.value || '10', 10) || 10;
+    _rexState.templateEnabled = !!document.getElementById('rex-template-mode')?.checked;
   } catch(e) {}
+}
+
+function rexOnTemplateModeChange(on) {
+  _rexEnsureState();
+  _rexState.templateEnabled = !!on;
+  try { localStorage.setItem('rex_state_last', JSON.stringify(_rexState)); } catch(e) {}
+  rexRenderPreview().catch(()=>{});
+}
+
+async function rexOnTemplateFileChange() {
+  _rexEnsureState();
+  const inp = document.getElementById('rex-template-file');
+  const f = inp && inp.files && inp.files[0];
+  if(!f) return;
+  try {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result || ''));
+      r.onerror = () => reject(new Error('No se pudo leer la imagen'));
+      r.readAsDataURL(f);
+    });
+    _rexState.templateBg = dataUrl;
+    _rexState.templateEnabled = true;
+    const tm = document.getElementById('rex-template-mode');
+    if(tm) tm.checked = true;
+    try { localStorage.setItem('rex_state_last', JSON.stringify(_rexState)); } catch(e) {}
+    await rexRenderPreview();
+    toast('✅ Plantilla cargada', 'success');
+  } catch(e) {
+    toast('❌ Error: ' + e.message, 'error');
+  } finally {
+    try { inp.value = ''; } catch(e) {}
+  }
+}
+
+function rexClearTemplate() {
+  _rexEnsureState();
+  _rexState.templateBg = '';
+  _rexState.templateEnabled = false;
+  const tm = document.getElementById('rex-template-mode');
+  if(tm) tm.checked = false;
+  try { localStorage.setItem('rex_state_last', JSON.stringify(_rexState)); } catch(e) {}
+  rexRenderPreview().catch(()=>{});
 }
 
 async function rexActualizar() {
@@ -9846,6 +10056,8 @@ function rexBuildDocHTML(logoSrc, wmOpacity) {
   const eslRaw = String(COLEGIO_ESLOGAN||'').trim();
   const esl = _escHtml(eslRaw ? (eslRaw.startsWith('"') ? eslRaw : `"${eslRaw}"`) : '');
   const op = Math.max(0.05, Math.min(0.15, (wmOpacity||10)/100));
+  const tplOn = !!(_rexState?.templateEnabled) && !!(_rexState?.templateBg);
+  const tplBg = String(_rexState?.templateBg || '');
 
   const ths = (_rexState?.days||[]).map(d => {
     const dm = _rexFmtDM(d.date);
@@ -9861,6 +10073,33 @@ function rexBuildDocHTML(logoSrc, wmOpacity) {
     }).join('');
     return `<tr>${tds}</tr>`;
   }).join('');
+
+  if(tplOn) {
+    const headCells = (_rexState?.days||[]).map(d => `<div class="rex-tpl-th">${_escHtml(d.dow||'Día')} <span>[${_rexFmtDM(d.date)}]</span></div>`).join('');
+    const gridCells = Array.from({ length: 5 * (maxCourses || 2) }).map((_, i) => {
+      const col = i % 5;
+      const row = Math.floor(i / 5);
+      const d = (_rexState?.days||[])[col];
+      const c = (d && d.courses && d.courses[row]) ? String(d.courses[row]||'') : '';
+      return `<div class="rex-tpl-td">${_escHtml(c.trim().toUpperCase())}</div>`;
+    }).join('');
+    return `
+      <div class="rex-doc rex-doc-template" style="--rex-wm:${op};background-image:url('${_escHtml(tplBg)}')">
+        <div class="rex-watermark"><img src="${_escHtml(logoSrc||'')}" alt=""></div>
+        <div class="rex-tpl-layer">
+          <div class="rex-tpl-school">${sch}</div>
+          <div class="rex-tpl-title">ROL DE EXAMENES</div>
+          <div class="rex-tpl-pill rex-tpl-bim">${b}</div>
+          <div class="rex-tpl-pill rex-tpl-grade">${g}</div>
+          <div class="rex-tpl-tutor">TUTOR: ${t}</div>
+          <div class="rex-tpl-head">${headCells}</div>
+          <div class="rex-tpl-grid">${gridCells}</div>
+          <div class="rex-tpl-obs"><span>Observaciones:</span> ${obs}</div>
+          <div class="rex-tpl-msg">${msg}</div>
+        </div>
+      </div>
+    `;
+  }
 
   return `
     <div class="rex-doc" style="--rex-wm:${op}">
