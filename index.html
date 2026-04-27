@@ -12756,13 +12756,16 @@ async function exportarReportePDF() {
   const donutCY = yPos + 32;
   const outerR  = 28;
   const innerR  = 16;
+  const donutTilt = 0.72;
+  const outerRY = outerR * donutTilt;
+  const innerRY = innerR * donutTilt;
 
   const bgSteps = 48;
   const bgLines = [];
   for(let i = 0; i < bgSteps; i++) {
     const a  = -Math.PI + 2*Math.PI*i/bgSteps;
     const an = -Math.PI + 2*Math.PI*(i+1)/bgSteps;
-    bgLines.push([outerR*Math.cos(an)-outerR*Math.cos(a), outerR*Math.sin(an)-outerR*Math.sin(a)]);
+    bgLines.push([outerR*Math.cos(an)-outerR*Math.cos(a), outerRY*Math.sin(an)-outerRY*Math.sin(a)]);
   }
 
   function _pdfDrawDonutLayers(cx, cy, shadeFactor) {
@@ -12771,13 +12774,13 @@ async function exportarReportePDF() {
       const sliceAngle = 2 * Math.PI * d.val / totalPTA;
       if(sliceAngle > 0.01) {
         const steps = Math.max(8, Math.ceil(sliceAngle / (2*Math.PI) * 60));
-        const sl = [[outerR * Math.cos(donutAngle), outerR * Math.sin(donutAngle)]];
+        const sl = [[outerR * Math.cos(donutAngle), outerRY * Math.sin(donutAngle)]];
         for(let i = 1; i <= steps; i++) {
           const a  = donutAngle + sliceAngle * i / steps;
           const ap = donutAngle + sliceAngle * (i-1) / steps;
-          sl.push([outerR*(Math.cos(a)-Math.cos(ap)), outerR*(Math.sin(a)-Math.sin(ap))]);
+          sl.push([outerR*(Math.cos(a)-Math.cos(ap)), outerRY*(Math.sin(a)-Math.sin(ap))]);
         }
-        sl.push([-outerR * Math.cos(donutAngle + sliceAngle), -outerR * Math.sin(donutAngle + sliceAngle)]);
+        sl.push([-outerR * Math.cos(donutAngle + sliceAngle), -outerRY * Math.sin(donutAngle + sliceAngle)]);
         const col = _shadeRGB({ r:d.r, g:d.g, b:d.b }, shadeFactor);
         doc.setFillColor(col.r, col.g, col.b);
         doc.lines(sl, cx, cy, [1,1], 'F', true);
@@ -12786,7 +12789,7 @@ async function exportarReportePDF() {
     });
   }
 
-  const donutDepth = 2.6;
+  const donutDepth = 5.8;
   const bgBack = _shadeRGB({ r:220, g:228, b:240 }, 0.90);
   doc.setFillColor(bgBack.r, bgBack.g, bgBack.b);
   doc.lines(bgLines, donutCX - outerR, donutCY + donutDepth, [1,1], 'F', true);
@@ -12802,7 +12805,7 @@ async function exportarReportePDF() {
   for(let i = 0; i < holeSteps; i++) {
     const a  = -Math.PI + 2*Math.PI*i/holeSteps;
     const an = -Math.PI + 2*Math.PI*(i+1)/holeSteps;
-    holeLines.push([innerR*Math.cos(an)-innerR*Math.cos(a), innerR*Math.sin(an)-innerR*Math.sin(a)]);
+    holeLines.push([innerR*Math.cos(an)-innerR*Math.cos(a), innerRY*Math.sin(an)-innerRY*Math.sin(a)]);
   }
   doc.setFillColor(255, 255, 255);
   doc.lines(holeLines, donutCX - innerR, donutCY, [1,1], 'F', true);
@@ -12812,11 +12815,11 @@ async function exportarReportePDF() {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(30, 40, 55);
-  doc.text(puntPct + '%', donutCX, donutCY + 1, { align: 'center' });
+  doc.text(puntPct + '%', donutCX, donutCY + 0.5, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
   doc.setTextColor(100, 116, 139);
-  doc.text('puntual', donutCX, donutCY + 5.5, { align: 'center' });
+  doc.text('puntual', donutCX, donutCY + 4.8, { align: 'center' });
 
   // Leyenda a la derecha de la dona
   const legX = marginL + 72;
@@ -13253,30 +13256,142 @@ async function renderReportes(anioCompleto=false) {
     const pPunt = Math.round(nPunt/tot*100);
     const pTard = Math.round(nTard/tot*100);
     const pAus  = Math.round(nAus/tot*100);
-    const circ  = 2*Math.PI*28;
-    const dPunt = circ*nPunt/tot;
-    const dTard = circ*nTard/tot;
-    const dAus  = circ*nAus/tot;
-    const oPunt = circ/4;
-    const oTard = -(dPunt - circ/4);
-    const oAus  = -(dPunt+dTard - circ/4);
+    const segs = [
+      { key:'puntual',  label:'Puntual',  val:nPunt, color:'#1D9E75', pct:pPunt },
+      { key:'tardanza', label:'Tardanza', val:nTard, color:'#EF9F27', pct:pTard },
+      { key:'ausente',  label:'Ausente',  val:nAus,  color:'#E24B4A', pct:pAus  },
+    ];
+    function _hexToRgb(hex) {
+      const s = String(hex||'').trim().replace('#','');
+      if(s.length===3) {
+        const r = parseInt(s[0]+s[0],16), g = parseInt(s[1]+s[1],16), b = parseInt(s[2]+s[2],16);
+        return { r, g, b };
+      }
+      const r = parseInt(s.slice(0,2),16), g = parseInt(s.slice(2,4),16), b = parseInt(s.slice(4,6),16);
+      return { r, g, b };
+    }
+    function _rgbToHex(rgb) {
+      const h = (n) => Math.max(0, Math.min(255, Math.round(n||0))).toString(16).padStart(2,'0');
+      return '#' + h(rgb.r) + h(rgb.g) + h(rgb.b);
+    }
+    function _shade(hex, f) {
+      const c = _hexToRgb(hex);
+      return _rgbToHex({ r:c.r*f, g:c.g*f, b:c.b*f });
+    }
+    function _pt(cx, cy, rx, ry, a) { return { x: cx + rx*Math.cos(a), y: cy + ry*Math.sin(a) }; }
+    function _slicePath(cx, cy, rx, ry, irx, iry, a0, a1) {
+      const p0 = _pt(cx,cy,rx,ry,a0);
+      const p1 = _pt(cx,cy,rx,ry,a1);
+      const q1 = _pt(cx,cy,irx,iry,a1);
+      const q0 = _pt(cx,cy,irx,iry,a0);
+      const large = (a1 - a0) > Math.PI ? 1 : 0;
+      return `M ${p0.x.toFixed(2)} ${p0.y.toFixed(2)} A ${rx.toFixed(2)} ${ry.toFixed(2)} 0 ${large} 1 ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} L ${q1.x.toFixed(2)} ${q1.y.toFixed(2)} A ${irx.toFixed(2)} ${iry.toFixed(2)} 0 ${large} 0 ${q0.x.toFixed(2)} ${q0.y.toFixed(2)} Z`;
+    }
+    const cx = 80, cy = 62;
+    const outerR = 46, innerR = 26;
+    const tilt = 0.72;
+    const rx = outerR, ry = outerR * tilt;
+    const irx = innerR, iry = innerR * tilt;
+    const depth = 12;
+    let ang = -Math.PI/2;
+    const sliceTop = [];
+    const sliceBot = [];
+    segs.forEach(s => {
+      const a0 = ang;
+      const a1 = ang + (2*Math.PI*s.val/tot);
+      const dTop = _slicePath(cx,cy,rx,ry,irx,iry,a0,a1);
+      const dBot = _slicePath(cx,cy+depth,rx,ry,irx,iry,a0,a1);
+      sliceTop.push({ ...s, d: dTop, a0, a1 });
+      sliceBot.push({ ...s, d: dBot, a0, a1 });
+      ang = a1;
+    });
+    const barSegmentsHtml = segs.map(s => {
+      const w = Math.max(0, Math.round((s.val/tot)*1000)/10);
+      const c = s.color;
+      const c2 = _shade(c, 1.15);
+      const c3 = _shade(c, 0.82);
+      return `<div data-pta-seg="${s.key}" title="${s.label}: ${s.pct}% (${s.val})" style="width:${w}%;height:100%;background:linear-gradient(180deg,${c2},${c} 55%,${c3});box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),inset 0 -1px 0 rgba(0,0,0,0.25);transition:transform .12s,opacity .12s;cursor:pointer;"></div>`;
+    }).join('');
     chartDona.innerHTML = `
-      <svg width="110" height="110" viewBox="0 0 70 70">
-        <circle cx="35" cy="35" r="28" fill="none" stroke="var(--surface2)" stroke-width="10"/>
-        <circle cx="35" cy="35" r="28" fill="none" stroke="#1D9E75" stroke-width="10"
-          stroke-dasharray="${dPunt} ${circ}" stroke-dashoffset="${oPunt}"/>
-        <circle cx="35" cy="35" r="28" fill="none" stroke="#EF9F27" stroke-width="10"
-          stroke-dasharray="${dTard} ${circ}" stroke-dashoffset="${oTard}"/>
-        <circle cx="35" cy="35" r="28" fill="none" stroke="#E24B4A" stroke-width="10"
-          stroke-dasharray="${dAus} ${circ}" stroke-dashoffset="${oAus}"/>
-        <text x="35" y="32" text-anchor="middle" font-size="9" font-weight="700" fill="var(--text)" font-family="sans-serif">${pPunt}%</text>
-        <text x="35" y="43" text-anchor="middle" font-size="6" fill="var(--muted)" font-family="sans-serif">puntual</text>
-      </svg>
-      <div style="display:flex;flex-direction:column;gap:8px;font-size:11px;">
-        <div style="display:flex;align-items:center;gap:6px;"><div style="width:10px;height:10px;border-radius:50%;background:#1D9E75;flex-shrink:0;"></div><span>Puntual</span><span style="color:var(--muted);margin-left:auto;">${pPunt}% (${nPunt})</span></div>
-        <div style="display:flex;align-items:center;gap:6px;"><div style="width:10px;height:10px;border-radius:50%;background:#EF9F27;flex-shrink:0;"></div><span>Tardanza</span><span style="color:var(--muted);margin-left:auto;">${pTard}% (${nTard})</span></div>
-        <div style="display:flex;align-items:center;gap:6px;"><div style="width:10px;height:10px;border-radius:50%;background:#E24B4A;flex-shrink:0;"></div><span>Ausente</span><span style="color:var(--muted);margin-left:auto;">${pAus}% (${nAus})</span></div>
+      <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
+        <div style="height:10px;border-radius:8px;overflow:hidden;background:rgba(220,228,240,0.9);box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),inset 0 -1px 0 rgba(0,0,0,0.25);display:flex;">
+          ${barSegmentsHtml}
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:18px;position:relative;">
+          <div style="position:relative;">
+            <svg width="160" height="130" viewBox="0 0 160 130" style="display:block;">
+              <defs>
+                <filter id="repDonaShadow" x="-40%" y="-40%" width="180%" height="180%">
+                  <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.25)"/>
+                </filter>
+                <filter id="repDonaSoft" x="-40%" y="-40%" width="180%" height="180%">
+                  <feGaussianBlur stdDeviation="2.2"/>
+                </filter>
+              </defs>
+              <ellipse cx="${cx}" cy="${cy+depth+18}" rx="${rx*0.85}" ry="${ry*0.45}" fill="rgba(0,0,0,0.22)" filter="url(#repDonaSoft)"/>
+              <g filter="url(#repDonaShadow)">
+                ${sliceBot.map(s => `<path data-pta-slice="${s.key}" d="${s.d}" fill="${_shade(s.color,0.70)}" opacity="0.95"></path>`).join('')}
+                ${sliceTop.map(s => `<path data-pta-slice="${s.key}" d="${s.d}" fill="${s.color}" style="cursor:pointer;transition:transform .12s,opacity .12s;transform-box:fill-box;transform-origin:center;"></path>`).join('')}
+                <ellipse cx="${cx}" cy="${cy}" rx="${irx}" ry="${iry}" fill="var(--surface)" opacity="0.98"/>
+              </g>
+              <text x="${cx}" y="${cy-2}" text-anchor="middle" font-size="12" font-weight="800" fill="var(--text)" font-family="system-ui, sans-serif">${pPunt}%</text>
+              <text x="${cx}" y="${cy+12}" text-anchor="middle" font-size="8" font-weight="600" fill="var(--muted)" font-family="system-ui, sans-serif">puntual</text>
+            </svg>
+            <div id="rep-pta-tip" style="position:absolute;left:50%;top:0;transform:translate(-50%,-6px);background:rgba(15,23,42,0.92);color:#fff;padding:4px 8px;border-radius:8px;font-size:11px;white-space:nowrap;display:none;pointer-events:none;"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:11px;min-width:170px;">
+            ${segs.map(s => `<div data-pta-row="${s.key}" style="display:flex;align-items:center;gap:6px;cursor:pointer;transition:opacity .12s;">
+              <div style="width:10px;height:10px;border-radius:3px;background:${s.color};flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),inset 0 -1px 0 rgba(0,0,0,0.25);"></div>
+              <span>${s.label}</span>
+              <span style="color:var(--muted);margin-left:auto;">${s.pct}% (${s.val})</span>
+            </div>`).join('')}
+          </div>
+        </div>
       </div>`;
+
+    const tip = chartDona.querySelector('#rep-pta-tip');
+    function _setTip(txt) { if(!tip) return; if(!txt) { tip.style.display='none'; return; } tip.textContent = txt; tip.style.display='block'; }
+    let _sel = '';
+    function _applySel(key) {
+      _sel = key || '';
+      chartDona.querySelectorAll('[data-pta-slice]').forEach(el => {
+        const k = el.getAttribute('data-pta-slice');
+        const on = !_sel || k === _sel;
+        el.style.opacity = on ? '1' : '0.28';
+        el.style.transform = (k === _sel) ? 'translateY(-1.5px)' : '';
+      });
+      chartDona.querySelectorAll('[data-pta-seg]').forEach(el => {
+        const k = el.getAttribute('data-pta-seg');
+        const on = !_sel || k === _sel;
+        el.style.opacity = on ? '1' : '0.35';
+        el.style.transform = (k === _sel) ? 'translateY(-1px)' : '';
+      });
+      chartDona.querySelectorAll('[data-pta-row]').forEach(el => {
+        const k = el.getAttribute('data-pta-row');
+        const on = !_sel || k === _sel;
+        el.style.opacity = on ? '1' : '0.40';
+      });
+    }
+    function _toggleSel(key) { _applySel(_sel === key ? '' : key); }
+    chartDona.querySelectorAll('[data-pta-seg]').forEach(el => {
+      const key = el.getAttribute('data-pta-seg');
+      const seg = segs.find(s => s.key === key);
+      el.addEventListener('mouseenter', () => { if(seg) _setTip(seg.label + ': ' + seg.pct + '% (' + seg.val + ')'); });
+      el.addEventListener('mouseleave', () => { _setTip(''); });
+      el.addEventListener('click', () => { _toggleSel(key); });
+    });
+    chartDona.querySelectorAll('[data-pta-slice]').forEach(el => {
+      const key = el.getAttribute('data-pta-slice');
+      const seg = segs.find(s => s.key === key);
+      el.addEventListener('mouseenter', () => { if(seg) _setTip(seg.label + ': ' + seg.pct + '% (' + seg.val + ')'); });
+      el.addEventListener('mouseleave', () => { _setTip(''); });
+      el.addEventListener('click', () => { _toggleSel(key); });
+    });
+    chartDona.querySelectorAll('[data-pta-row]').forEach(el => {
+      const key = el.getAttribute('data-pta-row');
+      el.addEventListener('click', () => { _toggleSel(key); });
+    });
+    _applySel('');
   }
 
   // ── GRÁFICO 3: Mapa de calor (solo sin alumno individual) ──
