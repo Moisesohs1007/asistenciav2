@@ -1,0 +1,47 @@
+{
+  "source": {
+    "page": "https://supabase.com/pricing",
+    "captured_at": "2026-04-27"
+  },
+  "plans": {
+    "free": {
+      "monthly_fee_usd": 0,
+      "included": {
+        "mau": 50000,
+        "db_disk_gb": 0.5,
+        "egress_gb": 5,
+        "cached_egress_gb": 5,
+        "storage_gb": 1
+      },
+      "overage": {
+        "mau_usd_per_user": null,
+        "db_disk_usd_per_gb": null,
+        "egress_usd_per_gb": null,
+        "cached_egress_usd_per_gb": null,
+        "storage_usd_per_gb": null,
+        "edge_invocations_usd_per_1m": null,
+        "realtime_messages_usd_per_1m": null
+      }
+    },
+    "pro": {
+      "monthly_fee_usd": 25,
+      "included": {
+        "mau": 100000,
+        "db_disk_gb": 8,
+        "egress_gb": 250,
+        "cached_egress_gb": 250,
+        "storage_gb": 100
+      },
+      "overage": {
+        "mau_usd_per_user": 0.00325,
+        "db_disk_usd_per_gb": 0.125,
+        "egress_usd_per_gb": 0.09,
+        "cached_egress_usd_per_gb": 0.03,
+        "storage_usd_per_gb": 0.021,
+        "edge_invocations_usd_per_1m": null,
+        "realtime_messages_usd_per_1m": null
+      }
+    }
+  }
+}
+

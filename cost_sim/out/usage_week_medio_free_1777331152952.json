@@ -1,0 +1,254 @@
+{
+  "meta": {
+    "generated_at": "2026-04-27T23:05:52.952Z",
+    "scenario": "medio",
+    "plan": "free",
+    "weeks_per_month": 4.345,
+    "start_day": "2026-04-21",
+    "days": 7
+  },
+  "inputs": {
+    "actors": {
+      "maus": 120,
+      "admins": 2,
+      "porteros": 2,
+      "tutores": 10,
+      "profesores": 30
+    },
+    "school": {
+      "alumnos_total": 800
+    },
+    "workload": {
+      "attendance_days_per_week": 5,
+      "scans_per_attendance_day": 740,
+      "scan_tardanza_rate": 0.15,
+      "report_runs_per_week": {
+        "dia": 60,
+        "mes": 18,
+        "rango": 8,
+        "anio": 2
+      },
+      "whatsapp_messages_per_week": 260,
+      "comunicados_per_week": 6,
+      "ai_prompts_per_week": 15,
+      "material_ops_per_week": 600,
+      "storage_uploads_per_week": 12,
+      "storage_upload_avg_mb": 0.6,
+      "storage_downloads_per_week": 180,
+      "storage_download_avg_mb": 0.6
+    }
+  },
+  "totals_week": {
+    "api_requests": 12332,
+    "auth_requests": 3700,
+    "db_reads": 1134,
+    "db_writes": 3925,
+    "db_deletes": 0,
+    "rpc_calls": 3700,
+    "edge_invocations": 281,
+    "realtime_peak_conns": 20,
+    "realtime_messages": 0,
+    "egress_bytes": 168269127,
+    "cached_egress_bytes": 0,
+    "storage_bytes": -105696458,
+    "egress_gb": 0.16,
+    "cached_egress_gb": 0,
+    "storage_gb_delta": 0
+  },
+  "projected_month": {
+    "mau": 120,
+    "egress_gb": 0.68,
+    "cached_egress_gb": 0,
+    "storage_gb": 0,
+    "db_disk_gb": null
+  },
+  "pricing_estimate": {
+    "plan": "free",
+    "monthly_fee_usd": 0,
+    "components_usd": {
+      "mau": 0,
+      "db_disk": 0,
+      "egress": 0,
+      "cached_egress": 0,
+      "storage": 0
+    },
+    "total_usd": 0,
+    "billable": {
+      "mau": 0,
+      "db_disk_gb": 0,
+      "egress_gb": 0,
+      "cached_egress_gb": 0,
+      "storage_gb": 0
+    }
+  },
+  "daily": [
+    {
+      "day": "2026-04-21",
+      "attendance": {
+        "scans": 740,
+        "puntuales": 629,
+        "tardanzas": 111
+      },
+      "operations": {
+        "api_requests": 2408,
+        "auth_requests": 740,
+        "db_reads_requests": 171,
+        "db_writes_requests": 773,
+        "db_deletes_requests": 0,
+        "rpc_calls": 740,
+        "edge_invocations": 42,
+        "realtime_peak_conns": 20,
+        "realtime_messages": 0
+      },
+      "bytes": {
+        "egress_bytes": 31179127,
+        "cached_egress_bytes": 0,
+        "storage_bytes": -15099494
+      }
+    },
+    {
+      "day": "2026-04-22",
+      "attendance": {
+        "scans": 740,
+        "puntuales": 629,
+        "tardanzas": 111
+      },
+      "operations": {
+        "api_requests": 2400,
+        "auth_requests": 740,
+        "db_reads_requests": 166,
+        "db_writes_requests": 772,
+        "db_deletes_requests": 0,
+        "rpc_calls": 740,
+        "edge_invocations": 40,
+        "realtime_peak_conns": 20,
+        "realtime_messages": 0
+      },
+      "bytes": {
+        "egress_bytes": 30613587,
+        "cached_egress_bytes": 0,
+        "storage_bytes": -15099494
+      }
+    },
+    {
+      "day": "2026-04-23",
+      "attendance": {
+        "scans": 740,
+        "puntuales": 629,
+        "tardanzas": 111
+      },
+      "operations": {
+        "api_requests": 2397,
+        "auth_requests": 740,
+        "db_reads_requests": 163,
+        "db_writes_requests": 772,
+        "db_deletes_requests": 0,
+        "rpc_calls": 740,
+        "edge_invocations": 40,
+        "realtime_peak_conns": 20,
+        "realtime_messages": 0
+      },
+      "bytes": {
+        "egress_bytes": 23141067,
+        "cached_egress_bytes": 0,
+        "storage_bytes": -15099494
+      }
+    },
+    {
+      "day": "2026-04-24",
+      "attendance": {
+        "scans": 740,
+        "puntuales": 629,
+        "tardanzas": 111
+      },
+      "operations": {
+        "api_requests": 2397,
+        "auth_requests": 740,
+        "db_reads_requests": 163,
+        "db_writes_requests": 772,
+        "db_deletes_requests": 0,
+        "rpc_calls": 740,
+        "edge_invocations": 40,
+        "realtime_peak_conns": 20,
+        "realtime_messages": 0
+      },
+      "bytes": {
+        "egress_bytes": 23141067,
+        "cached_egress_bytes": 0,
+        "storage_bytes": -15099494
+      }
+    },
+    {
+      "day": "2026-04-25",
+      "attendance": {
+        "scans": 0,
+        "puntuales": 0,
+        "tardanzas": 0
+      },
+      "operations": {
+        "api_requests": 172,
+        "auth_requests": 0,
+        "db_reads_requests": 158,
+        "db_writes_requests": 32,
+        "db_deletes_requests": 0,
+        "rpc_calls": 0,
+        "edge_invocations": 40,
+        "realtime_peak_conns": 20,
+        "realtime_messages": 0
+      },
+      "bytes": {
+        "egress_bytes": 20233087,
+        "cached_egress_bytes": 0,
+        "storage_bytes": -15099494
+      }
+    },
+    {
+      "day": "2026-04-26",
+      "attendance": {
+        "scans": 0,
+        "puntuales": 0,
+        "tardanzas": 0
+      },
+      "operations": {
+        "api_requests": 170,
+        "auth_requests": 0,
+        "db_reads_requests": 157,
+        "db_writes_requests": 32,
+        "db_deletes_requests": 0,
+        "rpc_calls": 0,
+        "edge_invocations": 40,
+        "realtime_peak_conns": 20,
+        "realtime_messages": 0
+      },
+      "bytes": {
+        "egress_bytes": 18974796,
+        "cached_egress_bytes": 0,
+        "storage_bytes": -15099494
+      }
+    },
+    {
+      "day": "2026-04-27",
+      "attendance": {
+        "scans": 740,
+        "puntuales": 629,
+        "tardanzas": 111
+      },
+      "operations": {
+        "api_requests": 2388,
+        "auth_requests": 740,
+        "db_reads_requests": 156,
+        "db_writes_requests": 772,
+        "db_deletes_requests": 0,
+        "rpc_calls": 740,
+        "edge_invocations": 39,
+        "realtime_peak_conns": 20,
+        "realtime_messages": 0
+      },
+      "bytes": {
+        "egress_bytes": 20986396,
+        "cached_egress_bytes": 0,
+        "storage_bytes": -15099494
+      }
+    }
+  ]
+}

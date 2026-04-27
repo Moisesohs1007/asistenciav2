@@ -1,0 +1,1 @@
+{"schema":"asmqr-cost-audit-v1","colegio_id":"sigece","supabase_url":"https://example.supabase.co","day":"2026-04-27","enabled":true,"deepBytes":false,"counters":{"rest":10,"auth":2,"functions":1,"storage":3,"other":0,"bytesOut":1000,"bytesIn":9000,"errors":0},"byPath":{}}

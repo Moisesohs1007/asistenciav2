@@ -38,6 +38,162 @@ const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 window._sb = _sb; // disponible para db_supabase.js
 
+window.ASMQR_COST_AUDIT = window.ASMQR_COST_AUDIT || (function(){
+  function _nowIso() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function _safeJsonParse(s) { try { return JSON.parse(s); } catch(e) { return null; } }
+  function _byteLen(x) {
+    try {
+      if (x == null) return 0;
+      if (typeof x === 'string') return new TextEncoder().encode(x).length;
+      if (x instanceof ArrayBuffer) return x.byteLength;
+      if (ArrayBuffer.isView(x)) return x.byteLength;
+      if (typeof Blob !== 'undefined' && x instanceof Blob) return x.size || 0;
+      return new TextEncoder().encode(JSON.stringify(x)).length;
+    } catch(e) { return 0; }
+  }
+  const KEY = 'asmqr_cost_audit_v1';
+  const state = {
+    enabled: false,
+    deepBytes: false,
+    day: _nowIso(),
+    counters: {
+      rest: 0,
+      auth: 0,
+      functions: 0,
+      storage: 0,
+      other: 0,
+      bytesOut: 0,
+      bytesIn: 0,
+      errors: 0
+    },
+    byPath: {}
+  };
+  function _load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if(!raw) return;
+      const obj = _safeJsonParse(raw);
+      if(!obj || typeof obj !== 'object') return;
+      if(obj.day) state.day = obj.day;
+      if(obj.counters) state.counters = { ...state.counters, ...obj.counters };
+      if(obj.byPath) state.byPath = obj.byPath;
+      if(typeof obj.enabled === 'boolean') state.enabled = obj.enabled;
+      if(typeof obj.deepBytes === 'boolean') state.deepBytes = obj.deepBytes;
+    } catch(e) {}
+  }
+  function _save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({
+        enabled: state.enabled,
+        deepBytes: state.deepBytes,
+        day: state.day,
+        counters: state.counters,
+        byPath: state.byPath
+      }));
+    } catch(e) {}
+  }
+  function reset() {
+    state.day = _nowIso();
+    state.counters = { rest:0, auth:0, functions:0, storage:0, other:0, bytesOut:0, bytesIn:0, errors:0 };
+    state.byPath = {};
+    _save();
+  }
+  function enable(v=true, { deepBytes=false } = {}) {
+    state.enabled = !!v;
+    state.deepBytes = !!deepBytes;
+    const today = _nowIso();
+    if(state.day !== today) reset();
+    _save();
+  }
+  function isEnabled() { return !!state.enabled; }
+  function setDeepBytes(v) { state.deepBytes = !!v; _save(); }
+  function _bump(kind, urlStr, outBytes, inBytes, ok) {
+    const today = _nowIso();
+    if(state.day !== today) reset();
+    state.counters[kind] = (state.counters[kind] || 0) + 1;
+    state.counters.bytesOut += outBytes || 0;
+    state.counters.bytesIn  += inBytes || 0;
+    if(!ok) state.counters.errors += 1;
+    const u = String(urlStr || '');
+    const key = u.replace(SUPABASE_URL, '').split('?')[0];
+    const bp = state.byPath[key] || { count: 0, bytesOut: 0, bytesIn: 0, errors: 0 };
+    bp.count += 1;
+    bp.bytesOut += outBytes || 0;
+    bp.bytesIn += inBytes || 0;
+    if(!ok) bp.errors += 1;
+    state.byPath[key] = bp;
+    _save();
+  }
+  function exportData() {
+    const today = _nowIso();
+    if(state.day !== today) reset();
+    return {
+      schema: 'asmqr-cost-audit-v1',
+      colegio_id: (typeof COLEGIO_ID !== 'undefined') ? COLEGIO_ID : null,
+      supabase_url: SUPABASE_URL,
+      day: state.day,
+      enabled: state.enabled,
+      deepBytes: state.deepBytes,
+      counters: state.counters,
+      byPath: state.byPath
+    };
+  }
+  _load();
+  return { enable, isEnabled, setDeepBytes, reset, export: exportData, _bump, _byteLen };
+})();
+
+if(!window.__asmqrFetchWrapped) {
+  window.__asmqrFetchWrapped = true;
+  const _origFetch = window.fetch.bind(window);
+  window.fetch = async function(input, init) {
+    const audit = window.ASMQR_COST_AUDIT;
+    const enabled = audit && audit.isEnabled && audit.isEnabled();
+    if(!enabled) return _origFetch(input, init);
+    const urlStr = (typeof input === 'string') ? input : (input && input.url) ? input.url : String(input || '');
+    const m = (init && init.method) ? String(init.method).toUpperCase() : 'GET';
+    let kind = 'other';
+    try {
+      if(urlStr.startsWith(SUPABASE_URL + '/rest/v1/')) kind = 'rest';
+      else if(urlStr.startsWith(SUPABASE_URL + '/auth/v1/')) kind = 'auth';
+      else if(urlStr.startsWith(SUPABASE_URL + '/functions/v1/')) kind = 'functions';
+      else if(urlStr.includes('/storage/v1/')) kind = 'storage';
+    } catch(e) {}
+    const outBytes = (function(){
+      try {
+        const b = init && init.body;
+        if(!b) return 0;
+        if(typeof b === 'string') return audit._byteLen(b);
+        if(b instanceof URLSearchParams) return audit._byteLen(b.toString());
+        if(typeof FormData !== 'undefined' && b instanceof FormData) return 0;
+        return audit._byteLen(b);
+      } catch(e) { return 0; }
+    })();
+    let res;
+    try {
+      res = await _origFetch(input, init);
+    } catch(e) {
+      try { audit._bump(kind, urlStr, outBytes, 0, false); } catch(_) {}
+      throw e;
+    }
+    let inBytes = 0;
+    try {
+      const cl = res.headers && res.headers.get ? res.headers.get('content-length') : null;
+      if(cl) inBytes = parseInt(cl, 10) || 0;
+      else if(audit && audit.export && audit.export().deepBytes) {
+        try {
+          const ab = await res.clone().arrayBuffer();
+          inBytes = ab.byteLength || 0;
+        } catch(_) {}
+      }
+    } catch(e) {}
+    try { audit._bump(kind, urlStr, outBytes, inBytes, res.ok); } catch(_) {}
+    return res;
+  };
+}
+
 // ============================================================
 // CONVERSIÓN snake_case ↔ camelCase
 // ============================================================

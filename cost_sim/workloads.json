@@ -1,0 +1,112 @@
+{
+  "assumptions": {
+    "week_days": 7,
+    "timezone": "America/Lima",
+    "row_size_bytes": {
+      "alumnos": 260,
+      "registros": 220,
+      "resumen_mensual": 80,
+      "materiales_item": 140,
+      "usuarios": 220
+    },
+    "http_overhead_bytes_per_request": 900,
+    "auth_user_fetch_bytes": 2500,
+    "edge_invocation_overhead_bytes": 1200
+  },
+  "scenarios": {
+    "bajo": {
+      "actors": {
+        "maus": 30,
+        "admins": 1,
+        "porteros": 1,
+        "tutores": 4,
+        "profesores": 8
+      },
+      "school": {
+        "alumnos_total": 250
+      },
+      "workload": {
+        "attendance_days_per_week": 5,
+        "scans_per_attendance_day": 220,
+        "scan_tardanza_rate": 0.12,
+        "report_runs_per_week": {
+          "dia": 15,
+          "mes": 5,
+          "rango": 3,
+          "anio": 1
+        },
+        "whatsapp_messages_per_week": 40,
+        "comunicados_per_week": 2,
+        "ai_prompts_per_week": 5,
+        "material_ops_per_week": 120,
+        "storage_uploads_per_week": 5,
+        "storage_upload_avg_mb": 0.4,
+        "storage_downloads_per_week": 30,
+        "storage_download_avg_mb": 0.4
+      }
+    },
+    "medio": {
+      "actors": {
+        "maus": 120,
+        "admins": 2,
+        "porteros": 2,
+        "tutores": 10,
+        "profesores": 30
+      },
+      "school": {
+        "alumnos_total": 800
+      },
+      "workload": {
+        "attendance_days_per_week": 5,
+        "scans_per_attendance_day": 740,
+        "scan_tardanza_rate": 0.15,
+        "report_runs_per_week": {
+          "dia": 60,
+          "mes": 18,
+          "rango": 8,
+          "anio": 2
+        },
+        "whatsapp_messages_per_week": 260,
+        "comunicados_per_week": 6,
+        "ai_prompts_per_week": 15,
+        "material_ops_per_week": 600,
+        "storage_uploads_per_week": 12,
+        "storage_upload_avg_mb": 0.6,
+        "storage_downloads_per_week": 180,
+        "storage_download_avg_mb": 0.6
+      }
+    },
+    "alto": {
+      "actors": {
+        "maus": 450,
+        "admins": 4,
+        "porteros": 6,
+        "tutores": 35,
+        "profesores": 120
+      },
+      "school": {
+        "alumnos_total": 3500
+      },
+      "workload": {
+        "attendance_days_per_week": 5,
+        "scans_per_attendance_day": 3200,
+        "scan_tardanza_rate": 0.18,
+        "report_runs_per_week": {
+          "dia": 260,
+          "mes": 80,
+          "rango": 35,
+          "anio": 8
+        },
+        "whatsapp_messages_per_week": 1400,
+        "comunicados_per_week": 18,
+        "ai_prompts_per_week": 80,
+        "material_ops_per_week": 4200,
+        "storage_uploads_per_week": 60,
+        "storage_upload_avg_mb": 0.8,
+        "storage_downloads_per_week": 1200,
+        "storage_download_avg_mb": 0.8
+      }
+    }
+  }
+}
+

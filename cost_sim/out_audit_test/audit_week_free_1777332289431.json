@@ -1,0 +1,61 @@
+{
+  "meta": {
+    "generated_at": "2026-04-27T23:24:49.431Z",
+    "source": "asmqr-cost-audit",
+    "colegio_id": "sigece",
+    "plan": "free",
+    "weeks_per_month": 4.345
+  },
+  "totals_week": {
+    "api_requests": 16,
+    "auth_requests": 2,
+    "db_requests": 10,
+    "edge_invocations": 1,
+    "storage_requests": 3,
+    "errors": 0,
+    "egress_bytes": 10000,
+    "egress_gb": 0
+  },
+  "projected_month": {
+    "mau": 10,
+    "egress_gb": 0,
+    "cached_egress_gb": 0,
+    "storage_gb": 0,
+    "db_disk_gb": 0
+  },
+  "pricing_estimate": {
+    "plan": "free",
+    "monthly_fee_usd": 0,
+    "components_usd": {
+      "mau": 0,
+      "db_disk": 0,
+      "egress": 0,
+      "cached_egress": 0,
+      "storage": 0
+    },
+    "total_usd": 0,
+    "billable": {
+      "mau": 0,
+      "db_disk_gb": 0,
+      "egress_gb": 0,
+      "cached_egress_gb": 0,
+      "storage_gb": 0
+    }
+  },
+  "daily": [
+    {
+      "day": "2026-04-27",
+      "operations": {
+        "api_requests": 16,
+        "auth_requests": 2,
+        "db_requests": 10,
+        "edge_invocations": 1,
+        "storage_requests": 3,
+        "errors": 0
+      },
+      "bytes": {
+        "egress_bytes": 10000
+      }
+    }
+  ]
+}

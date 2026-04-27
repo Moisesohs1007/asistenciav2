@@ -4373,6 +4373,7 @@
         <button class="btn btn-ghost" onclick="cargarReportesAnio()" style="font-size:0.8rem;padding:6px 14px;">📅 Año completo</button>
       </div>
       <button class="btn btn-ghost" onclick="exportarReportePDF()" style="font-size:0.78rem;padding:5px 12px;border-color:var(--accent2);color:var(--accent2);">⬇ PDF</button>
+      <button class="btn btn-ghost" onclick="repExportCostAudit()" style="font-size:0.78rem;padding:5px 12px;border-color:rgba(34,197,94,0.45);color:rgba(34,197,94,0.95);">📊 Uso</button>
     </div>
 
     <div id="rep-alumno-info" class="card" style="display:none;margin-bottom:14px;padding:10px 14px;">
@@ -13052,6 +13053,26 @@ function repResetReportesUI() {
     if(barrasCard) barrasCard.style.display = '';
     _repContextoPDF = {};
   } catch(e) {}
+}
+
+function repExportCostAudit() {
+  try {
+    const a = window.ASMQR_COST_AUDIT;
+    if(!a) { toast('Auditoría no disponible','warning'); return; }
+    if(!a.isEnabled()) a.enable(true, { deepBytes: false });
+    const data = a.export();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const el = document.createElement('a');
+    el.href = URL.createObjectURL(blob);
+    el.download = `supabase_uso_${(data.colegio_id||'colegio')}_${data.day}.json`;
+    el.style.display = 'none';
+    document.body.appendChild(el);
+    el.click();
+    setTimeout(()=>{ try { URL.revokeObjectURL(el.href); } catch(e) {} el.remove(); }, 1200);
+    toast('✅ Uso descargado (JSON)','success');
+  } catch(e) {
+    toast('❌ No se pudo exportar: ' + e.message,'error');
+  }
 }
 
 async function iniciarFiltrosReportes() {
