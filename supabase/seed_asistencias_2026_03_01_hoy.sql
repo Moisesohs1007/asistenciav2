@@ -9,6 +9,10 @@ DECLARE
   v_hora_is_time  BOOLEAN := FALSE;
   v_fecha_expr TEXT := '';
   v_hora_expr  TEXT := '';
+  v_uP_expr    TEXT := '';
+  v_uT_expr    TEXT := '';
+  v_uM_expr    TEXT := '';
+  v_isT_expr   TEXT := '';
   v_sql TEXT := '';
 BEGIN
   SELECT (c.data_type = 'date')
@@ -29,35 +33,50 @@ BEGIN
   WHERE c.table_schema = 'public'
     AND c.table_name = 'registros'
     AND c.column_name = 'hora';
+
+  v_uP_expr :=
+    '(((''x''||substr(md5('
+    || quote_literal(v_colegio_id)
+    || '||''|''||a.id||''|''||to_char(d::date,''YYYY-MM-DD'')||''|P''),1,16))::bit(64)::bigint & 9223372036854775807)::double precision / 9223372036854775807.0)';
+  v_uT_expr :=
+    '(((''x''||substr(md5('
+    || quote_literal(v_colegio_id)
+    || '||''|''||a.id||''|''||to_char(d::date,''YYYY-MM-DD'')||''|T''),1,16))::bit(64)::bigint & 9223372036854775807)::double precision / 9223372036854775807.0)';
+  v_uM_expr :=
+    '(((''x''||substr(md5('
+    || quote_literal(v_colegio_id)
+    || '||''|''||a.id||''|''||to_char(d::date,''YYYY-MM-DD'')||''|M''),1,16))::bit(64)::bigint & 9223372036854775807)::double precision / 9223372036854775807.0)';
+  v_isT_expr := '(' || v_uT_expr || ' < ' || v_p_tardanza::TEXT || ')';
+
   IF COALESCE(v_hora_is_time, FALSE) THEN
-    v_hora_expr := '(CASE WHEN (random() < ' || v_p_tardanza::TEXT || ') THEN ('
+    v_hora_expr := '(CASE WHEN ' || v_isT_expr || ' THEN ('
       || 'CASE '
-      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%TARDE%'' THEN (time ''13:55'' + ((random()*40)::int) * interval ''1 minute'') '
-      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%NOCHE%'' THEN (time ''18:55'' + ((random()*40)::int) * interval ''1 minute'') '
-      || 'ELSE (time ''07:55'' + ((random()*40)::int) * interval ''1 minute'') '
+      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%TARDE%'' THEN (time ''13:55'' + (floor((' || v_uM_expr || ')*40)::int) * interval ''1 minute'') '
+      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%NOCHE%'' THEN (time ''18:55'' + (floor((' || v_uM_expr || ')*40)::int) * interval ''1 minute'') '
+      || 'ELSE (time ''07:55'' + (floor((' || v_uM_expr || ')*40)::int) * interval ''1 minute'') '
       || 'END'
       || ')::time ELSE ('
       || 'CASE '
-      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%TARDE%'' THEN (time ''13:10'' + ((random()*40)::int) * interval ''1 minute'') '
-      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%NOCHE%'' THEN (time ''18:10'' + ((random()*40)::int) * interval ''1 minute'') '
-      || 'ELSE (time ''07:10'' + ((random()*40)::int) * interval ''1 minute'') '
+      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%TARDE%'' THEN (time ''13:10'' + (floor((' || v_uM_expr || ')*40)::int) * interval ''1 minute'') '
+      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%NOCHE%'' THEN (time ''18:10'' + (floor((' || v_uM_expr || ')*40)::int) * interval ''1 minute'') '
+      || 'ELSE (time ''07:10'' + (floor((' || v_uM_expr || ')*40)::int) * interval ''1 minute'') '
       || 'END'
       || ')::time END)';
   ELSE
-    v_hora_expr := 'CASE WHEN (random() < ' || v_p_tardanza::TEXT || ') THEN '
+    v_hora_expr := 'CASE WHEN ' || v_isT_expr || ' THEN '
       || 'to_char(('
       || 'CASE '
-      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%TARDE%'' THEN (time ''13:55'' + ((random()*40)::int) * interval ''1 minute'') '
-      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%NOCHE%'' THEN (time ''18:55'' + ((random()*40)::int) * interval ''1 minute'') '
-      || 'ELSE (time ''07:55'' + ((random()*40)::int) * interval ''1 minute'') '
+      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%TARDE%'' THEN (time ''13:55'' + (floor((' || v_uM_expr || ')*40)::int) * interval ''1 minute'') '
+      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%NOCHE%'' THEN (time ''18:55'' + (floor((' || v_uM_expr || ')*40)::int) * interval ''1 minute'') '
+      || 'ELSE (time ''07:55'' + (floor((' || v_uM_expr || ')*40)::int) * interval ''1 minute'') '
       || 'END'
       || ')::time, ''HH24:MI'') '
       || 'ELSE '
       || 'to_char(('
       || 'CASE '
-      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%TARDE%'' THEN (time ''13:10'' + ((random()*40)::int) * interval ''1 minute'') '
-      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%NOCHE%'' THEN (time ''18:10'' + ((random()*40)::int) * interval ''1 minute'') '
-      || 'ELSE (time ''07:10'' + ((random()*40)::int) * interval ''1 minute'') '
+      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%TARDE%'' THEN (time ''13:10'' + (floor((' || v_uM_expr || ')*40)::int) * interval ''1 minute'') '
+      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%NOCHE%'' THEN (time ''18:10'' + (floor((' || v_uM_expr || ')*40)::int) * interval ''1 minute'') '
+      || 'ELSE (time ''07:10'' + (floor((' || v_uM_expr || ')*40)::int) * interval ''1 minute'') '
       || 'END'
       || ')::time, ''HH24:MI'') END';
   END IF;
@@ -81,7 +100,7 @@ BEGIN
       quote_literal('INGRESO') || ', ' ||
       v_fecha_expr || ', ' ||
       v_hora_expr || ', ' ||
-      'CASE WHEN (random() < ' || v_p_tardanza::TEXT || ') THEN ''Tardanza'' ELSE ''Puntual'' END, ' ||
+      'CASE WHEN ' || v_isT_expr || ' THEN ''Tardanza'' ELSE ''Puntual'' END, ' ||
       'trim(coalesce(a.apellidos, '''') || '' '' || coalesce(a.nombres, '''')), ' ||
       'coalesce(a.grado, ''''), ' ||
       'coalesce(a.seccion, ''''), ' ||
@@ -91,7 +110,7 @@ BEGIN
     'CROSS JOIN generate_series(' || quote_literal(v_start) || '::date, ' || quote_literal(v_end) || '::date, interval ''1 day'') d ' ||
     'WHERE a.colegio_id = ' || quote_literal(v_colegio_id) || ' ' ||
       'AND extract(isodow from d) BETWEEN 1 AND 5 ' ||
-      'AND (random() < ' || v_p_present::TEXT || ')';
+      'AND (' || v_uP_expr || ' < ' || v_p_present::TEXT || ')';
 
   EXECUTE v_sql;
 
