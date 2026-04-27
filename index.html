@@ -2167,6 +2167,9 @@
       <button class="msb-subitem" onclick="msbPickSub(this,'incidentes','aula','🚨 Incidentes')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Incidentes</span>
       </button>
+      <button class="msb-subitem" id="msb-sub-materiales" style="display:none;" onclick="msbPickSub(this,'materiales','aula','📦 Materiales')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Materiales</span>
+      </button>
     </div>
 
     <!-- Comunicación -->
@@ -2544,6 +2547,7 @@
         <div class="nav-drop-item" id="tab-alumnos" onclick="event.stopPropagation();showSection('alumnos');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Alumnos</div>
         <div class="nav-drop-sep"></div>
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('incidentes');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Incidentes</div>
+        <div class="nav-drop-item" id="nav-materiales" style="display:none;" onclick="event.stopPropagation();showSection('materiales');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73z"/><path d="M3.3 7.3 12 12l8.7-4.7"/><path d="M12 22V12"/></svg>📦 Materiales</div>
       </div>
     </button>
     <!-- Comunicación -->
@@ -3383,6 +3387,360 @@
       <div style="display:flex;gap:10px;margin-top:20px;">
         <button class="btn btn-primary" onclick="guardarIncidente()" style="flex:1;justify-content:center;background:linear-gradient(135deg,#ef4444,#f97316);">🖨️ Guardar y Generar PDF</button>
         <button class="btn btn-ghost" onclick="closeModal('modal-incidente'); limpiarFiltrosIncidentes();" style="justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MATERIALES (TUTOR / ADMIN) ===== -->
+  <div class="section" id="sec-materiales" onfocusin="initMateriales()">
+    <div class="page-title">📦 Recepción de Materiales</div>
+    <div class="page-sub">Control por estudiante, recordatorios WhatsApp y entrega a administración</div>
+
+    <div class="card" id="mat-no-access" style="display:none;padding:16px 18px;">
+      <div style="font-weight:800;color:var(--text);">Sin acceso</div>
+      <div style="margin-top:6px;color:var(--muted);line-height:1.35;">
+        Este módulo está disponible solo para tutores. El modo administrador está disponible para Admin/Director.
+      </div>
+    </div>
+
+    <div class="card" id="mat-scope-card" style="display:none;padding:14px 18px;margin-bottom:14px;">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;">
+        <div>
+          <div style="font-weight:900;color:var(--text);">Ámbito</div>
+          <div style="margin-top:4px;color:var(--muted);" id="mat-scope-label">—</div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="form-group" id="mat-admin-tutor-group" style="min-width:260px;margin:0;display:none;">
+            <label>Tutor</label>
+            <select id="mat-admin-tutor" onchange="matOnAdminTutorChange()"></select>
+          </div>
+          <button class="btn btn-ghost" type="button" onclick="matRefreshAll()" style="padding:7px 14px;">↻ Actualizar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="card" style="padding:14px 18px;">
+        <div class="card-title"><span class="dot"></span>Lista base (grado/sección)</div>
+        <div class="page-sub" style="margin-top:8px;">Se crea una sola vez por año y queda bloqueada.</div>
+
+        <div id="mat-template-view" style="margin-top:10px;display:none;">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+            <div style="color:var(--muted);font-size:0.85rem;" id="mat-template-name">—</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span class="chip" id="mat-template-locked" style="background:rgba(34,197,94,0.12);color:#22c55e;border:1px solid rgba(34,197,94,0.28);">Bloqueada</span>
+            </div>
+          </div>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Categoría</th>
+                  <th>Material</th>
+                  <th>Cant.</th>
+                  <th>Unidad</th>
+                </tr>
+              </thead>
+              <tbody id="mat-template-items"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="mat-template-create" style="margin-top:10px;display:none;">
+          <div class="form-group" style="margin-top:8px;">
+            <label>Nombre</label>
+            <input id="mat-template-input-name" type="text" placeholder="Útiles 6to A 2026">
+          </div>
+          <div class="form-grid" style="grid-template-columns:1fr 1.2fr 0.55fr 0.6fr;gap:10px;">
+            <div class="form-group">
+              <label>Categoría</label>
+              <select id="mat-item-cat">
+                <option value="Materiales">Materiales</option>
+                <option value="Útiles de aseo">Útiles de aseo</option>
+                <option value="Otros">Otros</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Material</label>
+              <input id="mat-item-name" type="text" placeholder="Papel bond A4 80gr">
+            </div>
+            <div class="form-group">
+              <label>Cantidad</label>
+              <input id="mat-item-qty" type="number" min="0" step="0.5" value="1">
+            </div>
+            <div class="form-group">
+              <label>Unidad</label>
+              <select id="mat-item-unit" onchange="matOnUnitChange()">
+                <option value="UND">UND</option>
+                <option value="PAQ">PAQ</option>
+                <option value="MT">MT</option>
+                <option value="FR">FR</option>
+                <option value="CJ">CJ</option>
+                <option value="ROLLO">ROLLO</option>
+                <option value="JG">JG</option>
+                <option value="PL">PL</option>
+                <option value="OTROS">OTROS</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" id="mat-item-unit-other-group" style="display:none;">
+            <label>Unidad (otros)</label>
+            <input id="mat-item-unit-other" type="text" placeholder="ej. blister, sobre, litro...">
+          </div>
+          <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary" type="button" onclick="matAddDraftItem()" style="justify-content:center;">+ Agregar</button>
+            <button class="btn btn-ghost" type="button" onclick="matClearDraft()" style="justify-content:center;">Limpiar</button>
+          </div>
+          <div class="table-wrap" style="margin-top:12px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Categoría</th>
+                  <th>Material</th>
+                  <th>Cant.</th>
+                  <th>Unidad</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="mat-draft-items"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary" type="button" onclick="matCreateTemplateLocked()" style="justify-content:center;">Guardar lista (bloqueada)</button>
+          </div>
+          <div id="mat-template-create-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:14px 18px;">
+        <div class="card-title"><span class="dot"></span>Recepción por estudiante</div>
+        <div class="page-sub" style="margin-top:8px;">Marca cantidades entregadas. El sistema calcula faltantes automáticamente.</div>
+
+        <div class="form-group" style="margin-top:10px;">
+          <label>Estudiante</label>
+          <select id="mat-student" onchange="matOnStudentChange()"></select>
+        </div>
+
+        <div id="mat-student-phone" style="display:none;margin-top:6px;">
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="form-group">
+              <label>Teléfono apoderado 1</label>
+              <input id="mat-tel1" type="text" placeholder="9 dígitos">
+            </div>
+            <div class="form-group">
+              <label>Teléfono apoderado 2 (opcional)</label>
+              <input id="mat-tel2" type="text" placeholder="9 dígitos">
+            </div>
+          </div>
+          <div style="margin-top:8px;">
+            <button class="btn btn-ghost" type="button" onclick="matSavePhones()" style="padding:7px 14px;">Guardar teléfonos</button>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="margin-top:12px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>Req.</th>
+                <th>Entregado</th>
+                <th>Falta</th>
+              </tr>
+            </thead>
+            <tbody id="mat-receipt-items"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+          <div style="color:var(--muted);font-size:0.85rem;" id="mat-receipt-status">—</div>
+          <button class="btn btn-primary" type="button" onclick="matSaveReceiptAll()" style="justify-content:center;">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
+      <div class="card" style="padding:14px 18px;">
+        <div class="card-title"><span class="dot"></span>Pendientes y recordatorio</div>
+        <div class="page-sub" style="margin-top:8px;">Selecciona estudiantes incompletos y envía recordatorio por WhatsApp.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:0.86rem;color:var(--text);">
+            <input id="mat-only-incomplete" type="checkbox" checked onchange="matRenderStudentList()">
+            Solo incompletos
+          </label>
+          <button class="btn btn-ghost" type="button" onclick="matSelectAllInList(true)" style="padding:7px 14px;">Seleccionar</button>
+          <button class="btn btn-ghost" type="button" onclick="matSelectAllInList(false)" style="padding:7px 14px;">Limpiar</button>
+          <button class="btn btn-primary" type="button" onclick="matSendReminders()" style="justify-content:center;">Enviar WhatsApp</button>
+        </div>
+        <div class="table-wrap" style="margin-top:12px;">
+          <table>
+            <thead>
+              <tr>
+                <th></th>
+                <th>Estudiante</th>
+                <th>Pendientes</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="mat-students-list"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="padding:14px 18px;">
+        <div class="card-title"><span class="dot"></span>Entrega a administración</div>
+        <div class="page-sub" style="margin-top:8px;">Registra lo entregado físicamente. El inventario se actualiza al confirmar.</div>
+
+        <div id="mat-handoff-tutor" style="display:none;margin-top:10px;">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+            <button class="btn btn-primary" type="button" onclick="matBuildHandoffDraft()" style="justify-content:center;">Crear entrega</button>
+            <div style="color:var(--muted);font-size:0.85rem;" id="mat-handoff-hint">—</div>
+          </div>
+          <div class="table-wrap" style="margin-top:12px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Material</th>
+                  <th>Cant.</th>
+                  <th>Unidad</th>
+                </tr>
+              </thead>
+              <tbody id="mat-handoff-items"></tbody>
+            </table>
+          </div>
+          <div class="form-group" style="margin-top:10px;">
+            <label>Observaciones</label>
+            <input id="mat-handoff-obs" type="text" placeholder="opcional">
+          </div>
+          <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary" type="button" onclick="matSubmitHandoff()" style="justify-content:center;">Enviar a administración</button>
+            <button class="btn btn-ghost" type="button" onclick="matClearHandoff()" style="justify-content:center;">Limpiar</button>
+          </div>
+
+          <div style="margin-top:16px;font-weight:900;color:var(--text);">Mi stock (administración)</div>
+          <div class="page-sub" style="margin-top:6px;">Se actualiza cuando administración confirma la recepción de tus entregas.</div>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Material</th>
+                  <th>Unidad</th>
+                  <th>Stock</th>
+                </tr>
+              </thead>
+              <tbody id="mat-my-stock"></tbody>
+            </table>
+          </div>
+
+          <div style="margin-top:14px;font-weight:900;color:var(--text);">Solicitar materiales</div>
+          <div class="page-sub" style="margin-top:6px;">Crea una solicitud. Administración la aprueba y se descuenta del stock.</div>
+          <div class="form-grid" style="grid-template-columns:1.5fr 0.7fr;gap:10px;margin-top:10px;">
+            <div class="form-group">
+              <label>Material</label>
+              <select id="mat-req-item"></select>
+            </div>
+            <div class="form-group">
+              <label>Cantidad</label>
+              <input id="mat-req-qty" type="number" min="0" step="0.5" value="1">
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary" type="button" onclick="matAddRequestItem()" style="justify-content:center;">+ Agregar</button>
+            <button class="btn btn-ghost" type="button" onclick="matClearRequest()" style="justify-content:center;">Limpiar</button>
+          </div>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Material</th>
+                  <th>Cant.</th>
+                  <th>Unidad</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="mat-req-items"></tbody>
+            </table>
+          </div>
+          <div class="form-group" style="margin-top:10px;">
+            <label>Observaciones</label>
+            <input id="mat-req-obs" type="text" placeholder="opcional">
+          </div>
+          <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary" type="button" onclick="matSubmitRequest()" style="justify-content:center;">Enviar solicitud</button>
+          </div>
+          <div style="margin-top:12px;font-weight:900;color:var(--text);">Mis solicitudes</div>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="mat-my-requests"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="mat-admin-panel" style="display:none;margin-top:10px;">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+            <div style="font-weight:900;color:var(--text);">Pendientes de confirmación</div>
+            <button class="btn btn-ghost" type="button" onclick="matLoadAdminHandoffs()" style="padding:7px 14px;">↻ Actualizar</button>
+          </div>
+          <div class="table-wrap" style="margin-top:12px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Tutor</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="mat-admin-handoffs"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:14px;font-weight:900;color:var(--text);">Solicitudes pendientes</div>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Tutor</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="mat-admin-requests"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:14px;font-weight:900;color:var(--text);">Inventario</div>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Material</th>
+                  <th>Unidad</th>
+                  <th>Stock (Tutor)</th>
+                  <th>Tutor</th>
+                </tr>
+              </thead>
+              <tbody id="mat-admin-stock"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:12px;font-weight:900;color:var(--text);">Stock global (sumatoria)</div>
+          <div class="table-wrap" style="margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Material</th>
+                  <th>Unidad</th>
+                  <th>Stock</th>
+                </tr>
+              </thead>
+              <tbody id="mat-admin-stock-global"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -4984,6 +5342,7 @@ auth.onAuthStateChanged(async user => {
 
     // Cargar datos y configuración
     await cargarPrivilegiosActuales();
+    await cargarTutorActual();
     cargarConfigBanner(); // cargar imágenes banner en segundo plano
     await inicializarFiltros();
     await actualizarTodosLosFiltros();
@@ -5111,6 +5470,7 @@ function showSectionDirect(id) {
     mostrarBtnAnio();
     renderReportes();
   }
+  if(id==='materiales') { initMateriales(); }
   if(id==='comunicado') { initComunicado(); }
   if(id==='agenda') { initAgenda(); }
   if(id==='scan') updateStats();
@@ -7738,6 +8098,1048 @@ async function sendWhatsApp(telefono, mensaje, imageUrl = null) {
     toast('❌ Error conexión WhatsApp: ' + e.message, 'error');
     return false;
   }
+}
+
+let currentTutorInfo = { esTutor:false, tutorGrado:'', tutorSeccion:'', nombre:'', telefono:'' };
+
+async function cargarTutorActual() {
+  const def = { esTutor:false, tutorGrado:'', tutorSeccion:'', nombre:'', telefono:'' };
+  if(!currentUser) { currentTutorInfo = def; matUpdateAccessUi(); return; }
+  try {
+    const doc = await db.collection('usuarios').doc(currentUser.uid).get();
+    if(doc.exists) {
+      const d = doc.data() || {};
+      currentTutorInfo = {
+        esTutor: !!d.esTutor,
+        tutorGrado: String(d.tutorGrado || ''),
+        tutorSeccion: String(d.tutorSeccion || ''),
+        nombre: String(d.nombre || ''),
+        telefono: String(d.telefono || ''),
+      };
+    } else currentTutorInfo = def;
+  } catch(e) {
+    currentTutorInfo = def;
+  }
+  matUpdateAccessUi();
+}
+
+function _isAdminDirector() {
+  return currentRol === 'admin' || currentRol === 'director';
+}
+
+function matCanAccess() {
+  return _isAdminDirector() || !!currentTutorInfo.esTutor;
+}
+
+function matUpdateAccessUi() {
+  const can = matCanAccess();
+  const nav = document.getElementById('nav-materiales');
+  if(nav) nav.style.display = can ? '' : 'none';
+  const msb = document.getElementById('msb-sub-materiales');
+  if(msb) msb.style.display = can ? '' : 'none';
+}
+
+let _matInited = false;
+let _matScope = { tutorId:'', tutorNombre:'', grado:'', seccion:'' };
+let _matTutors = [];
+let _matTemplate = null;
+let _matItems = [];
+let _matAlumnos = [];
+let _matReceipts = new Map();
+let _matSelected = new Set();
+let _matDraftItems = [];
+let _matReceipt = null;
+let _matReceiptItems = new Map();
+let _matHandoffDraft = [];
+let _matMyStock = [];
+let _matReqDraft = [];
+let _matMyRequests = [];
+let _matAdminHandoffs = [];
+let _matAdminRequests = [];
+
+function matNormKey(name) {
+  return String(name || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toUpperCase();
+}
+
+function _matFmtQty(n) {
+  const x = Number(n || 0);
+  if(!isFinite(x)) return '0';
+  return (Math.round(x*100)/100).toString().replace(/\.0+$/,'').replace(/(\.\d*[1-9])0+$/,'$1');
+}
+
+function matOnUnitChange() {
+  const u = document.getElementById('mat-item-unit')?.value || 'UND';
+  const g = document.getElementById('mat-item-unit-other-group');
+  if(g) g.style.display = (u === 'OTROS') ? 'block' : 'none';
+}
+
+function matClearDraft() {
+  _matDraftItems = [];
+  matRenderDraft();
+}
+
+function matAddDraftItem() {
+  const cat = String(document.getElementById('mat-item-cat')?.value || 'Materiales');
+  const name = String(document.getElementById('mat-item-name')?.value || '').trim();
+  const qty = Number(document.getElementById('mat-item-qty')?.value || 0);
+  const unit = String(document.getElementById('mat-item-unit')?.value || 'UND');
+  const unitOther = String(document.getElementById('mat-item-unit-other')?.value || '').trim();
+  if(!name) { toast('Ingresa el nombre del material','warning'); return; }
+  if(!isFinite(qty) || qty <= 0) { toast('Cantidad inválida','warning'); return; }
+  if(unit === 'OTROS' && !unitOther) { toast('Especifica la unidad','warning'); return; }
+  _matDraftItems.push({ categoria: cat, nombreItem: name, nombreKey: matNormKey(name), unidad: unit, unidadOtro: unit==='OTROS'?unitOther:'', cantidadRequerida: qty });
+  document.getElementById('mat-item-name').value = '';
+  document.getElementById('mat-item-qty').value = '1';
+  matRenderDraft();
+}
+
+function matRemoveDraftItem(idx) {
+  _matDraftItems.splice(idx, 1);
+  matRenderDraft();
+}
+
+function matRenderDraft() {
+  const tb = document.getElementById('mat-draft-items');
+  if(!tb) return;
+  tb.innerHTML = _matDraftItems.map((it, i) => `
+    <tr>
+      <td>${_escHtml(it.categoria||'')}</td>
+      <td>${_escHtml(it.nombreItem||'')}</td>
+      <td style="text-align:center;">${_escHtml(_matFmtQty(it.cantidadRequerida))}</td>
+      <td style="text-align:center;">${_escHtml(it.unidad==='OTROS'?(it.unidadOtro||'OTROS'):it.unidad)}</td>
+      <td style="text-align:right;"><button class="btn btn-danger" style="padding:4px 10px;font-size:0.78rem;" onclick="matRemoveDraftItem(${i})">✕</button></td>
+    </tr>
+  `).join('') || `<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:14px;">Sin items</td></tr>`;
+}
+
+async function matCreateTemplateLocked() {
+  const status = document.getElementById('mat-template-create-status');
+  if(status) status.textContent = '';
+  if(!_matScope.grado || !_matScope.seccion) { toast('Falta ámbito (grado/sección)','warning'); return; }
+  const name = String(document.getElementById('mat-template-input-name')?.value || '').trim();
+  if(!name) { toast('Ingresa un nombre para la lista','warning'); return; }
+  if(!_matDraftItems.length) { toast('Agrega al menos 1 material','warning'); return; }
+  try {
+    if(status) status.textContent = 'Guardando lista...';
+    const tplRef = await db.collection('material_templates').add({
+      anio: String(COLEGIO_ANIO||''),
+      grado: _matScope.grado,
+      seccion: _matScope.seccion,
+      nombre: name,
+      locked: true,
+      createdBy: currentUser?.uid || null,
+    });
+    const tplId = tplRef.id;
+    const batch = db.batch();
+    _matDraftItems.forEach(it => {
+      const ref = db.collection('material_template_items').doc(crypto.randomUUID());
+      batch.set(ref, {
+        templateId: tplId,
+        categoria: it.categoria,
+        nombreItem: it.nombreItem,
+        nombreKey: it.nombreKey,
+        unidad: it.unidad,
+        unidadOtro: it.unidadOtro,
+        cantidadRequerida: it.cantidadRequerida,
+      });
+    });
+    await batch.commit();
+    _matDraftItems = [];
+    if(status) status.textContent = '✅ Lista guardada';
+    toast('✅ Lista base guardada (bloqueada)','success');
+    await matLoadTemplate();
+    await matLoadReceiptsIndex();
+    matRenderStudentList();
+  } catch(e) {
+    const msg = String(e?.message || e || '');
+    if(status) status.textContent = '';
+    toast('Error al guardar: ' + msg, 'error');
+  }
+}
+
+function matClearHandoff() {
+  _matHandoffDraft = [];
+  const obs = document.getElementById('mat-handoff-obs');
+  if(obs) obs.value = '';
+  matRenderHandoffDraft();
+}
+
+function matRenderTemplate() {
+  const view = document.getElementById('mat-template-view');
+  const create = document.getElementById('mat-template-create');
+  if(!_matTemplate) {
+    if(view) view.style.display = 'none';
+    if(create) create.style.display = matCanAccess() ? 'block' : 'none';
+    const defName = `Útiles ${_matScope.grado||''} ${_matScope.seccion||''} ${String(COLEGIO_ANIO||'')}`.trim();
+    const inp = document.getElementById('mat-template-input-name');
+    if(inp && !inp.value) inp.value = defName;
+    matRenderDraft();
+    return;
+  }
+  if(create) create.style.display = 'none';
+  if(view) view.style.display = 'block';
+  const nm = document.getElementById('mat-template-name');
+  if(nm) nm.textContent = `${_matTemplate.nombre || 'Lista base'} · ${_matScope.grado} ${_matScope.seccion} · ${_matTemplate.anio || ''}`;
+  const tb = document.getElementById('mat-template-items');
+  if(tb) {
+    tb.innerHTML = _matItems.map(it => `
+      <tr>
+        <td>${_escHtml(it.categoria||'')}</td>
+        <td>${_escHtml(it.nombreItem||'')}</td>
+        <td style="text-align:center;">${_escHtml(_matFmtQty(it.cantidadRequerida))}</td>
+        <td style="text-align:center;">${_escHtml(it.unidad==='OTROS'?(it.unidadOtro||'OTROS'):it.unidad)}</td>
+      </tr>
+    `).join('') || `<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:14px;">Sin items</td></tr>`;
+  }
+}
+
+async function matLoadTemplate() {
+  _matTemplate = null;
+  _matItems = [];
+  if(!_matScope.grado || !_matScope.seccion) { matRenderTemplate(); return; }
+  const snap = await db.collection('material_templates')
+    .where('anio','==', String(COLEGIO_ANIO||''))
+    .where('grado','==', _matScope.grado)
+    .where('seccion','==', _matScope.seccion)
+    .get();
+  if(!snap.empty) {
+    const d = snap.docs[0].data();
+    _matTemplate = { id: snap.docs[0].id, ...d };
+    const its = await db.collection('material_template_items').where('template_id','==', _matTemplate.id).get();
+    _matItems = its.docs.map(x => ({ id: x.id, ...x.data() })).sort((a,b)=>String(a.categoria||'').localeCompare(String(b.categoria||'')) || String(a.nombreItem||'').localeCompare(String(b.nombreItem||'')));
+  }
+  matRenderTemplate();
+}
+
+async function matLoadAlumnos() {
+  const all = await getAlumnosFiltrados();
+  if(!_matScope.grado || !_matScope.seccion) { _matAlumnos = []; return; }
+  _matAlumnos = (all||[]).filter(a => String(a.grado||'') === _matScope.grado && String(a.seccion||'A') === _matScope.seccion)
+    .sort((a,b)=>String(a.apellidos||'').localeCompare(String(b.apellidos||'')) || String(a.nombres||'').localeCompare(String(b.nombres||'')));
+  const sel = document.getElementById('mat-student');
+  if(sel) {
+    sel.innerHTML = `<option value="" disabled selected>-- Seleccionar --</option>` + _matAlumnos.map(a => `<option value="${a.id}">${_escHtml((a.apellidos||'') + ' ' + (a.nombres||''))}</option>`).join('');
+  }
+}
+
+async function matLoadReceiptsIndex() {
+  _matReceipts = new Map();
+  if(!_matTemplate) return;
+  const { data, error } = await _sb
+    .from('material_receipts')
+    .select('id,alumno_id,estado')
+    .eq('colegio_id', COLEGIO_ID)
+    .eq('template_id', _matTemplate.id);
+  if(error) throw new Error(error.message);
+  (data||[]).forEach(r => { _matReceipts.set(String(r.alumno_id), { id: r.id, alumnoId: r.alumno_id, estado: r.estado }); });
+}
+
+function matRenderStudentList() {
+  const tb = document.getElementById('mat-students-list');
+  if(!tb) return;
+  const onlyInc = !!document.getElementById('mat-only-incomplete')?.checked;
+  const rows = _matAlumnos.map(a => {
+    const rid = _matReceipts.get(String(a.id));
+    const est = rid?.estado || 'incompleto';
+    const isInc = est !== 'completo';
+    if(onlyInc && !isInc) return '';
+    const checked = _matSelected.has(String(a.id)) ? 'checked' : '';
+    const label = _escHtml((a.apellidos||'') + ' ' + (a.nombres||''));
+    const pend = isInc ? 'Pendiente' : 'Completo';
+    const badge = isInc
+      ? `<span class="chip" style="background:rgba(239,68,68,0.12);color:#ef4444;border:1px solid rgba(239,68,68,0.28);">Incompleto</span>`
+      : `<span class="chip" style="background:rgba(34,197,94,0.12);color:#22c55e;border:1px solid rgba(34,197,94,0.28);">Completo</span>`;
+    return `
+      <tr>
+        <td style="text-align:center;"><input type="checkbox" data-al="${_escHtml(a.id)}" onchange="matToggleSel('${_escHtml(a.id)}', this.checked)" ${checked}></td>
+        <td>${label}</td>
+        <td>${badge}</td>
+        <td style="text-align:right;"><button class="btn btn-ghost" style="padding:4px 10px;font-size:0.78rem;" onclick="matOpenAlumno('${_escHtml(a.id)}')">Abrir</button></td>
+      </tr>
+    `;
+  }).filter(Boolean).join('');
+  tb.innerHTML = rows || `<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:14px;">Sin estudiantes</td></tr>`;
+}
+
+function matToggleSel(alumnoId, on) {
+  const id = String(alumnoId||'');
+  if(on) _matSelected.add(id); else _matSelected.delete(id);
+}
+
+function matSelectAllInList(on) {
+  const onlyInc = !!document.getElementById('mat-only-incomplete')?.checked;
+  if(on) {
+    _matAlumnos.forEach(a => {
+      const rid = _matReceipts.get(String(a.id));
+      const est = rid?.estado || 'incompleto';
+      if(onlyInc && est === 'completo') return;
+      _matSelected.add(String(a.id));
+    });
+  } else {
+    _matSelected.clear();
+  }
+  matRenderStudentList();
+}
+
+function matOpenAlumno(alumnoId) {
+  const sel = document.getElementById('mat-student');
+  if(sel) {
+    sel.value = alumnoId;
+    matOnStudentChange();
+  }
+}
+
+async function matEnsureReceipt(alumno) {
+  if(!_matTemplate) throw new Error('Falta lista base');
+  const existing = _matReceipts.get(String(alumno.id));
+  if(existing?.id) return existing.id;
+  const ref = await db.collection('material_receipts').add({
+    templateId: _matTemplate.id,
+    alumnoId: alumno.id,
+    grado: _matScope.grado,
+    seccion: _matScope.seccion,
+    tutorUserId: _isAdminDirector() ? (_matScope.tutorId || currentUser?.uid) : (currentUser?.uid || ''),
+    estado: 'incompleto',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  });
+  _matReceipts.set(String(alumno.id), { id: ref.id, alumnoId: alumno.id, estado:'incompleto' });
+  return ref.id;
+}
+
+async function matOnStudentChange() {
+  const id = String(document.getElementById('mat-student')?.value || '');
+  _matReceipt = null;
+  _matReceiptItems = new Map();
+  const tb = document.getElementById('mat-receipt-items');
+  if(tb) tb.innerHTML = `<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:14px;">Selecciona un estudiante</td></tr>`;
+  const phoneWrap = document.getElementById('mat-student-phone');
+  if(phoneWrap) phoneWrap.style.display = 'none';
+  if(!id) return;
+  const alumno = _matAlumnos.find(a => String(a.id) === id);
+  if(!alumno) return;
+  if(!_matTemplate) { toast('Primero crea la lista base','warning'); return; }
+  try {
+    const rid = await matEnsureReceipt(alumno);
+    _matReceipt = { id: rid, alumnoId: alumno.id };
+    const { data, error } = await _sb
+      .from('material_receipt_items')
+      .select('id,template_item_id,cantidad_entregada')
+      .eq('colegio_id', COLEGIO_ID)
+      .eq('receipt_id', rid);
+    if(error) throw new Error(error.message);
+    (data||[]).forEach(x => _matReceiptItems.set(String(x.template_item_id), { id: x.id, templateItemId: x.template_item_id, cantidadEntregada: Number(x.cantidad_entregada||0) }));
+    matRenderReceipt(alumno);
+  } catch(e) {
+    toast('Error cargando recepción: ' + e.message, 'error');
+  }
+}
+
+async function matGetPhonesForAlumno(alumnoId) {
+  const alumno = _matAlumnos.find(a => String(a.id) === String(alumnoId));
+  const t1 = String(alumno?.telefono || '').trim();
+  const t2 = String(alumno?.telefono2 || '').trim();
+  if(t1 || t2) return { t1, t2 };
+  try {
+    const doc = await db.collection('apoderados').doc(String(alumnoId)).get();
+    if(doc.exists) {
+      const d = doc.data() || {};
+      return { t1: String(d.telefono||'').trim(), t2: String(d.telefono2||'').trim() };
+    }
+  } catch(e) {}
+  return { t1:'', t2:'' };
+}
+
+function matRenderReceipt(alumno) {
+  const tb = document.getElementById('mat-receipt-items');
+  if(!tb) return;
+  const rows = _matItems.map(it => {
+    const got = _matReceiptItems.get(String(it.id))?.cantidadEntregada || 0;
+    const req = Number(it.cantidadRequerida||0);
+    const falta = Math.max(0, req - got);
+    const unit = it.unidad === 'OTROS' ? (it.unidadOtro||'OTROS') : it.unidad;
+    return `
+      <tr>
+        <td>${_escHtml(it.nombreItem||'')}</td>
+        <td style="text-align:center;">${_escHtml(_matFmtQty(req))} ${_escHtml(unit)}</td>
+        <td style="text-align:center;">
+          <input type="number" min="0" step="0.5" value="${_escHtml(_matFmtQty(got))}"
+            style="width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 8px;font-family:var(--font-body);font-size:0.85rem;text-align:center;"
+            onchange="matSetDelivered('${_escHtml(it.id)}', this.value)">
+        </td>
+        <td style="text-align:center;">${_escHtml(_matFmtQty(falta))}</td>
+      </tr>
+    `;
+  }).join('');
+  tb.innerHTML = rows || `<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:14px;">Sin items</td></tr>`;
+  matUpdateReceiptStatus(alumno.id);
+  matGetPhonesForAlumno(alumno.id).then(p => {
+    const phoneWrap = document.getElementById('mat-student-phone');
+    const t1 = document.getElementById('mat-tel1');
+    const t2 = document.getElementById('mat-tel2');
+    if(t1) t1.value = p.t1 || '';
+    if(t2) t2.value = p.t2 || '';
+    if(phoneWrap) phoneWrap.style.display = (!p.t1 && !p.t2) ? 'block' : 'block';
+  });
+}
+
+function matSetDelivered(templateItemId, value) {
+  const v = Number(value || 0);
+  const id = String(templateItemId||'');
+  const cur = _matReceiptItems.get(id) || { id:'', templateItemId: id, cantidadEntregada: 0 };
+  cur.cantidadEntregada = (isFinite(v) && v >= 0) ? v : 0;
+  _matReceiptItems.set(id, cur);
+  if(_matReceipt?.alumnoId) matUpdateReceiptStatus(_matReceipt.alumnoId);
+}
+
+function matUpdateReceiptStatus(alumnoId) {
+  const st = document.getElementById('mat-receipt-status');
+  if(!_matTemplate || !_matReceipt) { if(st) st.textContent = '—'; return; }
+  const pending = _matItems.filter(it => {
+    const req = Number(it.cantidadRequerida||0);
+    const got = _matReceiptItems.get(String(it.id))?.cantidadEntregada || 0;
+    return got < req;
+  });
+  if(st) st.textContent = pending.length ? `Pendientes: ${pending.length}` : '✅ Completo';
+}
+
+async function matSavePhones() {
+  const sid = String(_matReceipt?.alumnoId || '');
+  if(!sid) return;
+  const tel1 = String(document.getElementById('mat-tel1')?.value || '').trim();
+  const tel2 = String(document.getElementById('mat-tel2')?.value || '').trim();
+  const norm = (x) => x.replace(/[^0-9]/g,'');
+  const t1 = norm(tel1);
+  const t2 = norm(tel2);
+  if(t1 && !/^\d{9}$/.test(t1) && !/^51\d{9}$/.test(t1)) { toast('Teléfono 1 inválido','warning'); return; }
+  if(t2 && !/^\d{9}$/.test(t2) && !/^51\d{9}$/.test(t2)) { toast('Teléfono 2 inválido','warning'); return; }
+  try {
+    await db.collection('alumnos').doc(sid).update({ telefono: t1 || '', telefono2: t2 || '' });
+    try { await db.collection('apoderados').doc(sid).set({ telefono: t1 || '', telefono2: t2 || '' }, { merge: true }); } catch(e) {}
+    const al = _matAlumnos.find(a => String(a.id) === sid);
+    if(al) { al.telefono = t1 || ''; al.telefono2 = t2 || ''; }
+    toast('✅ Teléfonos actualizados','success');
+  } catch(e) {
+    toast('Error guardando teléfonos: ' + e.message, 'error');
+  }
+}
+
+async function matSaveReceiptAll() {
+  if(!_matTemplate || !_matReceipt) { toast('Selecciona un estudiante','warning'); return; }
+  try {
+    const rows = _matItems.map(it => {
+      const got = _matReceiptItems.get(String(it.id))?.cantidadEntregada || 0;
+      return {
+        colegio_id: COLEGIO_ID,
+        receipt_id: _matReceipt.id,
+        template_item_id: it.id,
+        cantidad_entregada: Number(got||0),
+        updated_by: currentUser?.uid || null,
+        updated_at: new Date().toISOString(),
+      };
+    });
+    const { data: up, error: eup } = await _sb
+      .from('material_receipt_items')
+      .upsert(rows, { onConflict: 'colegio_id,receipt_id,template_item_id' })
+      .select('id,template_item_id,cantidad_entregada');
+    if(eup) throw new Error(eup.message);
+    (up||[]).forEach(x => {
+      _matReceiptItems.set(String(x.template_item_id), { id: x.id, templateItemId: x.template_item_id, cantidadEntregada: Number(x.cantidad_entregada||0) });
+    });
+    const { error: erup } = await _sb
+      .from('material_receipts')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('colegio_id', COLEGIO_ID)
+      .eq('id', _matReceipt.id);
+    if(erup) throw new Error(erup.message);
+    const pending = _matItems.filter(it => (_matReceiptItems.get(String(it.id))?.cantidadEntregada || 0) < Number(it.cantidadRequerida||0)).length;
+    const estado = pending ? 'incompleto' : 'completo';
+    const { error: er2 } = await _sb
+      .from('material_receipts')
+      .update({ estado, updated_at: new Date().toISOString() })
+      .eq('colegio_id', COLEGIO_ID)
+      .eq('id', _matReceipt.id);
+    if(er2) throw new Error(er2.message);
+    _matReceipts.set(String(_matReceipt.alumnoId), { id: _matReceipt.id, alumnoId: _matReceipt.alumnoId, estado });
+    toast('✅ Guardado','success');
+    matRenderStudentList();
+    await matLoadMyStockAndRequests();
+  } catch(e) {
+    toast('Error al guardar: ' + e.message, 'error');
+  }
+}
+
+async function matSendReminders() {
+  if(!_matTemplate) { toast('Primero crea la lista base','warning'); return; }
+  const ids = [..._matSelected];
+  if(!ids.length) { toast('Selecciona al menos 1 estudiante','warning'); return; }
+  toast('Enviando recordatorios...','info');
+  let ok = 0, fail = 0, noTel = 0;
+  for(const aid of ids) {
+    const alumno = _matAlumnos.find(a => String(a.id) === String(aid));
+    if(!alumno) continue;
+    try {
+      const rid = await matEnsureReceipt(alumno);
+      const { data, error } = await _sb
+        .from('material_receipt_items')
+        .select('template_item_id,cantidad_entregada')
+        .eq('colegio_id', COLEGIO_ID)
+        .eq('receipt_id', rid);
+      if(error) throw new Error(error.message);
+      const map = new Map();
+      (data||[]).forEach(x => map.set(String(x.template_item_id), Number(x.cantidad_entregada||0)));
+      const falt = _matItems.map(it => {
+        const req = Number(it.cantidadRequerida||0);
+        const got = map.get(String(it.id)) || 0;
+        const miss = Math.max(0, req - got);
+        if(miss <= 0) return '';
+        const unit = it.unidad === 'OTROS' ? (it.unidadOtro||'OTROS') : it.unidad;
+        return `- ${it.nombreItem}: ${_matFmtQty(miss)} ${unit}`;
+      }).filter(Boolean);
+      if(!falt.length) continue;
+      const phones = await matGetPhonesForAlumno(alumno.id);
+      const tels = [phones.t1, phones.t2].map(x=>String(x||'').trim()).filter(Boolean);
+      if(!tels.length) { noTel++; continue; }
+      const msg = `${_waEncabezado()}\n\n👤 Estudiante: *${alumno.apellidos||''} ${alumno.nombres||''}*\n📚 ${_matScope.grado} ${_matScope.seccion}\n\n📦 Materiales pendientes:\n${falt.join('\n')}\n\nGracias por su apoyo.${_waPie()}`;
+      for(const tel of tels) {
+        const sent = await sendWhatsApp(tel, msg);
+        if(sent) ok++; else fail++;
+      }
+    } catch(e) {
+      fail++;
+    }
+  }
+  if(noTel) toast(`⚠️ ${noTel} estudiante(s) sin teléfono registrado`, 'warning');
+  toast(`WhatsApp: enviados ${ok}, fallidos ${fail}`, ok ? 'success' : 'warning');
+}
+
+async function matBuildHandoffDraft() {
+  if(!_matTemplate) { toast('Falta lista base','warning'); return; }
+  if(!_matScope.tutorId) { toast('Falta tutor','warning'); return; }
+  try {
+    const { data: recs, error: er1 } = await _sb
+      .from('material_receipts')
+      .select('id')
+      .eq('colegio_id', COLEGIO_ID)
+      .eq('template_id', _matTemplate.id)
+      .eq('tutor_user_id', _matScope.tutorId);
+    if(er1) throw new Error(er1.message);
+    const ids = (recs||[]).map(r=>r.id);
+    if(!ids.length) { toast('No hay recepciones registradas','warning'); return; }
+    const { data: items, error: er2 } = await _sb
+      .from('material_receipt_items')
+      .select('template_item_id,cantidad_entregada,receipt_id')
+      .in('receipt_id', ids);
+    if(er2) throw new Error(er2.message);
+    const sum = new Map();
+    (items||[]).forEach(it => {
+      const k = String(it.template_item_id);
+      const v = Number(it.cantidad_entregada||0);
+      sum.set(k, (sum.get(k)||0) + v);
+    });
+    const { data: hs, error: er3 } = await _sb
+      .from('material_handoffs')
+      .select('id,estado')
+      .eq('colegio_id', COLEGIO_ID)
+      .eq('tutor_user_id', _matScope.tutorId);
+    if(er3) throw new Error(er3.message);
+    const confIds = (hs||[]).filter(h=>h.estado==='confirmado').map(h=>h.id);
+    const handed = new Map();
+    if(confIds.length) {
+      const { data: hItems, error: er4 } = await _sb
+        .from('material_handoff_items')
+        .select('nombre_key,unidad,cantidad')
+        .in('handoff_id', confIds);
+      if(er4) throw new Error(er4.message);
+      (hItems||[]).forEach(x => {
+        const kk = String(x.nombre_key)+'|'+String(x.unidad);
+        handed.set(kk, (handed.get(kk)||0) + Number(x.cantidad||0));
+      });
+    }
+    const draft = [];
+    _matItems.forEach(ti => {
+      const total = sum.get(String(ti.id)) || 0;
+      const u = ti.unidad;
+      const uo = ti.unidadOtro || '';
+      const kk = String(ti.nombreKey || matNormKey(ti.nombreItem)) + '|' + String(u);
+      const used = handed.get(kk) || 0;
+      const avail = Math.max(0, total - used);
+      if(avail <= 0) return;
+      draft.push({
+        nombreItem: ti.nombreItem,
+        nombreKey: ti.nombreKey || matNormKey(ti.nombreItem),
+        unidad: u,
+        unidadOtro: uo,
+        cantidad: Math.round(avail*100)/100,
+      });
+    });
+    _matHandoffDraft = draft.sort((a,b)=>String(a.nombreItem||'').localeCompare(String(b.nombreItem||'')));
+    matRenderHandoffDraft();
+    const hint = document.getElementById('mat-handoff-hint');
+    if(hint) hint.textContent = `Items sugeridos: ${_matHandoffDraft.length}`;
+  } catch(e) {
+    toast('Error creando entrega: ' + e.message, 'error');
+  }
+}
+
+function matRenderHandoffDraft() {
+  const tb = document.getElementById('mat-handoff-items');
+  if(!tb) return;
+  tb.innerHTML = _matHandoffDraft.map((it,i) => {
+    const unit = it.unidad === 'OTROS' ? (it.unidadOtro||'OTROS') : it.unidad;
+    return `
+      <tr>
+        <td>${_escHtml(it.nombreItem||'')}</td>
+        <td style="text-align:center;">
+          <input type="number" min="0" step="0.5" value="${_escHtml(_matFmtQty(it.cantidad))}"
+            style="width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 8px;font-family:var(--font-body);font-size:0.85rem;text-align:center;"
+            onchange="_matHandoffDraft[${i}].cantidad = Number(this.value||0)">
+        </td>
+        <td style="text-align:center;">${_escHtml(unit)}</td>
+      </tr>
+    `;
+  }).join('') || `<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:14px;">Sin items</td></tr>`;
+}
+
+async function matSubmitHandoff() {
+  if(!_matHandoffDraft.length) { toast('No hay items para entregar','warning'); return; }
+  try {
+    const obs = String(document.getElementById('mat-handoff-obs')?.value || '').trim();
+    const hRef = await db.collection('material_handoffs').add({
+      tutorUserId: _matScope.tutorId,
+      estado: 'enviado',
+      deliveredAt: firebase.firestore.FieldValue.serverTimestamp(),
+      observaciones: obs,
+    });
+    const hId = hRef.id;
+    const batch = db.batch();
+    _matHandoffDraft.filter(x => Number(x.cantidad||0) > 0).forEach(it => {
+      const ref = db.collection('material_handoff_items').doc(crypto.randomUUID());
+      batch.set(ref, {
+        handoffId: hId,
+        nombreItem: it.nombreItem,
+        nombreKey: it.nombreKey,
+        unidad: it.unidad,
+        unidadOtro: it.unidadOtro,
+        cantidad: Number(it.cantidad||0),
+      });
+    });
+    await batch.commit();
+    toast('✅ Entrega enviada. Administración debe confirmar', 'success');
+    matClearHandoff();
+  } catch(e) {
+    toast('Error enviando entrega: ' + e.message, 'error');
+  }
+}
+
+async function matLoadMyStockAndRequests() {
+  if(!_matScope.tutorId) return;
+  try {
+    const { data, error } = await _sb
+      .from('inventory_tutor_stock')
+      .select('id,nombre_item_display,nombre_key,unidad,unidad_otro,stock_actual')
+      .eq('colegio_id', COLEGIO_ID)
+      .eq('tutor_user_id', _matScope.tutorId)
+      .order('nombre_item_display');
+    if(error) throw new Error(error.message);
+    _matMyStock = (data||[]).map(x => ({
+      id: x.id,
+      nombreItem: x.nombre_item_display || x.nombre_key,
+      nombreKey: x.nombre_key,
+      unidad: x.unidad,
+      unidadOtro: x.unidad_otro || '',
+      stock: Number(x.stock_actual||0),
+    }));
+  } catch(e) {
+    _matMyStock = [];
+  }
+  const tb = document.getElementById('mat-my-stock');
+  if(tb) {
+    tb.innerHTML = _matMyStock.map(s => `
+      <tr>
+        <td>${_escHtml(s.nombreItem||'')}</td>
+        <td style="text-align:center;">${_escHtml(s.unidad==='OTROS'?(s.unidadOtro||'OTROS'):s.unidad)}</td>
+        <td style="text-align:center;">${_escHtml(_matFmtQty(s.stock))}</td>
+      </tr>
+    `).join('') || `<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:14px;">Sin stock</td></tr>`;
+  }
+  const sel = document.getElementById('mat-req-item');
+  if(sel) {
+    sel.innerHTML = `<option value="" disabled selected>-- Seleccionar --</option>` + _matMyStock.map(s => `<option value="${_escHtml(s.id)}">${_escHtml(`${s.nombreItem} · ${s.unidad==='OTROS'?(s.unidadOtro||'OTROS'):s.unidad} · stock ${_matFmtQty(s.stock)}`)}</option>`).join('');
+  }
+  await matLoadMyRequests();
+}
+
+function matAddRequestItem() {
+  const sid = String(document.getElementById('mat-req-item')?.value || '');
+  const qty = Number(document.getElementById('mat-req-qty')?.value || 0);
+  if(!sid) { toast('Selecciona un material','warning'); return; }
+  if(!isFinite(qty) || qty <= 0) { toast('Cantidad inválida','warning'); return; }
+  const st = _matMyStock.find(x => String(x.id) === sid);
+  if(!st) { toast('Material inválido','warning'); return; }
+  _matReqDraft.push({
+    stockId: st.id,
+    nombreItem: st.nombreItem,
+    nombreKey: st.nombreKey,
+    unidad: st.unidad,
+    unidadOtro: st.unidadOtro,
+    cantidad: qty,
+  });
+  matRenderReqDraft();
+}
+
+function matClearRequest() {
+  _matReqDraft = [];
+  const obs = document.getElementById('mat-req-obs');
+  if(obs) obs.value = '';
+  matRenderReqDraft();
+}
+
+function matRemoveReqItem(i) {
+  _matReqDraft.splice(i,1);
+  matRenderReqDraft();
+}
+
+function matRenderReqDraft() {
+  const tb = document.getElementById('mat-req-items');
+  if(!tb) return;
+  tb.innerHTML = _matReqDraft.map((it,i) => `
+    <tr>
+      <td>${_escHtml(it.nombreItem||'')}</td>
+      <td style="text-align:center;">${_escHtml(_matFmtQty(it.cantidad))}</td>
+      <td style="text-align:center;">${_escHtml(it.unidad==='OTROS'?(it.unidadOtro||'OTROS'):it.unidad)}</td>
+      <td style="text-align:right;"><button class="btn btn-danger" style="padding:4px 10px;font-size:0.78rem;" onclick="matRemoveReqItem(${i})">✕</button></td>
+    </tr>
+  `).join('') || `<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:14px;">Sin items</td></tr>`;
+}
+
+async function matSubmitRequest() {
+  if(!_matReqDraft.length) { toast('Agrega al menos 1 material','warning'); return; }
+  try {
+    const obs = String(document.getElementById('mat-req-obs')?.value || '').trim();
+    const rRef = await db.collection('material_requests').add({
+      tutorUserId: _matScope.tutorId,
+      estado: 'pendiente',
+      observaciones: obs,
+    });
+    const rId = rRef.id;
+    const batch = db.batch();
+    _matReqDraft.forEach(it => {
+      const ref = db.collection('material_request_items').doc(crypto.randomUUID());
+      batch.set(ref, {
+        requestId: rId,
+        nombreItem: it.nombreItem,
+        nombreKey: it.nombreKey,
+        unidad: it.unidad,
+        unidadOtro: it.unidadOtro,
+        cantidad: Number(it.cantidad||0),
+      });
+    });
+    await batch.commit();
+    toast('✅ Solicitud enviada', 'success');
+    matClearRequest();
+    await matLoadMyRequests();
+  } catch(e) {
+    toast('Error enviando solicitud: ' + e.message, 'error');
+  }
+}
+
+async function matLoadMyRequests() {
+  if(!_matScope.tutorId) return;
+  try {
+    const { data, error } = await _sb
+      .from('material_requests')
+      .select('id,created_at,estado')
+      .eq('colegio_id', COLEGIO_ID)
+      .eq('tutor_user_id', _matScope.tutorId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if(error) throw new Error(error.message);
+    _matMyRequests = (data||[]).map(x => ({ id: x.id, createdAt: x.created_at, estado: x.estado }));
+  } catch(e) {
+    _matMyRequests = [];
+  }
+  const tb = document.getElementById('mat-my-requests');
+  if(tb) {
+    tb.innerHTML = _matMyRequests.map(r => `
+      <tr>
+        <td>${_escHtml(String(r.createdAt||'').slice(0,10))}</td>
+        <td>${_escHtml(String(r.estado||''))}</td>
+        <td style="text-align:right;"><button class="btn btn-ghost" style="padding:4px 10px;font-size:0.78rem;" onclick="matShowRequest('${_escHtml(r.id)}')">Ver</button></td>
+      </tr>
+    `).join('') || `<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:14px;">Sin solicitudes</td></tr>`;
+  }
+}
+
+async function matShowRequest(reqId) {
+  try {
+    const { data, error } = await _sb
+      .from('material_request_items')
+      .select('nombre_item,unidad,unidad_otro,cantidad')
+      .eq('colegio_id', COLEGIO_ID)
+      .eq('request_id', reqId);
+    if(error) throw new Error(error.message);
+    const lines = (data||[]).map(x => `• ${x.nombre_item}: ${_matFmtQty(x.cantidad)} ${(x.unidad==='OTROS'?(x.unidad_otro||'OTROS'):x.unidad)}`);
+    alert(lines.join('\n') || 'Sin items');
+  } catch(e) {
+    toast('Error cargando solicitud: ' + e.message,'error');
+  }
+}
+
+async function matLoadAdminHandoffs() {
+  if(!_isAdminDirector()) return;
+  try {
+    const { data, error } = await _sb
+      .from('material_handoffs')
+      .select('id,created_at,estado,tutor_user_id')
+      .eq('colegio_id', COLEGIO_ID)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    if(error) throw new Error(error.message);
+    _matAdminHandoffs = (data||[]).filter(h => String(h.estado||'') !== 'confirmado').map(h => ({
+      id: h.id, createdAt: h.created_at, estado: h.estado, tutorId: h.tutor_user_id
+    }));
+  } catch(e) { _matAdminHandoffs = []; }
+  const mapTutor = new Map(_matTutors.map(t => [String(t.id), t]));
+  const tb = document.getElementById('mat-admin-handoffs');
+  if(tb) {
+    tb.innerHTML = _matAdminHandoffs.map(h => `
+      <tr>
+        <td>${_escHtml(String(h.createdAt||'').slice(0,10))}</td>
+        <td>${_escHtml(mapTutor.get(String(h.tutorId))?.nombre || h.tutorId)}</td>
+        <td>${_escHtml(h.estado||'')}</td>
+        <td style="text-align:right;">
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.78rem;" onclick="matViewHandoff('${_escHtml(h.id)}')">Ver</button>
+          <button class="btn btn-primary" style="padding:4px 10px;font-size:0.78rem;" onclick="matConfirmHandoff('${_escHtml(h.id)}')">Confirmar</button>
+        </td>
+      </tr>
+    `).join('') || `<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:14px;">Sin pendientes</td></tr>`;
+  }
+  await matLoadAdminRequests();
+  await matLoadAdminInventory();
+}
+
+async function matViewHandoff(hid) {
+  try {
+    const { data, error } = await _sb
+      .from('material_handoff_items')
+      .select('nombre_item,unidad,unidad_otro,cantidad')
+      .eq('colegio_id', COLEGIO_ID)
+      .eq('handoff_id', hid);
+    if(error) throw new Error(error.message);
+    const lines = (data||[]).map(x => `• ${x.nombre_item}: ${_matFmtQty(x.cantidad)} ${(x.unidad==='OTROS'?(x.unidad_otro||'OTROS'):x.unidad)}`);
+    alert(lines.join('\n') || 'Sin items');
+  } catch(e) {
+    toast('Error cargando entrega: ' + e.message,'error');
+  }
+}
+
+async function matConfirmHandoff(hid) {
+  if(!_isAdminDirector()) return;
+  if(!confirm('¿Confirmar recepción? Esto actualizará el inventario.')) return;
+  try {
+    const { error } = await _sb.rpc('confirm_material_handoff', { p_handoff_id: hid });
+    if(error) throw new Error(error.message);
+    toast('✅ Recepción confirmada','success');
+    await matLoadAdminHandoffs();
+    try { await matSendHandoffConfirmWhatsApp(hid); } catch(e) {}
+  } catch(e) {
+    toast('Error confirmando: ' + e.message,'error');
+  }
+}
+
+async function matSendHandoffConfirmWhatsApp(hid) {
+  const { data: h, error: eh } = await _sb
+    .from('material_handoffs')
+    .select('id,tutor_user_id,admin_user_id,received_at')
+    .eq('colegio_id', COLEGIO_ID)
+    .eq('id', hid)
+    .single();
+  if(eh) return;
+  const tutorId = String(h.tutor_user_id||'');
+  const adminId = String(h.admin_user_id||'');
+  const { data: users } = await _sb.from('usuarios').select('id,nombre,telefono').in('id', [tutorId, adminId]).eq('colegio_id', COLEGIO_ID);
+  const um = new Map((users||[]).map(u => [String(u.id), u]));
+  const tutor = um.get(tutorId);
+  const admin = um.get(adminId);
+  const { data: its } = await _sb
+    .from('material_handoff_items')
+    .select('nombre_item,unidad,unidad_otro,cantidad')
+    .eq('colegio_id', COLEGIO_ID)
+    .eq('handoff_id', hid);
+  const lines = (its||[]).map(x => `- ${x.nombre_item}: ${_matFmtQty(x.cantidad)} ${(x.unidad==='OTROS'?(x.unidad_otro||'OTROS'):x.unidad)}`);
+  const msg = `${_waEncabezado()}\n\n🧾 *Recepción confirmada*\nEntrega: ${tutor?.nombre || tutorId}\nRecibe: ${admin?.nombre || adminId}\nFecha: ${String(h.received_at||'').replace('T',' ').slice(0,16)}\n\n${lines.join('\n')}${_waPie()}`;
+  const tels = [String(tutor?.telefono||'').trim(), String(admin?.telefono||'').trim()].filter(Boolean);
+  for(const tel of tels) { await sendWhatsApp(tel, msg); }
+}
+
+async function matLoadAdminRequests() {
+  if(!_isAdminDirector()) return;
+  try {
+    const { data, error } = await _sb
+      .from('material_requests')
+      .select('id,created_at,estado,tutor_user_id')
+      .eq('colegio_id', COLEGIO_ID)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    if(error) throw new Error(error.message);
+    _matAdminRequests = (data||[]).filter(r => String(r.estado||'') === 'pendiente').map(r => ({
+      id: r.id, createdAt: r.created_at, estado: r.estado, tutorId: r.tutor_user_id
+    }));
+  } catch(e) { _matAdminRequests = []; }
+  const mapTutor = new Map(_matTutors.map(t => [String(t.id), t]));
+  const tb = document.getElementById('mat-admin-requests');
+  if(tb) {
+    tb.innerHTML = _matAdminRequests.map(r => `
+      <tr>
+        <td>${_escHtml(String(r.createdAt||'').slice(0,10))}</td>
+        <td>${_escHtml(mapTutor.get(String(r.tutorId))?.nombre || r.tutorId)}</td>
+        <td>${_escHtml(r.estado||'')}</td>
+        <td style="text-align:right;">
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.78rem;" onclick="matShowRequest('${_escHtml(r.id)}')">Ver</button>
+          <button class="btn btn-primary" style="padding:4px 10px;font-size:0.78rem;" onclick="matApproveRequest('${_escHtml(r.id)}')">Aprobar</button>
+        </td>
+      </tr>
+    `).join('') || `<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:14px;">Sin pendientes</td></tr>`;
+  }
+}
+
+async function matApproveRequest(rid) {
+  if(!_isAdminDirector()) return;
+  if(!confirm('¿Aprobar solicitud y descontar del stock?')) return;
+  try {
+    const { error } = await _sb.rpc('approve_material_request', { p_request_id: rid });
+    if(error) throw new Error(error.message);
+    toast('✅ Solicitud aprobada','success');
+    await matLoadAdminHandoffs();
+  } catch(e) {
+    toast('Error: ' + e.message,'error');
+  }
+}
+
+async function matLoadAdminInventory() {
+  if(!_isAdminDirector()) return;
+  try {
+    const { data, error } = await _sb
+      .from('inventory_tutor_stock')
+      .select('tutor_user_id,nombre_item_display,nombre_key,unidad,unidad_otro,stock_actual')
+      .eq('colegio_id', COLEGIO_ID)
+      .order('nombre_item_display');
+    if(error) throw new Error(error.message);
+    const mapTutor = new Map(_matTutors.map(t => [String(t.id), t]));
+    const tb = document.getElementById('mat-admin-stock');
+    if(tb) {
+      tb.innerHTML = (data||[]).map(s => `
+        <tr>
+          <td>${_escHtml(s.nombre_item_display || s.nombre_key)}</td>
+          <td style="text-align:center;">${_escHtml(s.unidad==='OTROS'?(s.unidad_otro||'OTROS'):s.unidad)}</td>
+          <td style="text-align:center;">${_escHtml(_matFmtQty(s.stock_actual))}</td>
+          <td>${_escHtml(mapTutor.get(String(s.tutor_user_id))?.nombre || String(s.tutor_user_id||''))}</td>
+        </tr>
+      `).join('') || `<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:14px;">Sin stock</td></tr>`;
+    }
+    const glob = new Map();
+    (data||[]).forEach(s => {
+      const k = String(s.nombre_key)+'|'+String(s.unidad);
+      glob.set(k, { nombre: s.nombre_item_display || s.nombre_key, unidad: s.unidad, unidadOtro: s.unidad_otro || '', stock: (glob.get(k)?.stock||0) + Number(s.stock_actual||0) });
+    });
+    const gb = document.getElementById('mat-admin-stock-global');
+    if(gb) {
+      const arr = [...glob.values()].sort((a,b)=>String(a.nombre||'').localeCompare(String(b.nombre||'')));
+      gb.innerHTML = arr.map(s => `
+        <tr>
+          <td>${_escHtml(s.nombre)}</td>
+          <td style="text-align:center;">${_escHtml(s.unidad==='OTROS'?(s.unidadOtro||'OTROS'):s.unidad)}</td>
+          <td style="text-align:center;">${_escHtml(_matFmtQty(s.stock))}</td>
+        </tr>
+      `).join('') || `<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:14px;">Sin stock</td></tr>`;
+    }
+  } catch(e) {}
+}
+
+async function matLoadTutors() {
+  _matTutors = [];
+  if(!_isAdminDirector()) return;
+  try {
+    const snap = await db.collection('usuarios').where('es_tutor','==', true).get();
+    _matTutors = snap.docs.map(d => {
+      const x = d.data() || {};
+      return { id: d.id, nombre: String(x.nombre||''), tutorGrado: String(x.tutorGrado||''), tutorSeccion: String(x.tutorSeccion||''), telefono: String(x.telefono||'') };
+    }).filter(t => t.tutorGrado && t.tutorSeccion).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  } catch(e) { _matTutors = []; }
+  const sel = document.getElementById('mat-admin-tutor');
+  if(sel) {
+    sel.innerHTML = `<option value="" disabled selected>-- Seleccionar --</option>` + _matTutors.map(t => `<option value="${_escHtml(t.id)}">${_escHtml(`${t.nombre} · ${t.tutorGrado} ${t.tutorSeccion}`)}</option>`).join('');
+  }
+}
+
+function matOnAdminTutorChange() {
+  const tid = String(document.getElementById('mat-admin-tutor')?.value || '');
+  const t = _matTutors.find(x => String(x.id) === tid);
+  if(!t) return;
+  _matScope = { tutorId: t.id, tutorNombre: t.nombre, grado: t.tutorGrado, seccion: t.tutorSeccion };
+  matRefreshAll();
+}
+
+async function matRefreshAll() {
+  const no = document.getElementById('mat-no-access');
+  const scopeCard = document.getElementById('mat-scope-card');
+  const label = document.getElementById('mat-scope-label');
+  const adminTutorGroup = document.getElementById('mat-admin-tutor-group');
+  const tutorWrap = document.getElementById('mat-handoff-tutor');
+  const adminWrap = document.getElementById('mat-admin-panel');
+  if(!matCanAccess()) {
+    if(no) no.style.display = 'block';
+    if(scopeCard) scopeCard.style.display = 'none';
+    if(tutorWrap) tutorWrap.style.display = 'none';
+    if(adminWrap) adminWrap.style.display = 'none';
+    return;
+  }
+  if(no) no.style.display = 'none';
+  if(scopeCard) scopeCard.style.display = 'block';
+  if(adminTutorGroup) adminTutorGroup.style.display = _isAdminDirector() ? 'block' : 'none';
+  if(tutorWrap) tutorWrap.style.display = currentTutorInfo.esTutor && !_isAdminDirector() ? 'block' : (currentTutorInfo.esTutor && _matScope.tutorId === currentUser?.uid ? 'block' : (currentTutorInfo.esTutor && !_matScope.tutorId ? 'block' : 'none'));
+  if(adminWrap) adminWrap.style.display = _isAdminDirector() ? 'block' : 'none';
+  if(label) {
+    const who = _isAdminDirector() ? (_matScope.tutorNombre ? `Tutor: ${_matScope.tutorNombre}` : 'Admin') : 'Tutor';
+    label.textContent = `${who} · ${_matScope.grado||'—'} ${_matScope.seccion||''}`;
+  }
+  try {
+    await matLoadTemplate();
+    await matLoadAlumnos();
+    await matLoadReceiptsIndex();
+    matRenderStudentList();
+    await matLoadMyStockAndRequests();
+    if(_isAdminDirector()) await matLoadAdminHandoffs();
+  } catch(e) {
+    const msg = String(e?.message || e || '');
+    if(msg.toLowerCase().includes('material_templates') && msg.toLowerCase().includes('does not exist')) {
+      toast('Falta ejecutar supabase/materiales_schema.sql en Supabase SQL Editor', 'warning');
+    } else if(msg.toLowerCase().includes('material_') && msg.toLowerCase().includes('does not exist')) {
+      toast('Falta ejecutar supabase/materiales_schema.sql en Supabase SQL Editor', 'warning');
+    } else {
+      toast('Error cargando materiales: ' + msg, 'error');
+    }
+  }
+}
+
+async function initMateriales() {
+  if(!_matInited) {
+    _matInited = true;
+    await cargarTutorActual();
+    if(_isAdminDirector()) await matLoadTutors();
+    if(_isAdminDirector()) {
+      const sel = document.getElementById('mat-admin-tutor');
+      const first = _matTutors[0];
+      if(first && sel) { sel.value = first.id; _matScope = { tutorId:first.id, tutorNombre:first.nombre, grado:first.tutorGrado, seccion:first.tutorSeccion }; }
+      else _matScope = { tutorId:'', tutorNombre:'', grado:'', seccion:'' };
+    } else {
+      _matScope = { tutorId: currentUser?.uid || '', tutorNombre: currentTutorInfo.nombre || '', grado: currentTutorInfo.tutorGrado || '', seccion: currentTutorInfo.tutorSeccion || '' };
+    }
+  }
+  await matRefreshAll();
 }
 
 let _comAlumnos = null;
