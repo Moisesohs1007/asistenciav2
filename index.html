@@ -4334,6 +4334,16 @@
         <select id="rep-mes-select" onchange="onRepMesChange()"></select>
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Desde:</label>
+        <input type="date" id="rep-desde" onchange="onRepRangoChange()"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:4px 8px;font-family:var(--font-body);font-size:0.82rem;">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Hasta:</label>
+        <input type="date" id="rep-hasta" onchange="onRepRangoChange()"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:4px 8px;font-family:var(--font-body);font-size:0.82rem;">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Día:</label>
         <input type="date" id="rep-dia-select" onchange="renderReportes()"
           style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:4px 8px;font-family:var(--font-body);font-size:0.82rem;">
@@ -12918,6 +12928,29 @@ async function exportarReportePDF() {
 function onRepMesChange() {
   const diaEl = document.getElementById('rep-dia-select');
   if(diaEl) diaEl.value = '';
+  const d1 = document.getElementById('rep-desde');
+  const d2 = document.getElementById('rep-hasta');
+  if(d1) d1.value = '';
+  if(d2) d2.value = '';
+  if(document.getElementById('rep-mes-select')) {
+    const mesEl = document.getElementById('rep-mes-select');
+    mesEl.disabled = false; mesEl.style.opacity = '1';
+  }
+  renderReportes();
+}
+
+function onRepRangoChange() {
+  const d1 = document.getElementById('rep-desde');
+  const d2 = document.getElementById('rep-hasta');
+  const mesEl = document.getElementById('rep-mes-select');
+  const diaEl = document.getElementById('rep-dia-select');
+  let desde = d1 ? (d1.value || '') : '';
+  let hasta = d2 ? (d2.value || '') : '';
+  if(desde && !hasta) { hasta = desde; if(d2) d2.value = hasta; }
+  if(hasta && !desde) { desde = hasta; if(d1) d1.value = desde; }
+  const hasRange = !!(desde && hasta);
+  if(mesEl) { mesEl.disabled = hasRange; mesEl.style.opacity = hasRange ? '0.45' : '1'; }
+  if(hasRange && diaEl) diaEl.value = '';
   renderReportes();
 }
 
@@ -12971,8 +13004,14 @@ async function limpiarFiltrosReportes() {
   document.getElementById('rep-grado').value   = '';
   document.getElementById('rep-seccion').value = '';
   document.getElementById('rep-search').value  = '';
+  const d1 = document.getElementById('rep-desde');
+  const d2 = document.getElementById('rep-hasta');
+  if(d1) d1.value = '';
+  if(d2) d2.value = '';
   const diaEl = document.getElementById('rep-dia-select');
   if(diaEl) diaEl.value = '';
+  const mesEl = document.getElementById('rep-mes-select');
+  if(mesEl) { mesEl.disabled = false; mesEl.style.opacity = '1'; }
   const gradoEl = document.getElementById('rep-grado');
   const secEl   = document.getElementById('rep-seccion');
   gradoEl.disabled = true; gradoEl.style.opacity = '0.45';
@@ -13055,16 +13094,31 @@ async function renderReportes(anioCompleto=false) {
   try {
   const today   = hoy();
   const anio    = today.slice(0,4);
-  const mesSel  = document.getElementById('rep-mes-select')?.value || mesActual();
+  const mesEl   = document.getElementById('rep-mes-select');
+  const mesSel  = mesEl?.value || mesActual();
+  const d1El = document.getElementById('rep-desde');
+  const d2El = document.getElementById('rep-hasta');
+  let desdeSel = d1El?.value || '';
+  let hastaSel = d2El?.value || '';
+  if(desdeSel && !hastaSel) { hastaSel = desdeSel; try { if(d2El) d2El.value = hastaSel; } catch(e) {} }
+  if(hastaSel && !desdeSel) { desdeSel = hastaSel; try { if(d1El) d1El.value = desdeSel; } catch(e) {} }
+  const rangoActivo = !!(desdeSel && hastaSel);
+  if(mesEl) { mesEl.disabled = rangoActivo; mesEl.style.opacity = rangoActivo ? '0.45' : '1'; }
   // Limitar el selector de día al mes activo
   const diaInputEl = document.getElementById('rep-dia-select');
   if(diaInputEl) {
-    const [my,mm] = (mesSel||today.slice(0,7)).split('-').map(Number);
-    const ultimoDiaMes = new Date(my,mm,0).getDate();
-    diaInputEl.min = `${mesSel||today.slice(0,7)}-01`;
-    diaInputEl.max = `${mesSel||today.slice(0,7)}-${String(ultimoDiaMes).padStart(2,'0')}`;
-    // Si el día guardado no pertenece al mes, limpiarlo
-    if(diaInputEl.value && !diaInputEl.value.startsWith(mesSel||today.slice(0,7))) diaInputEl.value = '';
+    diaInputEl.disabled = rangoActivo;
+    diaInputEl.style.opacity = rangoActivo ? '0.45' : '1';
+    if(rangoActivo) {
+      diaInputEl.value = '';
+    } else {
+      const [my,mm] = (mesSel||today.slice(0,7)).split('-').map(Number);
+      const ultimoDiaMes = new Date(my,mm,0).getDate();
+      diaInputEl.min = `${mesSel||today.slice(0,7)}-01`;
+      diaInputEl.max = `${mesSel||today.slice(0,7)}-${String(ultimoDiaMes).padStart(2,'0')}`;
+      // Si el día guardado no pertenece al mes, limpiarlo
+      if(diaInputEl.value && !diaInputEl.value.startsWith(mesSel||today.slice(0,7))) diaInputEl.value = '';
+    }
   }
   const diaSel  = diaInputEl?.value || '';
   const nivel   = document.getElementById('rep-nivel')?.value   || '';
@@ -13109,6 +13163,10 @@ async function renderReportes(anioCompleto=false) {
   if(anioCompleto && (currentRol==='admin'||currentRol==='director')) {
     registros = await DB.getRegistros({anio});
     if(label) label.textContent = 'Año ' + anio + ' (' + registros.length + ' registros)';
+  } else if(rangoActivo) {
+    const h = hastaSel > today ? today : hastaSel;
+    registros = await DB.getRegistros({desde: desdeSel, hasta: h});
+    if(label) label.textContent = 'Rango ' + desdeSel + ' a ' + h + ' (' + registros.length + ' registros)';
   } else if(diaSel) {
     registros = await DB.getRegistros({fecha: diaSel});
     if(label) label.textContent = registros.length + ' registros del ' + diaSel;
@@ -13126,8 +13184,35 @@ async function renderReportes(anioCompleto=false) {
 
   // Filtrar registros al universo de alumnos seleccionados
   const regs = registros.filter(r => alumnosIds.has(r.alumnoId));
-  const mesStr = mesSel || today.slice(0,7);
-  const ingMes = regs.filter(r=>r.fecha.startsWith(mesStr)&&r.tipo==='INGRESO');
+  const mesStr = rangoActivo ? (desdeSel.slice(0,7) || mesSel || today.slice(0,7)) : (mesSel || today.slice(0,7));
+  const hastaEff = rangoActivo ? (hastaSel > today ? today : hastaSel) : '';
+  const ingMes = rangoActivo
+    ? regs.filter(r => r.tipo==='INGRESO' && r.fecha >= desdeSel && r.fecha <= hastaEff)
+    : regs.filter(r => r.fecha.startsWith(mesStr) && r.tipo==='INGRESO');
+
+  const diasHabiles = rangoActivo
+    ? (() => {
+        const out = [];
+        const start = new Date(desdeSel);
+        const end = new Date(hastaEff);
+        for(let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) {
+          const dow = d.getDay();
+          if(dow===0 || dow===6) continue;
+          out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+        }
+        return out;
+      })()
+    : (() => {
+        const out = [];
+        const [yy,mm] = mesStr.split('-').map(Number);
+        const primerDia = new Date(yy, mm-1, 1);
+        const ultimoDia = new Date(yy, mm, 0);
+        for(let d=new Date(primerDia); d<=ultimoDia; d.setDate(d.getDate()+1)) {
+          const dow = d.getDay();
+          if(dow!==0&&dow!==6) out.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+        }
+        return out;
+      })();
 
   // ── Reconciliación automática en background ──────────────────────────────────
   // Compara resumen_mensual con registros reales y corrige diferencias sin bloquear la UI
@@ -13149,10 +13234,12 @@ async function renderReportes(anioCompleto=false) {
     faltas = alumnos.filter(a=>!presD.has(a.id)).length;
   } else {
     if(!_soloResumen) {
-      const diasContar = diasHabiles.filter(d => {
-        if(mesStr === today.slice(0,7)) return d <= today;
-        return true;
-      });
+      const diasContar = rangoActivo
+        ? diasHabiles
+        : diasHabiles.filter(d => {
+            if(mesStr === today.slice(0,7)) return d <= today;
+            return true;
+          });
       diasContar.forEach(dia => {
         const pres = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO').map(r=>r.alumnoId));
         faltas += alumnos.filter(a=>!pres.has(a.id)).length;
@@ -13187,16 +13274,6 @@ async function renderReportes(anioCompleto=false) {
   if(labelHoy) labelHoy.textContent = diaSel ? 'Presentes ese día' : 'Presentes hoy';
 
   // ── GRÁFICO 1: Barras apiladas por día ──
-  const diasHabiles = [];
-  const [y,m] = mesStr.split('-').map(Number);
-  const primerDia = new Date(y,m-1,1);
-  const ultimoDia = new Date(y,m,0);
-  for(let d=new Date(primerDia); d<=ultimoDia; d.setDate(d.getDate()+1)) {
-    const dow = d.getDay();
-    if(dow!==0&&dow!==6) {
-      diasHabiles.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
-    }
-  }
   // Guardar contexto para exportar PDF
   const mesStr2 = mesStr; // alias para usar en _repContextoPDF
   const alumnoSel = (alumnos && alumnos.length === 1) ? alumnos[0] : null;
@@ -13210,6 +13287,8 @@ async function renderReportes(anioCompleto=false) {
     presentesLabel: diaSel ? 'Presentes ese día' : 'Presentes hoy',
     datosDiarios: [],
     anioCompleto,
+    desdeSel,
+    hastaSel: rangoActivo ? hastaEff : '',
     q,
     alumno: alumnoSel ? {
       id: alumnoSel.id || '',
