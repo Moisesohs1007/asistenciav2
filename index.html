@@ -13154,7 +13154,7 @@ async function renderReportes(anioCompleto=false) {
     registros = await DB.getRegistros({fecha: diaSel});
     if(label) label.textContent = registros.length + ' registros del ' + diaSel;
   } else {
-    const wantDetalleMes = !!q || alumnos.length <= 60;
+    const wantDetalleMes = !!q || !!nivel || !!grado || !!seccion || alumnos.length <= 200;
     if(wantDetalleMes) {
       registros = await DB.getRegistros({ mes: mesSel });
       if(label) label.textContent = 'Mes ' + mesSel + ' (' + registros.length + ' registros)';
