@@ -183,19 +183,45 @@ const DB = {
         const [y, m] = filtros.mes.split('-').map(Number);
         const desde  = filtros.mes + '-01';
         const hasta  = filtros.mes + '-' + String(new Date(y, m, 0).getDate()).padStart(2, '0');
-        q = q.gte('fecha', desde).lte('fecha', hasta).order('fecha');
+        q = q.gte('fecha', desde).lte('fecha', hasta);
       }
       if (filtros.anio) {
-        q = q.gte('fecha', filtros.anio + '-01-01').lte('fecha', filtros.anio + '-12-31').order('fecha');
+        q = q.gte('fecha', filtros.anio + '-01-01').lte('fecha', filtros.anio + '-12-31');
       }
       if (filtros.desde && filtros.hasta) {
-        q = q.gte('fecha', filtros.desde).lte('fecha', filtros.hasta).order('fecha');
+        q = q.gte('fecha', filtros.desde).lte('fecha', filtros.hasta);
       }
 
-      const { data, error } = await q;
-      if (error) { console.error('[DB] getRegistros:', error.message); return []; }
+      const needsPaging =
+        key === 'todos' ||
+        key.startsWith('mes:') ||
+        key.startsWith('anio:') ||
+        key.startsWith('rango:');
 
-      const resultado = data.map(_normRegistro).sort((a, b) => (b.hora || '').localeCompare(a.hora || ''));
+      let data = [];
+      if (needsPaging) {
+        const PAGE = 1000;
+        let from = 0;
+        while (true) {
+          const { data: page, error } = await q
+            .order('fecha', { ascending: true })
+            .order('alumno_id', { ascending: true })
+            .order('hora', { ascending: true })
+            .range(from, from + PAGE - 1);
+          if (error) { console.error('[DB] getRegistros:', error.message); return []; }
+          if (!page || !page.length) break;
+          data = data.concat(page);
+          if (page.length < PAGE) break;
+          from += PAGE;
+          if (from > 200000) break;
+        }
+      } else {
+        const { data: one, error } = await q;
+        if (error) { console.error('[DB] getRegistros:', error.message); return []; }
+        data = one || [];
+      }
+
+      const resultado = data.map(_normRegistro);
 
       this._registrosCache[key] = resultado;
       this._registrosCacheTime[key] = Date.now();

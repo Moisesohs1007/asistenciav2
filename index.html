@@ -4375,6 +4375,12 @@
       <button class="btn btn-ghost" onclick="exportarReportePDF()" style="font-size:0.78rem;padding:5px 12px;border-color:var(--accent2);color:var(--accent2);">⬇ PDF</button>
     </div>
 
+    <div id="rep-alumno-info" class="card" style="display:none;margin-bottom:14px;padding:10px 14px;">
+      <div class="card-title" style="margin:0;"><span class="dot" style="background:var(--accent2)"></span>Alumno</div>
+      <div id="rep-alumno-info-body" style="margin-top:8px;color:var(--text);font-size:0.9rem;font-weight:600;"></div>
+      <div id="rep-alumno-info-sub" style="margin-top:4px;color:var(--muted);font-size:0.82rem;"></div>
+    </div>
+
     <!-- KPIs -->
     <div class="stats-row" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:14px;">
       <div class="stat-card blue"><div class="stat-num" id="rep-total">0</div><div class="stat-label">Alumnos</div></div>
@@ -13318,6 +13324,22 @@ async function renderReportes(anioCompleto=false) {
       turno: alumnoSel.turno || '',
     } : null,
   };
+
+  const infoWrap = document.getElementById('rep-alumno-info');
+  const infoBody = document.getElementById('rep-alumno-info-body');
+  const infoSub  = document.getElementById('rep-alumno-info-sub');
+  if(infoWrap && infoBody && infoSub) {
+    if(alumnoSel) {
+      const nombre = ((alumnoSel.apellidos||'') + ' ' + (alumnoSel.nombres||'')).trim() || '—';
+      infoBody.textContent = nombre + ' · DNI: ' + (alumnoSel.id || '—');
+      infoSub.textContent = (alumnoSel.turno || '—') + ' · ' + (alumnoSel.grado || '—') + ' ' + (alumnoSel.seccion || '');
+      infoWrap.style.display = '';
+    } else {
+      infoWrap.style.display = 'none';
+      infoBody.textContent = '';
+      infoSub.textContent = '';
+    }
+  }
 
   const chartsGrid = document.getElementById('rep-charts-grid');
   const barrasCard = document.getElementById('rep-card-barras-dia');
