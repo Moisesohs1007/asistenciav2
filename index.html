@@ -5337,12 +5337,11 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('avatar-btn').style.display = 'inline-flex';
     setTimeout(() => msbUpdateUser && msbUpdateUser(), 200);
 
+    // Cargar datos y configuración
+    await cargarTutorActual();
     // Aplicar permisos según rol (incluye mostrar/ocultar tab usuarios)
     aplicarPermisos(currentRol);
-
-    // Cargar datos y configuración
     await cargarPrivilegiosActuales();
-    await cargarTutorActual();
     cargarConfigBanner(); // cargar imágenes banner en segundo plano
     await inicializarFiltros();
     await actualizarTodosLosFiltros();
@@ -5417,6 +5416,16 @@ function aplicarPermisos(rol) {
   };
   const tabs = permisos[rol] || ['scan'];
 
+  const _commSubs = ['comunicado','agenda','rol-examenes','ia-horarios','horarios-grado'];
+  const _aulaSubs = ['materiales'];
+  function _isAllowedSection(secId) {
+    if(!secId) return false;
+    if(tabs.includes(secId)) return true;
+    if(tabs.includes('comunicacion') && _commSubs.includes(secId)) return true;
+    if(_aulaSubs.includes(secId)) return matCanAccess();
+    return false;
+  }
+
   // Mostrar/ocultar tabs
   ['scan','alumnos','registro','reportes','incidentes','comunicacion','agenda','usuarios','config'].forEach(t => {
     const el = document.getElementById('tab-'+t);
@@ -5425,10 +5434,9 @@ function aplicarPermisos(rol) {
 
   // Restaurar última sección activa si existe y está permitida
   var lastSection = null;
-  try { lastSection = sessionStorage.getItem('asmqr_lastSection'); } catch(e) {}
-  if(lastSection && tabs.includes(lastSection)) {
+  try { lastSection = sessionStorage.getItem('asmqr_lastSection') || localStorage.getItem('asmqr_lastSection'); } catch(e) {}
+  if(lastSection && _isAllowedSection(lastSection) && document.getElementById('sec-'+lastSection)) {
     showSectionDirect(lastSection);
-    setActiveTab(lastSection === 'comunicado' ? 'tab-comunicacion' : ('tab-' + lastSection));
     if(lastSection === 'inicio') cargarDashboardInicio();
   } else {
     showSectionDirect('inicio');
@@ -5443,7 +5451,10 @@ function showSectionDirect(id) {
   document.getElementById('scan-action-bar').style.display = 'none';
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   const sec = document.getElementById('sec-'+id);
-  const tab = document.getElementById('tab-'+id) || ((id === 'comunicado' || id === 'agenda') ? document.getElementById('tab-comunicacion') : null);
+  const _commSubs = ['comunicado','agenda','rol-examenes','ia-horarios','horarios-grado'];
+  let tab = document.getElementById('tab-'+id) || null;
+  if(!tab && _commSubs.includes(id)) tab = document.getElementById('tab-comunicacion');
+  if(!tab && id === 'materiales') tab = document.getElementById('tab-aula');
   if(sec) sec.classList.add('active');
   if(tab) tab.classList.add('active');
 
@@ -5802,10 +5813,9 @@ document.addEventListener('click', function(e) {
 
 function showSection(id) {
   try { sessionStorage.setItem('asmqr_lastSection', id); } catch(e) {}
+  try { localStorage.setItem('asmqr_lastSection', id); } catch(e) {}
   showSectionDirect(id);
   if(id==='rol-examenes' && typeof initRolExamenes === 'function') initRolExamenes();
-  // Guardar pestaña activa
-  try { localStorage.setItem('asmqr_lastTab', id); } catch(e) {}
 }
 
 // ============================================================
