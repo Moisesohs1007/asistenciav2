@@ -4359,7 +4359,7 @@
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:0.78rem;color:var(--muted);">Sección:</label>
-        <select id="rep-seccion" onchange="renderReportes()" disabled style="opacity:0.45;">
+        <select id="rep-seccion" onchange="onRepSeccionChange()" disabled style="opacity:0.45;">
           <option value="">Todas</option>
         </select>
       </div>
@@ -5495,7 +5495,7 @@ function showSectionDirect(id) {
     poblarSelectorMes('rep-mes-select');
     iniciarFiltrosReportes();
     mostrarBtnAnio();
-    renderReportes();
+    repResetReportesUI();
   }
   if(id==='materiales') { initMateriales(); }
   if(id==='comunicado') { initComunicado(); }
@@ -12938,6 +12938,7 @@ function onRepMesChange() {
     const mesEl = document.getElementById('rep-mes-select');
     mesEl.disabled = false; mesEl.style.opacity = '1';
   }
+  repResetReportesUI();
 }
 
 function onRepRangoChange() {
@@ -12949,6 +12950,7 @@ function onRepRangoChange() {
   if(hasta && !desde) { if(d1) d1.value = hasta; desde = hasta; }
   const hasRange = !!desde;
   if(mesEl) { mesEl.disabled = hasRange; mesEl.style.opacity = hasRange ? '0.45' : '1'; }
+  repResetReportesUI();
 }
 
 async function onRepNivelChange() {
@@ -12967,7 +12969,7 @@ async function onRepNivelChange() {
     gradoEl.disabled = true; gradoEl.style.opacity = '0.45';
   }
   secEl.disabled = true; secEl.style.opacity = '0.45';
-  renderReportes();
+  repResetReportesUI();
 }
 
 async function onRepGradoChange() {
@@ -12983,7 +12985,7 @@ async function onRepGradoChange() {
   } else {
     secEl.disabled = true; secEl.style.opacity = '0.45';
   }
-  renderReportes();
+  repResetReportesUI();
 }
 
 function onRepSearchChange() {
@@ -12993,7 +12995,7 @@ function onRepSearchChange() {
     document.getElementById('rep-grado').value   = '';
     document.getElementById('rep-seccion').value = '';
   }
-  renderReportes();
+  repResetReportesUI();
 }
 
 async function limpiarFiltrosReportes() {
@@ -13013,7 +13015,35 @@ async function limpiarFiltrosReportes() {
   const secEl   = document.getElementById('rep-seccion');
   gradoEl.disabled = true; gradoEl.style.opacity = '0.45';
   secEl.disabled   = true; secEl.style.opacity   = '0.45';
-  renderReportes();
+  repResetReportesUI();
+}
+
+function onRepSeccionChange() {
+  repResetReportesUI();
+}
+
+function repResetReportesUI() {
+  try {
+    const label = document.getElementById('rep-periodo-label');
+    if(label) label.textContent = 'Configura filtros y presiona Buscar';
+    ['rep-puntual','rep-tardanzas','rep-faltas','rep-hoy'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.textContent = '0';
+    });
+    const hoyLabel = document.getElementById('rep-hoy-label');
+    if(hoyLabel) hoyLabel.textContent = 'Presentes hoy';
+    const chartBarras = document.getElementById('chart-barras-dia');
+    if(chartBarras) chartBarras.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:90px;color:var(--muted);font-size:0.82rem;text-align:center;padding:10px;">Presiona Buscar para generar el reporte</div>';
+    const chartDona = document.getElementById('chart-dona');
+    if(chartDona) chartDona.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:90px;color:var(--muted);font-size:0.82rem;text-align:center;padding:10px;">Presiona Buscar para generar el reporte</div>';
+    const heatmapCard = document.getElementById('card-heatmap');
+    if(heatmapCard) heatmapCard.style.display = 'none';
+    const chartsGrid = document.getElementById('rep-charts-grid');
+    const barrasCard = document.getElementById('rep-card-barras-dia');
+    if(chartsGrid) chartsGrid.style.gridTemplateColumns = '1fr 1fr';
+    if(barrasCard) barrasCard.style.display = '';
+    _repContextoPDF = {};
+  } catch(e) {}
 }
 
 async function iniciarFiltrosReportes() {
@@ -13089,6 +13119,16 @@ function _calcDiasHabilesHasta(mesClave) {
   return count;
 }
 
+function _repBustRegCacheFor(filtros) {
+  try {
+    if(!window.DB || typeof DB._cacheKey !== 'function') return;
+    const key = DB._cacheKey(filtros || {});
+    if(DB._registrosCache) delete DB._registrosCache[key];
+    if(DB._registrosCacheTime) delete DB._registrosCacheTime[key];
+    try { LSC.del('reg_' + key); } catch(e) {}
+  } catch(e) {}
+}
+
 async function renderReportes(anioCompleto=false) {
   try {
   const today   = hoy();
@@ -13132,15 +13172,19 @@ async function renderReportes(anioCompleto=false) {
   let registros;
   let _soloResumen = false;
   if(anioCompleto && (currentRol==='admin'||currentRol==='director')) {
+    _repBustRegCacheFor({ anio });
     registros = await DB.getRegistros({anio});
     if(label) label.textContent = 'Año ' + anio + ' (' + registros.length + ' registros)';
   } else if(rangoActivo) {
+    _repBustRegCacheFor({ desde: desdeSel, hasta: hastaEff });
     registros = await DB.getRegistros({desde: desdeSel, hasta: hastaEff});
     if(label) label.textContent = (diaSel ? ('Día ' + desdeSel) : ('Rango ' + desdeSel + ' a ' + hastaEff)) + ' (' + registros.length + ' registros)';
   } else if(diaSel) {
+    _repBustRegCacheFor({ fecha: diaSel });
     registros = await DB.getRegistros({fecha: diaSel});
     if(label) label.textContent = registros.length + ' registros del ' + diaSel;
   } else {
+    _repBustRegCacheFor({ mes: mesSel });
     registros = await DB.getRegistros({ mes: mesSel });
     if(label) label.textContent = 'Mes ' + mesSel + ' (' + registros.length + ' registros)';
   }
