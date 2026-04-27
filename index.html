@@ -12598,9 +12598,15 @@ async function exportarReportePDF() {
   if(!ctx || !ctx.total && ctx.total !== 0) { alert('Primero carga el reporte.'); return; }
 
   const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const mesStr = ctx.mesSel || new Date().toISOString().slice(0,7);
+  const mesStr = (ctx.desdeSel ? String(ctx.desdeSel).slice(0,7) : (ctx.mesSel || new Date().toISOString().slice(0,7)));
   const [anioStr, mesNum] = mesStr.split('-');
   const periodoLabel = ctx.anioCompleto ? ('Año ' + anioStr) : (MESES[parseInt(mesNum)-1] + ' ' + anioStr);
+  let periodoExtra = '';
+  if(ctx.desdeSel && ctx.hastaSel) {
+    const [sy,sm,sd] = String(ctx.desdeSel).split('-');
+    const [ey,em,ed] = String(ctx.hastaSel).split('-');
+    periodoExtra = 'Rango: ' + sd + '/' + sm + '/' + sy + ' - ' + ed + '/' + em + '/' + ey;
+  }
 
   // Título dinámico según filtros activos
   const partes = [];
@@ -12631,6 +12637,7 @@ async function exportarReportePDF() {
     const [ey,em,ed] = endIso.split('-');
     subtituloExtra = 'Rango: 01/' + String(mm).padStart(2,'0') + '/' + my + ' - ' + ed + '/' + String(em).padStart(2,'0') + '/' + ey;
   }
+  if(periodoExtra) subtituloExtra = periodoExtra;
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W = 210, marginL = 14, marginR = 14, contentW = W - marginL - marginR;
@@ -12922,7 +12929,8 @@ async function exportarReportePDF() {
   const gradoSlug  = ctx.grado   ? '-' + ctx.grado.replace(/\s/g,'')               : '';
   const secSlug    = ctx.seccion ? '-sec' + ctx.seccion                              : '';
   const diaSlug    = ctx.diaSel  ? '-' + ctx.diaSel                                  : '';
-  doc.save(`reporte-asistencia-${mesStr}${nivelSlug}${gradoSlug}${secSlug}${diaSlug}.pdf`);
+  const rangoSlug  = (!ctx.diaSel && ctx.desdeSel && ctx.hastaSel) ? ('-' + ctx.desdeSel + '_a_' + ctx.hastaSel) : '';
+  doc.save(`reporte-asistencia-${mesStr}${nivelSlug}${gradoSlug}${secSlug}${rangoSlug}${diaSlug}.pdf`);
 }
 
 function onRepMesChange() {
@@ -13141,7 +13149,7 @@ async function renderReportes(anioCompleto=false) {
   // ── Fase 1: KPIs rápidos desde resumen_mensual (~433 lecturas vs miles) ──────
   // Solo para vista mensual sin filtro de día específico
   let _resumenFase1 = null; // guardado para reconciliación automática tras cargar registros
-  if(!diaSel && !anioCompleto) {
+  if(!rangoActivo && !diaSel && !anioCompleto) {
     const resumen = await DB.getResumenMes(mesSel);
     _resumenFase1 = resumen;
     const resFilt = resumen.filter(r => alumnosIds.has(r.alumnoId));
@@ -13217,7 +13225,7 @@ async function renderReportes(anioCompleto=false) {
   // ── Reconciliación automática en background ──────────────────────────────────
   // Compara resumen_mensual con registros reales y corrige diferencias sin bloquear la UI
   // Usa datos ya cargados → 0 lecturas extra de Firestore
-  if(!diaSel && !anioCompleto && !_soloResumen && _resumenFase1) {
+  if(!rangoActivo && !diaSel && !anioCompleto && !_soloResumen && _resumenFase1) {
     _reconciliarResumenBackground(mesSel, ingMes, _resumenFase1).catch(e =>
       console.warn('[resumen] reconciliación:', e.message)
     );
