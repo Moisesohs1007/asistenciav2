@@ -5259,6 +5259,9 @@ function doLogout() {
   if(!confirm('¿Cerrar sesión?')) return;
   sessionStorage.removeItem('splashMostrado');
   try { localStorage.removeItem('asmqr_lastTab'); } catch(e) {}
+  try { localStorage.removeItem('asmqr_lastSection'); } catch(e) {}
+  try { sessionStorage.removeItem('asmqr_lastSection'); } catch(e) {}
+  try { if(window.history && window.history.replaceState) window.history.replaceState(null, '', window.location.pathname + window.location.search); } catch(e) {}
   if(_alumnosTsUnsubscribe) { _alumnosTsUnsubscribe(); _alumnosTsUnsubscribe = null; }
   if(_configUnsubscribe) { _configUnsubscribe(); _configUnsubscribe = null; }
   auth.signOut();
@@ -5434,9 +5437,16 @@ function aplicarPermisos(rol) {
 
   // Restaurar última sección activa si existe y está permitida
   var lastSection = null;
-  try { lastSection = sessionStorage.getItem('asmqr_lastSection') || localStorage.getItem('asmqr_lastSection'); } catch(e) {}
+  var hashSection = '';
+  try { hashSection = String(window.location.hash || '').replace(/^#/, ''); } catch(e) { hashSection = ''; }
+  if(hashSection && _isAllowedSection(hashSection) && document.getElementById('sec-'+hashSection)) {
+    lastSection = hashSection;
+  } else {
+    try { lastSection = sessionStorage.getItem('asmqr_lastSection') || localStorage.getItem('asmqr_lastSection'); } catch(e) {}
+  }
   if(lastSection && _isAllowedSection(lastSection) && document.getElementById('sec-'+lastSection)) {
     showSectionDirect(lastSection);
+    try { if(window.history && window.history.replaceState) window.history.replaceState(null, '', '#' + lastSection); } catch(e) {}
     if(lastSection === 'inicio') cargarDashboardInicio();
   } else {
     showSectionDirect('inicio');
@@ -5814,6 +5824,7 @@ document.addEventListener('click', function(e) {
 function showSection(id) {
   try { sessionStorage.setItem('asmqr_lastSection', id); } catch(e) {}
   try { localStorage.setItem('asmqr_lastSection', id); } catch(e) {}
+  try { if(window.history && window.history.replaceState) window.history.replaceState(null, '', '#' + id); } catch(e) {}
   showSectionDirect(id);
   if(id==='rol-examenes' && typeof initRolExamenes === 'function') initRolExamenes();
 }
