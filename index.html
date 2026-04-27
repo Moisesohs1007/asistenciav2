@@ -5496,7 +5496,9 @@ function showSectionDirect(id) {
     iniciarFiltrosReportes();
     mostrarBtnAnio();
     repResetReportesUI();
+    setTimeout(() => { try { renderReportes(); } catch(e) {} }, 0);
   }
+  if(id==='inicio') cargarDashboardInicio();
   if(id==='materiales') { initMateriales(); }
   if(id==='comunicado') { initComunicado(); }
   if(id==='agenda') { initAgenda(); }
@@ -13245,25 +13247,28 @@ async function renderReportes(anioCompleto=false) {
     else puntFiltro++;
   });
 
+  const diaPT = new Map(); // dia -> { punt, tard }
+  mapDiaAlu.forEach((estado, key) => {
+    const dia = key.split('|')[0];
+    let o = diaPT.get(dia);
+    if(!o) { o = { punt: 0, tard: 0 }; diaPT.set(dia, o); }
+    if(estado === 'Tardanza') o.tard++;
+    else o.punt++;
+  });
+
   let faltas = 0;
   if(diaSel) {
-    const presD = new Set();
-    mapDiaAlu.forEach((_, key) => { if(key.startsWith(diaSel + '|')) presD.add(key.split('|')[1]); });
-    faltas = alumnos.filter(a=>!presD.has(a.id)).length;
-  } else {
-    if(!_soloResumen) {
-      const diasContar = rangoActivo
-        ? diasHabiles
-        : diasHabiles.filter(d => {
-            if(mesStr === today.slice(0,7)) return d <= today;
-            return true;
-          });
-      diasContar.forEach(dia => {
-        const pres = new Set();
-        mapDiaAlu.forEach((_, key) => { if(key.startsWith(dia + '|')) pres.add(key.split('|')[1]); });
-        faltas += alumnos.filter(a=>!pres.has(a.id)).length;
-      });
-    }
+    const o = diaPT.get(diaSel) || { punt: 0, tard: 0 };
+    faltas = Math.max(0, alumnos.length - o.punt - o.tard);
+  } else if(!_soloResumen) {
+    const diasContar = rangoActivo
+      ? diasHabiles
+      : diasHabiles.filter(d => {
+          if(mesStr === today.slice(0,7)) return d <= today;
+          return true;
+        });
+    const esperado = diasContar.length * alumnos.length;
+    faltas = Math.max(0, esperado - mapDiaAlu.size);
   }
 
   // Vista mensual sin registros crudos: derivar métricas desde resumen_mensual (ya en memoria)
@@ -13274,13 +13279,9 @@ async function renderReportes(anioCompleto=false) {
     faltas = Math.max(0, _calcDiasHabilesHasta(mesSel) * alumnos.length - puntFiltro - _tardFiltro);
   }
 
-  // Actualizar KPIs exactos desde registros cuando hay filtro de día o vista anual
-  // (en vista mensual sin día, los KPIs rápidos ya fueron mostrados en Fase 1)
-  if(diaSel || anioCompleto) {
-    document.getElementById('rep-puntual').textContent   = puntFiltro;
-    document.getElementById('rep-tardanzas').textContent = _tardFiltro;
-    document.getElementById('rep-faltas').textContent    = faltas;
-  }
+  document.getElementById('rep-puntual').textContent   = puntFiltro;
+  document.getElementById('rep-tardanzas').textContent = _tardFiltro;
+  document.getElementById('rep-faltas').textContent    = faltas;
 
   const totalEsperado = (puntFiltro + _tardFiltro + faltas);
   const pct = totalEsperado ? Math.round(puntFiltro/totalEsperado*100) : 0;
@@ -13347,8 +13348,9 @@ async function renderReportes(anioCompleto=false) {
         <div style="position:relative;display:flex;align-items:flex-end;gap:${gap}px;height:84px;padding-bottom:18px;">
     `;
     daysForChart.forEach(dia => {
-      let presD = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO'&&r.estado!=='Tardanza').map(r=>r.alumnoId)).size;
-      let tardD = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO'&&r.estado==='Tardanza').map(r=>r.alumnoId)).size;
+      const o = diaPT.get(dia) || { punt: 0, tard: 0 };
+      let presD = o.punt;
+      let tardD = o.tard;
       let ausD  = Math.max(0, alumnos.length - presD - tardD);
       _repContextoPDF.datosDiarios.push({ dia, pres: presD, tard: tardD, aus: ausD });
       const hP = Math.round(presD/maxAl*62);
@@ -13362,9 +13364,9 @@ async function renderReportes(anioCompleto=false) {
       const segBase = 'border:1px solid rgba(0,0,0,0.10);box-shadow:inset 2px 0 0 rgba(255,255,255,0.18),inset -2px 0 0 rgba(0,0,0,0.18);';
       const bg3d = (c) => `background:linear-gradient(90deg, rgba(255,255,255,0.22), ${c} 35%, ${c} 70%, rgba(0,0,0,0.18));`;
       if(soloAlumno) {
-        const rDia = regs.filter(r=>r.fecha===dia && r.tipo==='INGRESO');
-        let estado = 'Ausente';
-        if(rDia.length) estado = rDia.some(r=>r.estado==='Tardanza') ? 'Tardanza' : 'Puntual';
+        const aluId = alumnos[0]?.id || '';
+        const estMap = mapDiaAlu.get(dia + '|' + aluId) || 'Ausente';
+        let estado = (estMap === 'Tardanza') ? 'Tardanza' : (estMap === 'Puntual' ? 'Puntual' : 'Ausente');
         const col = estado==='Puntual' ? cPun : estado==='Tardanza' ? cTar : cAus;
         const h = 62;
         barsHtml += `<div data-dia="${dia}" title="${dia}: ${estado}" style="flex:0 0 ${barW}px;min-width:${barW}px;display:flex;flex-direction:column;align-items:center;gap:3px;">

@@ -227,6 +227,9 @@ const DB = {
         .filter(k => k.startsWith('fecha_alumno:' + fecha))
         .forEach(k => { delete this._registrosCache[k]; delete this._registrosCacheTime[k]; });
       const mes = fecha.substring(0, 7);
+      delete this._registrosCache['mes:' + mes];
+      delete this._registrosCacheTime['mes:' + mes];
+      LSC.del('reg_mes:' + mes);
       delete this._resumenMesCache[mes];
       delete this._resumenMesCacheTime[mes];
     } else {
