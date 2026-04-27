@@ -12594,14 +12594,32 @@ async function exportarReportePDF() {
 
   // Título dinámico según filtros activos
   const partes = [];
-  if(ctx.nivel)   partes.push(ctx.nivel);
-  if(ctx.grado)   partes.push(ctx.grado + ' Grado');
-  if(ctx.seccion) partes.push('Sección ' + ctx.seccion);
-  const subtituloFiltros = partes.length ? partes.join(' · ') : 'Todos los niveles y grados';
+  if(ctx.alumno && (ctx.alumno.id || ctx.alumno.nombre)) {
+    const pAlumno = [];
+    if(ctx.alumno.turno) pAlumno.push(ctx.alumno.turno);
+    if(ctx.alumno.grado) pAlumno.push(ctx.alumno.grado + ' Grado');
+    if(ctx.alumno.seccion) pAlumno.push('Sección ' + ctx.alumno.seccion);
+    partes.push((pAlumno.length ? pAlumno.join(' · ') : '—'));
+    if(ctx.alumno.nombre) partes.push(ctx.alumno.nombre);
+    if(ctx.alumno.id) partes.push('DNI: ' + ctx.alumno.id);
+  } else {
+    if(ctx.nivel)   partes.push(ctx.nivel);
+    if(ctx.grado)   partes.push(ctx.grado + ' Grado');
+    if(ctx.seccion) partes.push('Sección ' + ctx.seccion);
+  }
+  const subtituloFiltros = partes.length ? partes.join('  ·  ') : 'Todos los niveles y grados';
   let subtituloExtra = '';
   if(ctx.diaSel) {
     const [dy,dm,dd] = ctx.diaSel.split('-');
-    subtituloExtra = 'Día: ' + dd + '/' + dm + '/' + dy;
+    subtituloExtra = 'Fecha: ' + dd + '/' + dm + '/' + dy;
+  } else if(ctx.mesSel && !ctx.anioCompleto) {
+    const [my,mm] = ctx.mesSel.split('-').map(Number);
+    const last = new Date(my, mm, 0).getDate();
+    const endIso = (ctx.mesSel === new Date().toISOString().slice(0,7))
+      ? new Date().toISOString().slice(0,10)
+      : (ctx.mesSel + '-' + String(last).padStart(2,'0'));
+    const [ey,em,ed] = endIso.split('-');
+    subtituloExtra = 'Rango: 01/' + String(mm).padStart(2,'0') + '/' + my + ' - ' + ed + '/' + String(em).padStart(2,'0') + '/' + ey;
   }
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -13095,10 +13113,15 @@ async function renderReportes(anioCompleto=false) {
     registros = await DB.getRegistros({fecha: diaSel});
     if(label) label.textContent = registros.length + ' registros del ' + diaSel;
   } else {
-    // Vista mensual: resumen_mensual ya cargado en Fase 1 — ahorra hasta 57,000 lecturas
-    registros = [];
-    _soloResumen = true;
-    if(label) label.textContent = 'Resumen del período';
+    const wantDetalleMes = !!q || alumnos.length <= 60;
+    if(wantDetalleMes) {
+      registros = await DB.getRegistros({ mes: mesSel });
+      if(label) label.textContent = 'Mes ' + mesSel + ' (' + registros.length + ' registros)';
+    } else {
+      registros = [];
+      _soloResumen = true;
+      if(label) label.textContent = 'Resumen del período';
+    }
   }
 
   // Filtrar registros al universo de alumnos seleccionados
@@ -13120,16 +13143,21 @@ async function renderReportes(anioCompleto=false) {
   let puntFiltro = ingFiltro.filter(r=>r.estado==='A tiempo'||r.estado==='Puntual').length;
   let _tardFiltro = ingFiltro.filter(r=>r.estado==='Tardanza').length;
 
-  const diasMes = new Set(ingMes.map(r=>r.fecha));
   let faltas = 0;
   if(diaSel) {
     const presD = new Set(ingMes.filter(r=>r.fecha===diaSel).map(r=>r.alumnoId));
     faltas = alumnos.filter(a=>!presD.has(a.id)).length;
   } else {
-    diasMes.forEach(dia => {
-      const pres = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO').map(r=>r.alumnoId));
-      faltas += alumnos.filter(a=>!pres.has(a.id)).length;
-    });
+    if(!_soloResumen) {
+      const diasContar = diasHabiles.filter(d => {
+        if(mesStr === today.slice(0,7)) return d <= today;
+        return true;
+      });
+      diasContar.forEach(dia => {
+        const pres = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO').map(r=>r.alumnoId));
+        faltas += alumnos.filter(a=>!pres.has(a.id)).length;
+      });
+    }
   }
 
   // Vista mensual sin registros crudos: derivar métricas desde resumen_mensual (ya en memoria)
@@ -13171,6 +13199,7 @@ async function renderReportes(anioCompleto=false) {
   }
   // Guardar contexto para exportar PDF
   const mesStr2 = mesStr; // alias para usar en _repContextoPDF
+  const alumnoSel = (alumnos && alumnos.length === 1) ? alumnos[0] : null;
   _repContextoPDF = {
     mesSel, diaSel, nivel, grado, seccion,
     total: alumnos.length,
@@ -13181,6 +13210,14 @@ async function renderReportes(anioCompleto=false) {
     presentesLabel: diaSel ? 'Presentes ese día' : 'Presentes hoy',
     datosDiarios: [],
     anioCompleto,
+    q,
+    alumno: alumnoSel ? {
+      id: alumnoSel.id || '',
+      nombre: ((alumnoSel.apellidos||'') + ' ' + (alumnoSel.nombres||'')).trim(),
+      grado: alumnoSel.grado || '',
+      seccion: alumnoSel.seccion || '',
+      turno: alumnoSel.turno || '',
+    } : null,
   };
 
   const chartsGrid = document.getElementById('rep-charts-grid');
@@ -13194,15 +13231,27 @@ async function renderReportes(anioCompleto=false) {
     } else {
     const repTitleEl = document.getElementById('rep-barras-title-text');
     if(repTitleEl) repTitleEl.textContent = 'Asistencia por día del mes';
-    const daysForChart = diasHabiles;
-    const barW = Math.max(6, Math.min(16, Math.floor(260/diasHabiles.length)));
+    const daysForChart = diasHabiles.filter(d => {
+      if(mesStr === today.slice(0,7)) return d <= today;
+      return true;
+    });
+    const soloAlumno = alumnos.length === 1;
+    const barW = soloAlumno ? 10 : Math.max(6, Math.min(16, Math.floor(260/diasHabiles.length)));
     const maxAl = alumnos.length || 1;
     const gap = 2;
-    let barsHtml = `<div style="display:flex;align-items:flex-end;gap:${gap}px;height:80px;padding-bottom:18px;position:relative;">`;
+    let barsHtml = `
+      <div style="position:relative;border-radius:14px;padding:10px 10px 8px;background:linear-gradient(180deg,rgba(255,255,255,0.06),rgba(0,0,0,0.18));border:1px solid rgba(255,255,255,0.10);overflow:hidden;">
+        <div style="position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,255,255,0.05) 0,transparent 35%,rgba(0,0,0,0.15) 100%);pointer-events:none;"></div>
+        <div style="position:absolute;left:0;right:0;top:0;bottom:0;opacity:0.18;background:
+          repeating-linear-gradient(to right, rgba(255,255,255,0.12) 0, rgba(255,255,255,0.12) 1px, transparent 1px, transparent 22px),
+          repeating-linear-gradient(to top, rgba(255,255,255,0.10) 0, rgba(255,255,255,0.10) 1px, transparent 1px, transparent 14px);
+          pointer-events:none;"></div>
+        <div style="position:relative;display:flex;align-items:flex-end;gap:${gap}px;height:84px;padding-bottom:18px;">
+    `;
     daysForChart.forEach(dia => {
-      const presD = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO'&&r.estado!=='Tardanza').map(r=>r.alumnoId)).size;
-      const tardD = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO'&&r.estado==='Tardanza').map(r=>r.alumnoId)).size;
-      const ausD  = Math.max(0, alumnos.length - presD - tardD);
+      let presD = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO'&&r.estado!=='Tardanza').map(r=>r.alumnoId)).size;
+      let tardD = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO'&&r.estado==='Tardanza').map(r=>r.alumnoId)).size;
+      let ausD  = Math.max(0, alumnos.length - presD - tardD);
       _repContextoPDF.datosDiarios.push({ dia, pres: presD, tard: tardD, aus: ausD });
       const hP = Math.round(presD/maxAl*62);
       const hT = Math.round(tardD/maxAl*62);
@@ -13214,16 +13263,32 @@ async function renderReportes(anioCompleto=false) {
       const cPun = isToday ? '#185FA5' : '#1D9E75';
       const segBase = 'border:1px solid rgba(0,0,0,0.10);box-shadow:inset 2px 0 0 rgba(255,255,255,0.18),inset -2px 0 0 rgba(0,0,0,0.18);';
       const bg3d = (c) => `background:linear-gradient(90deg, rgba(255,255,255,0.22), ${c} 35%, ${c} 70%, rgba(0,0,0,0.18));`;
-      barsHtml += `<div style="flex:0 0 ${barW}px;display:flex;flex-direction:column;align-items:center;min-width:${barW}px;position:relative;">
-        <div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:62px;">
-          ${hA>0?`<div style="width:100%;height:${hA}px;${bg3d(cAus)}${segBase}border-radius:3px 3px 0 0;"></div>`:''}
-          ${hT>0?`<div style="width:100%;height:${hT}px;${bg3d(cTar)}${segBase}"></div>`:''}
-          ${hP>0?`<div style="width:100%;height:${hP}px;${bg3d(cPun)}${segBase}border-radius:${hA===0&&hT===0?'3px 3px':''} 0 0;"></div>`:''}
-        </div>
-        <span style="font-size:7px;color:${isToday?'var(--accent)':'var(--muted)'};margin-top:2px;font-weight:${isToday?'700':'400'}">${dLabel}</span>
-      </div>`;
+      if(soloAlumno) {
+        const rDia = regs.filter(r=>r.fecha===dia && r.tipo==='INGRESO');
+        let estado = 'Ausente';
+        if(rDia.length) estado = rDia.some(r=>r.estado==='Tardanza') ? 'Tardanza' : 'Puntual';
+        const col = estado==='Puntual' ? cPun : estado==='Tardanza' ? cTar : cAus;
+        const h = 62;
+        barsHtml += `<div data-dia="${dia}" title="${dia}: ${estado}" style="flex:0 0 ${barW}px;min-width:${barW}px;display:flex;flex-direction:column;align-items:center;gap:3px;">
+          <div style="position:relative;width:${barW}px;height:62px;border-radius:6px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);overflow:visible;">
+            <div style="position:absolute;left:0;bottom:0;width:100%;height:${h}px;${bg3d(col)}${segBase}border-radius:6px;"></div>
+            <div style="position:absolute;left:0;bottom:${h-1}px;width:100%;height:8px;background:linear-gradient(180deg,rgba(255,255,255,0.35),rgba(0,0,0,0.18));border-radius:6px;transform:skewX(-26deg) translate(3px,-3px);transform-origin:left bottom;"></div>
+            <div style="position:absolute;left:100%;bottom:0;width:8px;height:${h}px;background:linear-gradient(180deg,rgba(0,0,0,0.05),rgba(0,0,0,0.22));border-radius:0 6px 6px 0;transform:skewY(-34deg) translate(0,-3px);transform-origin:left bottom;"></div>
+          </div>
+          <span style="font-size:7px;color:${isToday?'var(--accent)':'var(--muted)'};font-weight:${isToday?'700':'400'}">${dLabel}</span>
+        </div>`;
+      } else {
+        barsHtml += `<div style="flex:0 0 ${barW}px;display:flex;flex-direction:column;align-items:center;min-width:${barW}px;position:relative;">
+          <div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:62px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.10);overflow:hidden;">
+            ${hA>0?`<div style="width:100%;height:${hA}px;${bg3d(cAus)}${segBase}"></div>`:''}
+            ${hT>0?`<div style="width:100%;height:${hT}px;${bg3d(cTar)}${segBase}"></div>`:''}
+            ${hP>0?`<div style="width:100%;height:${hP}px;${bg3d(cPun)}${segBase}"></div>`:''}
+          </div>
+          <span style="font-size:7px;color:${isToday?'var(--accent)':'var(--muted)'};margin-top:2px;font-weight:${isToday?'700':'400'}">${dLabel}</span>
+        </div>`;
+      }
     });
-    barsHtml += `</div>`;
+    barsHtml += `</div></div>`;
     barsHtml += `<div style="display:flex;gap:10px;font-size:10px;color:var(--muted);margin-top:4px;">
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#1D9E75;margin-right:3px;"></span>Puntual</span>
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#EF9F27;margin-right:3px;"></span>Tardanza</span>
@@ -13274,12 +13339,12 @@ async function renderReportes(anioCompleto=false) {
       const large = (a1 - a0) > Math.PI ? 1 : 0;
       return `M ${p0.x.toFixed(2)} ${p0.y.toFixed(2)} A ${rx.toFixed(2)} ${ry.toFixed(2)} 0 ${large} 1 ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} L ${q1.x.toFixed(2)} ${q1.y.toFixed(2)} A ${irx.toFixed(2)} ${iry.toFixed(2)} 0 ${large} 0 ${q0.x.toFixed(2)} ${q0.y.toFixed(2)} Z`;
     }
-    const cx = 80, cy = 62;
-    const outerR = 46, innerR = 26;
+    const cx = 98, cy = 78;
+    const outerR = 56, innerR = 32;
     const tilt = 0.72;
     const rx = outerR, ry = outerR * tilt;
     const irx = innerR, iry = innerR * tilt;
-    const depth = 12;
+    const depth = 16;
     let ang = -Math.PI/2;
     const sliceTop = [];
     const sliceBot = [];
@@ -13301,11 +13366,11 @@ async function renderReportes(anioCompleto=false) {
       const cMid  = c;
       return `
         <div data-pta-bar="${s.key}" title="${s.label}: ${s.pct}% (${s.val})"
-          style="width:40px;height:92px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:transform .12s,opacity .12s;">
-          <div style="position:relative;width:26px;height:70px;display:flex;align-items:flex-end;">
-            <div style="position:absolute;left:0;bottom:0;width:26px;height:${pctH}%;background:linear-gradient(180deg,${cTop},${cMid} 55%,${cSide});border-radius:6px 6px 3px 3px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),inset 0 -1px 0 rgba(0,0,0,0.25),0 6px 14px rgba(0,0,0,0.25);"></div>
-            <div style="position:absolute;left:0;bottom:calc(${pctH}% - 1px);width:26px;height:9px;background:linear-gradient(180deg,rgba(255,255,255,0.35),rgba(0,0,0,0.18));border-radius:6px;transform:skewX(-28deg) translate(4px,-4px);transform-origin:left bottom;opacity:${pctH>0?1:0};"></div>
-            <div style="position:absolute;left:26px;bottom:0;width:9px;height:${pctH}%;background:linear-gradient(180deg,${_shade(c,0.95)},${cSide});border-radius:0 6px 3px 0;transform:skewY(-34deg) translate(0,-4px);transform-origin:left bottom;opacity:${pctH>0?1:0};"></div>
+          style="width:56px;height:128px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:transform .12s,opacity .12s;">
+          <div style="position:relative;width:36px;height:92px;display:flex;align-items:flex-end;">
+            <div style="position:absolute;left:0;bottom:0;width:36px;height:${pctH}%;background:linear-gradient(180deg,${cTop},${cMid} 55%,${cSide});border-radius:8px 8px 4px 4px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),inset 0 -1px 0 rgba(0,0,0,0.25),0 8px 18px rgba(0,0,0,0.30);"></div>
+            <div style="position:absolute;left:0;bottom:calc(${pctH}% - 1px);width:36px;height:11px;background:linear-gradient(180deg,rgba(255,255,255,0.38),rgba(0,0,0,0.18));border-radius:8px;transform:skewX(-28deg) translate(5px,-5px);transform-origin:left bottom;opacity:${pctH>0?1:0};"></div>
+            <div style="position:absolute;left:36px;bottom:0;width:11px;height:${pctH}%;background:linear-gradient(180deg,${_shade(c,0.95)},${cSide});border-radius:0 8px 4px 0;transform:skewY(-34deg) translate(0,-5px);transform-origin:left bottom;opacity:${pctH>0?1:0};"></div>
           </div>
           <div style="font-size:10px;color:var(--muted);font-weight:700;">${s.pct}%</div>
         </div>`;
@@ -13315,9 +13380,9 @@ async function renderReportes(anioCompleto=false) {
         <div style="display:flex;justify-content:center;gap:18px;align-items:flex-end;padding:4px 0 2px;">
           ${colBarsHtml}
         </div>
-        <div style="display:flex;align-items:center;justify-content:center;gap:18px;position:relative;">
+        <div style="display:flex;align-items:center;justify-content:center;gap:18px;position:relative;background:linear-gradient(180deg,rgba(255,255,255,0.04),rgba(0,0,0,0.18));border:1px solid rgba(255,255,255,0.10);border-radius:16px;padding:14px;box-shadow:0 18px 40px rgba(0,0,0,0.25);">
           <div style="position:relative;">
-            <svg width="160" height="130" viewBox="0 0 160 130" style="display:block;">
+            <svg width="220" height="170" viewBox="0 0 220 170" style="display:block;">
               <defs>
                 <filter id="repDonaShadow" x="-40%" y="-40%" width="180%" height="180%">
                   <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.25)"/>
