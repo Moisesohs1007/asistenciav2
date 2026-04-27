@@ -4397,9 +4397,9 @@
     </div>
 
     <!-- Gráficos -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+    <div id="rep-charts-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
       <!-- Barras apiladas por día -->
-      <div class="card">
+      <div class="card" id="rep-card-barras-dia">
         <div class="card-title"><span class="dot"></span><span id="rep-barras-title-text">Asistencia por día del mes</span></div>
         <div id="chart-barras-dia" style="overflow-x:auto;"></div>
       </div>
@@ -12675,67 +12675,52 @@ async function exportarReportePDF() {
     doc.lines(deltas, pts[0].x, pts[0].y, [1,1], style || 'F', true);
   }
 
-  // Barra apilada horizontal 3D (solo una, para no duplicar)
-  const stackX = marginL, stackY = yPos, stackW = contentW, stackH = 8;
-  const dx = 2.2, dy = -2.2;
+  const dx = 2.4, dy = -2.4;
+  const chartX = marginL, chartY = yPos, chartW = contentW, chartH = 22;
+  const maxV = Math.max(1, ...dist.map(d => d.val || 0));
+  const colW = 22, gap = 16;
+  const totalColsW = colW * 3 + gap * 2;
+  const startX = chartX + (chartW - totalColsW) / 2;
+  const baseY = chartY + chartH;
 
-  // Base (fondo) 3D
-  const baseFront = { r:220, g:228, b:240 };
-  const baseTop   = _shadeRGB(baseFront, 1.08);
-  const baseSide  = _shadeRGB(baseFront, 0.90);
-  doc.setDrawColor(200, 210, 225);
-  doc.setLineWidth(0.2);
-  doc.setFillColor(baseFront.r, baseFront.g, baseFront.b);
-  doc.rect(stackX, stackY, stackW, stackH, 'F');
-  doc.setFillColor(baseTop.r, baseTop.g, baseTop.b);
-  _polyAbs(doc, [
-    { x:stackX,         y:stackY },
-    { x:stackX+dx,      y:stackY+dy },
-    { x:stackX+stackW+dx, y:stackY+dy },
-    { x:stackX+stackW,  y:stackY },
-  ], 'F');
-  doc.setFillColor(baseSide.r, baseSide.g, baseSide.b);
-  _polyAbs(doc, [
-    { x:stackX+stackW,    y:stackY },
-    { x:stackX+stackW+dx, y:stackY+dy },
-    { x:stackX+stackW+dx, y:stackY+stackH+dy },
-    { x:stackX+stackW,    y:stackY+stackH },
-  ], 'F');
-
-  // Segmentos (front + top). El lado derecho lo pinta el último segmento con color oscuro.
-  let stackOffset = 0;
-  let lastSeg = null;
-  dist.forEach(d => {
-    const segW = stackW * d.val / totalPTA;
-    if(segW <= 0.01) return;
+  let lastBar = null;
+  dist.forEach((d, i) => {
+    const h = chartH * (d.val / maxV);
+    const x = startX + i * (colW + gap);
+    const y = baseY - h;
     const rgb = { r:d.r, g:d.g, b:d.b };
     const top = _shadeRGB(rgb, 1.10);
+    const side = _shadeRGB(rgb, 0.80);
+
     doc.setFillColor(rgb.r, rgb.g, rgb.b);
-    doc.rect(stackX + stackOffset, stackY, segW, stackH, 'F');
+    doc.rect(x, y, colW, h, 'F');
     doc.setFillColor(top.r, top.g, top.b);
     _polyAbs(doc, [
-      { x:stackX + stackOffset,        y:stackY },
-      { x:stackX + stackOffset + dx,   y:stackY + dy },
-      { x:stackX + stackOffset + segW + dx, y:stackY + dy },
-      { x:stackX + stackOffset + segW, y:stackY },
+      { x:x,       y:y },
+      { x:x+dx,    y:y+dy },
+      { x:x+colW+dx, y:y+dy },
+      { x:x+colW,  y:y },
     ], 'F');
-    lastSeg = { x: stackX + stackOffset, w: segW, rgb };
-    stackOffset += segW;
-  });
-  if(lastSeg) {
-    const side = _shadeRGB(lastSeg.rgb, 0.82);
     doc.setFillColor(side.r, side.g, side.b);
     _polyAbs(doc, [
-      { x:lastSeg.x + lastSeg.w,    y:stackY },
-      { x:lastSeg.x + lastSeg.w + dx, y:stackY + dy },
-      { x:lastSeg.x + lastSeg.w + dx, y:stackY + stackH + dy },
-      { x:lastSeg.x + lastSeg.w,    y:stackY + stackH },
+      { x:x+colW,    y:y },
+      { x:x+colW+dx, y:y+dy },
+      { x:x+colW+dx, y:y+h+dy },
+      { x:x+colW,    y:y+h },
     ], 'F');
-  }
 
-  yPos += stackH + 10;
+    lastBar = { x, y, w: colW, h, rgb };
 
-  // Filas de detalle (solo texto + color, sin barra extra para evitar duplicación)
+    const pct = Math.round(d.val / totalPTA * 100);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(30, 40, 55);
+    doc.text(pct + '%', x + colW/2, baseY + 7, { align: 'center' });
+  });
+
+  yPos += chartH + 12;
+
+  // Filas de detalle (solo texto + color)
   dist.forEach(d => {
     const pct = Math.round(d.val / totalPTA * 100);
     doc.setFillColor(d.r, d.g, d.b);
@@ -12842,7 +12827,7 @@ async function exportarReportePDF() {
   yPos += outerR * 2 + 14;
 
   // ── Gráfico de barras por día ──
-  if(ctx.datosDiarios && ctx.datosDiarios.length > 0) {
+  if(!ctx.diaSel && ctx.datosDiarios && ctx.datosDiarios.length > 0) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(100, 116, 139);
@@ -13198,19 +13183,22 @@ async function renderReportes(anioCompleto=false) {
     anioCompleto,
   };
 
+  const chartsGrid = document.getElementById('rep-charts-grid');
+  const barrasCard = document.getElementById('rep-card-barras-dia');
+  if(chartsGrid) chartsGrid.style.gridTemplateColumns = diaSel ? '1fr' : '1fr 1fr';
+  if(barrasCard) barrasCard.style.display = diaSel ? 'none' : '';
   const chartBarras = document.getElementById('chart-barras-dia');
   if(chartBarras) {
     if(_soloResumen) {
       chartBarras.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:80px;color:var(--muted);font-size:0.8rem;text-align:center;padding:10px;">Selecciona un día para ver el detalle diario</div>';
     } else {
     const repTitleEl = document.getElementById('rep-barras-title-text');
-    if(repTitleEl) repTitleEl.textContent = diaSel ? 'Asistencia del día seleccionado' : 'Asistencia por día del mes';
-    const daysForChart = diaSel ? [diaSel] : diasHabiles;
-    const barW = diaSel ? 44 : Math.max(6, Math.min(16, Math.floor(260/diasHabiles.length)));
+    if(repTitleEl) repTitleEl.textContent = 'Asistencia por día del mes';
+    const daysForChart = diasHabiles;
+    const barW = Math.max(6, Math.min(16, Math.floor(260/diasHabiles.length)));
     const maxAl = alumnos.length || 1;
-    const gap = diaSel ? 10 : 2;
-    const justify = diaSel ? 'center' : 'flex-start';
-    let barsHtml = `<div style="display:flex;align-items:flex-end;justify-content:${justify};gap:${gap}px;height:80px;padding-bottom:18px;position:relative;">`;
+    const gap = 2;
+    let barsHtml = `<div style="display:flex;align-items:flex-end;gap:${gap}px;height:80px;padding-bottom:18px;position:relative;">`;
     daysForChart.forEach(dia => {
       const presD = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO'&&r.estado!=='Tardanza').map(r=>r.alumnoId)).size;
       const tardD = new Set(regs.filter(r=>r.fecha===dia&&r.tipo==='INGRESO'&&r.estado==='Tardanza').map(r=>r.alumnoId)).size;
@@ -13220,11 +13208,10 @@ async function renderReportes(anioCompleto=false) {
       const hT = Math.round(tardD/maxAl*62);
       const hA = Math.round(ausD/maxAl*62);
       const isToday = dia===today;
-      const isSelected = diaSel ? dia===diaSel : false;
       const fp=dia.split('-'); const dLabel=fp[2];
       const cAus = '#E24B4A';
       const cTar = '#EF9F27';
-      const cPun = (isToday||isSelected) ? '#185FA5' : '#1D9E75';
+      const cPun = isToday ? '#185FA5' : '#1D9E75';
       const segBase = 'border:1px solid rgba(0,0,0,0.10);box-shadow:inset 2px 0 0 rgba(255,255,255,0.18),inset -2px 0 0 rgba(0,0,0,0.18);';
       const bg3d = (c) => `background:linear-gradient(90deg, rgba(255,255,255,0.22), ${c} 35%, ${c} 70%, rgba(0,0,0,0.18));`;
       barsHtml += `<div style="flex:0 0 ${barW}px;display:flex;flex-direction:column;align-items:center;min-width:${barW}px;position:relative;">
@@ -13233,7 +13220,7 @@ async function renderReportes(anioCompleto=false) {
           ${hT>0?`<div style="width:100%;height:${hT}px;${bg3d(cTar)}${segBase}"></div>`:''}
           ${hP>0?`<div style="width:100%;height:${hP}px;${bg3d(cPun)}${segBase}border-radius:${hA===0&&hT===0?'3px 3px':''} 0 0;"></div>`:''}
         </div>
-        <span style="font-size:7px;color:${isToday||isSelected?'var(--accent)':'var(--muted)'};margin-top:2px;font-weight:${isToday||isSelected?'700':'400'}">${dLabel}</span>
+        <span style="font-size:7px;color:${isToday?'var(--accent)':'var(--muted)'};margin-top:2px;font-weight:${isToday?'700':'400'}">${dLabel}</span>
       </div>`;
     });
     barsHtml += `</div>`;
@@ -13305,17 +13292,28 @@ async function renderReportes(anioCompleto=false) {
       sliceBot.push({ ...s, d: dBot, a0, a1 });
       ang = a1;
     });
-    const barSegmentsHtml = segs.map(s => {
-      const w = Math.max(0, Math.round((s.val/tot)*1000)/10);
+    const maxVal = Math.max(1, ...segs.map(s => s.val || 0));
+    const colBarsHtml = segs.map(s => {
+      const pctH = Math.max(0, Math.round((s.val/maxVal) * 100));
       const c = s.color;
-      const c2 = _shade(c, 1.15);
-      const c3 = _shade(c, 0.82);
-      return `<div data-pta-seg="${s.key}" title="${s.label}: ${s.pct}% (${s.val})" style="width:${w}%;height:100%;background:linear-gradient(180deg,${c2},${c} 55%,${c3});box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),inset 0 -1px 0 rgba(0,0,0,0.25);transition:transform .12s,opacity .12s;cursor:pointer;"></div>`;
+      const cTop  = _shade(c, 1.18);
+      const cSide = _shade(c, 0.80);
+      const cMid  = c;
+      return `
+        <div data-pta-bar="${s.key}" title="${s.label}: ${s.pct}% (${s.val})"
+          style="width:40px;height:92px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:transform .12s,opacity .12s;">
+          <div style="position:relative;width:26px;height:70px;display:flex;align-items:flex-end;">
+            <div style="position:absolute;left:0;bottom:0;width:26px;height:${pctH}%;background:linear-gradient(180deg,${cTop},${cMid} 55%,${cSide});border-radius:6px 6px 3px 3px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),inset 0 -1px 0 rgba(0,0,0,0.25),0 6px 14px rgba(0,0,0,0.25);"></div>
+            <div style="position:absolute;left:0;bottom:calc(${pctH}% - 1px);width:26px;height:9px;background:linear-gradient(180deg,rgba(255,255,255,0.35),rgba(0,0,0,0.18));border-radius:6px;transform:skewX(-28deg) translate(4px,-4px);transform-origin:left bottom;opacity:${pctH>0?1:0};"></div>
+            <div style="position:absolute;left:26px;bottom:0;width:9px;height:${pctH}%;background:linear-gradient(180deg,${_shade(c,0.95)},${cSide});border-radius:0 6px 3px 0;transform:skewY(-34deg) translate(0,-4px);transform-origin:left bottom;opacity:${pctH>0?1:0};"></div>
+          </div>
+          <div style="font-size:10px;color:var(--muted);font-weight:700;">${s.pct}%</div>
+        </div>`;
     }).join('');
     chartDona.innerHTML = `
       <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
-        <div style="height:10px;border-radius:8px;overflow:hidden;background:rgba(220,228,240,0.9);box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),inset 0 -1px 0 rgba(0,0,0,0.25);display:flex;">
-          ${barSegmentsHtml}
+        <div style="display:flex;justify-content:center;gap:18px;align-items:flex-end;padding:4px 0 2px;">
+          ${colBarsHtml}
         </div>
         <div style="display:flex;align-items:center;justify-content:center;gap:18px;position:relative;">
           <div style="position:relative;">
@@ -13375,6 +13373,13 @@ async function renderReportes(anioCompleto=false) {
     function _toggleSel(key) { _applySel(_sel === key ? '' : key); }
     chartDona.querySelectorAll('[data-pta-seg]').forEach(el => {
       const key = el.getAttribute('data-pta-seg');
+      const seg = segs.find(s => s.key === key);
+      el.addEventListener('mouseenter', () => { if(seg) _setTip(seg.label + ': ' + seg.pct + '% (' + seg.val + ')'); });
+      el.addEventListener('mouseleave', () => { _setTip(''); });
+      el.addEventListener('click', () => { _toggleSel(key); });
+    });
+    chartDona.querySelectorAll('[data-pta-bar]').forEach(el => {
+      const key = el.getAttribute('data-pta-bar');
       const seg = segs.find(s => s.key === key);
       el.addEventListener('mouseenter', () => { if(seg) _setTip(seg.label + ': ' + seg.pct + '% (' + seg.val + ')'); });
       el.addEventListener('mouseleave', () => { _setTip(''); });
