@@ -13122,22 +13122,9 @@ async function renderReportes(anioCompleto=false) {
   const alumnosIds = new Set(alumnos.map(a=>a.id));
   document.getElementById('rep-total').textContent = alumnos.length;
 
-  // ── Fase 1: KPIs rápidos desde resumen_mensual (~433 lecturas vs miles) ──────
-  // Solo para vista mensual sin filtro de día específico
-  let _resumenFase1 = null; // guardado para reconciliación automática tras cargar registros
-  if(!rangoActivo && !diaSel && !anioCompleto) {
-    const resumen = await DB.getResumenMes(mesSel);
-    _resumenFase1 = resumen;
-    const resFilt = resumen.filter(r => alumnosIds.has(r.alumnoId));
-    const kpiP = resFilt.reduce((s,r) => s + (r.puntual||0), 0);
-    const kpiT = resFilt.reduce((s,r) => s + (r.tardanza||0), 0);
-    const diasHab = _calcDiasHabilesHasta(mesSel);
-    const kpiF = Math.max(0, diasHab * alumnos.length - kpiP - kpiT);
-    document.getElementById('rep-puntual').textContent   = kpiP;
-    document.getElementById('rep-tardanzas').textContent = kpiT;
-    document.getElementById('rep-faltas').textContent    = kpiF;
-    if(label) label.textContent = 'KPIs del período (detalle cargando...)';
-  }
+  // Nota: Para evitar inconsistencias entre "Todos los niveles" y filtros por nivel/grado,
+  // en Supabase se calcula el mes/rango usando registros reales (no resumen_mensual).
+  let _resumenFase1 = null;
 
   // ── Fase 2: Registros completos para gráficos ────────────────────────────────
   // Vista mensual sin día → usar resumen_mensual ya cargado (0 lecturas extra)
@@ -13154,15 +13141,8 @@ async function renderReportes(anioCompleto=false) {
     registros = await DB.getRegistros({fecha: diaSel});
     if(label) label.textContent = registros.length + ' registros del ' + diaSel;
   } else {
-    const wantDetalleMes = !!q || !!nivel || !!grado || !!seccion || alumnos.length <= 200;
-    if(wantDetalleMes) {
-      registros = await DB.getRegistros({ mes: mesSel });
-      if(label) label.textContent = 'Mes ' + mesSel + ' (' + registros.length + ' registros)';
-    } else {
-      registros = [];
-      _soloResumen = true;
-      if(label) label.textContent = 'Resumen del período';
-    }
+    registros = await DB.getRegistros({ mes: mesSel });
+    if(label) label.textContent = 'Mes ' + mesSel + ' (' + registros.length + ' registros)';
   }
 
   const regs = registros.filter(r => alumnosIds.has(r.alumnoId));
