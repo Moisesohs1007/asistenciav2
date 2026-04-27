@@ -12665,44 +12665,88 @@ async function exportarReportePDF() {
     { label:'Ausente',  val: ctx.ausencias,  r:226, g:75,  b:74  },
   ];
 
-  // Barra apilada horizontal (visual tipo dona simplificada)
+  function _clamp255(n) { return Math.max(0, Math.min(255, Math.round(n))); }
+  function _shadeRGB(rgb, f) { return { r:_clamp255(rgb.r*f), g:_clamp255(rgb.g*f), b:_clamp255(rgb.b*f) }; }
+  function _polyAbs(doc, pts, style) {
+    if(!pts || pts.length < 3) return;
+    const deltas = [];
+    for(let i=1;i<pts.length;i++) deltas.push([pts[i].x-pts[i-1].x, pts[i].y-pts[i-1].y]);
+    deltas.push([pts[0].x-pts[pts.length-1].x, pts[0].y-pts[pts.length-1].y]);
+    doc.lines(deltas, pts[0].x, pts[0].y, [1,1], style || 'F', true);
+  }
+
+  // Barra apilada horizontal 3D (solo una, para no duplicar)
   const stackX = marginL, stackY = yPos, stackW = contentW, stackH = 8;
-  doc.setFillColor(220, 228, 240);
+  const dx = 2.2, dy = -2.2;
+
+  // Base (fondo) 3D
+  const baseFront = { r:220, g:228, b:240 };
+  const baseTop   = _shadeRGB(baseFront, 1.08);
+  const baseSide  = _shadeRGB(baseFront, 0.90);
+  doc.setDrawColor(200, 210, 225);
+  doc.setLineWidth(0.2);
+  doc.setFillColor(baseFront.r, baseFront.g, baseFront.b);
   doc.rect(stackX, stackY, stackW, stackH, 'F');
+  doc.setFillColor(baseTop.r, baseTop.g, baseTop.b);
+  _polyAbs(doc, [
+    { x:stackX,         y:stackY },
+    { x:stackX+dx,      y:stackY+dy },
+    { x:stackX+stackW+dx, y:stackY+dy },
+    { x:stackX+stackW,  y:stackY },
+  ], 'F');
+  doc.setFillColor(baseSide.r, baseSide.g, baseSide.b);
+  _polyAbs(doc, [
+    { x:stackX+stackW,    y:stackY },
+    { x:stackX+stackW+dx, y:stackY+dy },
+    { x:stackX+stackW+dx, y:stackY+stackH+dy },
+    { x:stackX+stackW,    y:stackY+stackH },
+  ], 'F');
+
+  // Segmentos (front + top). El lado derecho lo pinta el último segmento con color oscuro.
   let stackOffset = 0;
+  let lastSeg = null;
   dist.forEach(d => {
     const segW = stackW * d.val / totalPTA;
-    if(segW > 0) {
-      doc.setFillColor(d.r, d.g, d.b);
-      doc.rect(stackX + stackOffset, stackY, segW, stackH, 'F');
-      stackOffset += segW;
-    }
+    if(segW <= 0.01) return;
+    const rgb = { r:d.r, g:d.g, b:d.b };
+    const top = _shadeRGB(rgb, 1.10);
+    doc.setFillColor(rgb.r, rgb.g, rgb.b);
+    doc.rect(stackX + stackOffset, stackY, segW, stackH, 'F');
+    doc.setFillColor(top.r, top.g, top.b);
+    _polyAbs(doc, [
+      { x:stackX + stackOffset,        y:stackY },
+      { x:stackX + stackOffset + dx,   y:stackY + dy },
+      { x:stackX + stackOffset + segW + dx, y:stackY + dy },
+      { x:stackX + stackOffset + segW, y:stackY },
+    ], 'F');
+    lastSeg = { x: stackX + stackOffset, w: segW, rgb };
+    stackOffset += segW;
   });
-  yPos += stackH + 6;
+  if(lastSeg) {
+    const side = _shadeRGB(lastSeg.rgb, 0.82);
+    doc.setFillColor(side.r, side.g, side.b);
+    _polyAbs(doc, [
+      { x:lastSeg.x + lastSeg.w,    y:stackY },
+      { x:lastSeg.x + lastSeg.w + dx, y:stackY + dy },
+      { x:lastSeg.x + lastSeg.w + dx, y:stackY + stackH + dy },
+      { x:lastSeg.x + lastSeg.w,    y:stackY + stackH },
+    ], 'F');
+  }
 
-  // Filas de detalle
-  const barMaxW = contentW - 55;
+  yPos += stackH + 10;
+
+  // Filas de detalle (solo texto + color, sin barra extra para evitar duplicación)
   dist.forEach(d => {
     const pct = Math.round(d.val / totalPTA * 100);
-    // Cuadro de color (swatch)
     doc.setFillColor(d.r, d.g, d.b);
     doc.rect(marginL, yPos - 3, 4, 4, 'F');
-    // Etiqueta
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(50, 65, 85);
     doc.text(d.label, marginL + 7, yPos);
-    // Porcentaje y cantidad
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(30, 40, 55);
     doc.text(pct + '%  (' + d.val + ')', marginL + 35, yPos);
-    // Barra de progreso (fondos y relleno con rect básico)
-    doc.setFillColor(230, 235, 245);
-    doc.rect(marginL + 55, yPos - 3, barMaxW, 4.5, 'F');
-    if(pct > 0) {
-      doc.setFillColor(d.r, d.g, d.b);
-      doc.rect(marginL + 55, yPos - 3, Math.max(1.5, barMaxW * pct / 100), 4.5, 'F');
-    }
     yPos += 9;
   });
   yPos += 4;
@@ -12713,7 +12757,6 @@ async function exportarReportePDF() {
   const outerR  = 28;
   const innerR  = 16;
 
-  // Fondo gris (círculo completo)
   const bgSteps = 48;
   const bgLines = [];
   for(let i = 0; i < bgSteps; i++) {
@@ -12721,27 +12764,37 @@ async function exportarReportePDF() {
     const an = -Math.PI + 2*Math.PI*(i+1)/bgSteps;
     bgLines.push([outerR*Math.cos(an)-outerR*Math.cos(a), outerR*Math.sin(an)-outerR*Math.sin(a)]);
   }
+
+  function _pdfDrawDonutLayers(cx, cy, shadeFactor) {
+    let donutAngle = -Math.PI / 2;
+    dist.forEach(d => {
+      const sliceAngle = 2 * Math.PI * d.val / totalPTA;
+      if(sliceAngle > 0.01) {
+        const steps = Math.max(8, Math.ceil(sliceAngle / (2*Math.PI) * 60));
+        const sl = [[outerR * Math.cos(donutAngle), outerR * Math.sin(donutAngle)]];
+        for(let i = 1; i <= steps; i++) {
+          const a  = donutAngle + sliceAngle * i / steps;
+          const ap = donutAngle + sliceAngle * (i-1) / steps;
+          sl.push([outerR*(Math.cos(a)-Math.cos(ap)), outerR*(Math.sin(a)-Math.sin(ap))]);
+        }
+        sl.push([-outerR * Math.cos(donutAngle + sliceAngle), -outerR * Math.sin(donutAngle + sliceAngle)]);
+        const col = _shadeRGB({ r:d.r, g:d.g, b:d.b }, shadeFactor);
+        doc.setFillColor(col.r, col.g, col.b);
+        doc.lines(sl, cx, cy, [1,1], 'F', true);
+        donutAngle += sliceAngle;
+      }
+    });
+  }
+
+  const donutDepth = 2.6;
+  const bgBack = _shadeRGB({ r:220, g:228, b:240 }, 0.90);
+  doc.setFillColor(bgBack.r, bgBack.g, bgBack.b);
+  doc.lines(bgLines, donutCX - outerR, donutCY + donutDepth, [1,1], 'F', true);
+  _pdfDrawDonutLayers(donutCX, donutCY + donutDepth, 0.78);
+
   doc.setFillColor(220, 228, 240);
   doc.lines(bgLines, donutCX - outerR, donutCY, [1,1], 'F', true);
-
-  // Segmentos de la dona
-  let donutAngle = -Math.PI / 2;
-  dist.forEach(d => {
-    const sliceAngle = 2 * Math.PI * d.val / totalPTA;
-    if(sliceAngle > 0.01) {
-      const steps = Math.max(8, Math.ceil(sliceAngle / (2*Math.PI) * 60));
-      const sl = [[outerR * Math.cos(donutAngle), outerR * Math.sin(donutAngle)]];
-      for(let i = 1; i <= steps; i++) {
-        const a  = donutAngle + sliceAngle * i / steps;
-        const ap = donutAngle + sliceAngle * (i-1) / steps;
-        sl.push([outerR*(Math.cos(a)-Math.cos(ap)), outerR*(Math.sin(a)-Math.sin(ap))]);
-      }
-      sl.push([-outerR * Math.cos(donutAngle + sliceAngle), -outerR * Math.sin(donutAngle + sliceAngle)]);
-      doc.setFillColor(d.r, d.g, d.b);
-      doc.lines(sl, donutCX, donutCY, [1,1], 'F', true);
-      donutAngle += sliceAngle;
-    }
-  });
+  _pdfDrawDonutLayers(donutCX, donutCY, 1.00);
 
   // Agujero central blanco
   const holeSteps = 48;
