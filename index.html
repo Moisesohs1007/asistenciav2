@@ -4444,11 +4444,11 @@
     <div class="card" style="padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Período:</label>
-        <select id="al-mes-select"></select>
+        <select id="al-mes-select" onchange="onAlMesChangeAlertas()"></select>
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Día ref.:</label>
-        <input type="date" id="al-dia-ref"
+        <input type="date" id="al-dia-ref" onchange="onAlDiaRefChangeAlertas()"
           style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:4px 8px;font-family:var(--font-body);font-size:0.82rem;">
       </div>
       <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
@@ -13288,7 +13288,11 @@ async function iniciarFiltrosReportes() {
 async function initAlertas() {
   poblarSelectorMes('al-mes-select');
   const dia = document.getElementById('al-dia-ref');
-  if(dia && !dia.value) dia.value = hoy();
+  if(dia) {
+    dia.max = hoy();
+    if(!dia.value) dia.value = hoy();
+  }
+  try { onAlMesChangeAlertas(); } catch(e) {}
   await poblarFiltroNivel('al-nivel');
   await poblarFiltroGrado('al-grado', null);
   await poblarFiltroSeccion('al-seccion', null);
@@ -13300,11 +13304,58 @@ async function initAlertas() {
   if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
 }
 
+function _alClearAlertasOutput() {
+  const st = document.getElementById('al-alertas-status');
+  const wrap = document.getElementById('al-alertas-wrap');
+  if(st) st.textContent = '';
+  if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
+  _repAlertasCache = null;
+}
+
+function _alEndOfMonth(mesSel) {
+  const [y, m] = String(mesSel || '').split('-').map(Number);
+  if(!y || !m) return hoy();
+  const d = new Date(y, m, 0);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function _alClampDiaRefToMes() {
+  const mesSel = document.getElementById('al-mes-select')?.value || mesActual();
+  const diaEl = document.getElementById('al-dia-ref');
+  if(!diaEl) return;
+  const hs = hoy();
+  const finMes = _alEndOfMonth(mesSel);
+  let ref = diaEl.value || (finMes < hs ? finMes : hs);
+  const refMes = String(ref || '').slice(0,7);
+  if(refMes !== mesSel) {
+    ref = finMes < hs ? finMes : hs;
+  }
+  // Ajustar a día hábil (L-V): si cae sábado/domingo, mover a viernes
+  const d = new Date(ref + 'T12:00:00');
+  if(d.getDay() === 6) d.setDate(d.getDate() - 1);
+  if(d.getDay() === 0) d.setDate(d.getDate() - 2);
+  diaEl.value = d.toISOString().slice(0,10);
+}
+
+function onAlMesChangeAlertas() {
+  _alClampDiaRefToMes();
+  _alClearAlertasOutput();
+}
+
+function onAlDiaRefChangeAlertas() {
+  const diaEl = document.getElementById('al-dia-ref');
+  const mesEl = document.getElementById('al-mes-select');
+  if(!diaEl || !mesEl) return;
+  _alClampDiaRefToMes();
+  _alClearAlertasOutput();
+}
+
 async function limpiarFiltrosAlertas() {
   const mesEl = document.getElementById('al-mes-select');
   if(mesEl) poblarSelectorMes('al-mes-select');
   const dia = document.getElementById('al-dia-ref');
   if(dia) dia.value = hoy();
+  try { onAlMesChangeAlertas(); } catch(e) {}
   const niv = document.getElementById('al-nivel');
   const gra = document.getElementById('al-grado');
   const sec = document.getElementById('al-seccion');
