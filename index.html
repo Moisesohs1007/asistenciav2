@@ -7409,9 +7409,10 @@ async function getRegistrosFiltrados() {
   // Construir filtro DB: si hay rango de fechas usarlo, si no, solo hoy como default
   // (evita cargar ~52k docs del mes entero cuando el usuario no ha especificado rango)
   let filtroDb;
-  if(desde && hasta)   filtroDb = { desde, hasta };
-  else if(desde)       filtroDb = { desde, hasta: hoy() };
-  else                 filtroDb = { fecha: hoy() };
+  if(desde && hasta)        filtroDb = { desde, hasta };
+  else if(desde && !hasta)  filtroDb = { desde, hasta: desde };
+  else if(!desde && hasta)  filtroDb = { desde: hasta, hasta };
+  else                      filtroDb = { fecha: hoy() };
   let regs = await DB.getRegistros(filtroDb);
 
   // Aplicar filtros adicionales en cliente (nivel, grado, sección, búsqueda)
@@ -7741,13 +7742,21 @@ async function exportPDFRegistro() {
   const seccion = document.getElementById('filter-seccion').value;
   const q       = (document.getElementById('filter-search').value||'').trim();
   const mesSel  = document.getElementById('reg-mes-select')?.value || mesActual();
-  const desde   = document.getElementById('filter-desde').value || mesSel+'-01';
-  const hasta   = document.getElementById('filter-hasta').value || (() => {
-    const [y,m]=mesSel.split('-').map(Number);
-    const hs=hoy();
-    const fm=mesSel+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');
-    return fm<hs?fm:hs;
-  })();
+  const desdeSel = document.getElementById('filter-desde').value;
+  const hastaSel = document.getElementById('filter-hasta').value;
+  let desde, hasta;
+  if(desdeSel && hastaSel) { desde = desdeSel; hasta = hastaSel; }
+  else if(desdeSel && !hastaSel) { desde = desdeSel; hasta = desdeSel; }
+  else if(!desdeSel && hastaSel) { desde = hastaSel; hasta = hastaSel; }
+  else {
+    desde = mesSel + '-01';
+    hasta = (() => {
+      const [y,m]=mesSel.split('-').map(Number);
+      const hs=hoy();
+      const fm=mesSel+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');
+      return fm<hs?fm:hs;
+    })();
+  }
   const esPorAlumno = q.length > 0;
   const esPorAula   = grado && grado !== 'TODOS' && seccion && seccion !== 'TODOS';
 
