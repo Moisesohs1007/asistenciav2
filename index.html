@@ -4447,8 +4447,13 @@
         <select id="al-mes-select" onchange="onAlMesChangeAlertas()"></select>
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
-        <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Día ref.:</label>
-        <input type="date" id="al-dia-ref" onchange="onAlDiaRefChangeAlertas()"
+        <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Desde:</label>
+        <input type="date" id="al-desde" onchange="onAlRangoChangeAlertas()"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:4px 8px;font-family:var(--font-body);font-size:0.82rem;">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Hasta:</label>
+        <input type="date" id="al-hasta" onchange="onAlRangoChangeAlertas()"
           style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:4px 8px;font-family:var(--font-body);font-size:0.82rem;">
       </div>
       <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
@@ -4483,11 +4488,11 @@
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-top:10px;">
         <div class="form-group" style="margin:0;min-width:220px;">
           <label>Tardanzas por semana (≥)</label>
-          <input id="al-alert-tard" type="number" min="1" max="20" step="1" value="3">
+          <input id="al-alert-tard" type="number" min="1" max="20" step="1" value="3" oninput="onAlUmbralChangeAlertas()">
         </div>
         <div class="form-group" style="margin:0;min-width:220px;">
           <label>Ausencias por mes (≥)</label>
-          <input id="al-alert-aus" type="number" min="1" max="31" step="1" value="3">
+          <input id="al-alert-aus" type="number" min="1" max="31" step="1" value="3" oninput="onAlUmbralChangeAlertas()">
         </div>
         <button class="btn btn-primary" onclick="generarAlertasAsistencia()" style="justify-content:center;min-width:220px;">Generar alertas</button>
         <button class="btn btn-ghost" onclick="exportarAlertasAsistenciaXLSX()" style="justify-content:center;border-color:var(--accent2);color:var(--accent2);">⬇ Excel</button>
@@ -7054,32 +7059,34 @@ async function limpiarFiltrosRegistro() {
   document.getElementById('registro-count').textContent = '';
 }
 
-function validarRangoFecha() {
-  const desde = document.getElementById('filter-desde').value;
-  const hasta = document.getElementById('filter-hasta').value;
+function validarRangoFecha(desdeId = 'filter-desde', hastaId = 'filter-hasta') {
+  const desdeEl = document.getElementById(desdeId);
+  const hastaEl = document.getElementById(hastaId);
+  const desde = desdeEl ? (desdeEl.value || '') : '';
+  const hasta = hastaEl ? (hastaEl.value || '') : '';
   // Si desde > hasta, corregir automáticamente
   if(desde && hasta && desde > hasta) {
-    document.getElementById('filter-hasta').value = desde;
+    if(hastaEl) hastaEl.value = desde;
   }
   // Saltar fines de semana en el campo desde
   if(desde) {
     const d = new Date(desde + 'T00:00:00');
     if(d.getDay() === 6) { // sábado → lunes
       d.setDate(d.getDate() + 2);
-      document.getElementById('filter-desde').value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      if(desdeEl) desdeEl.value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     } else if(d.getDay() === 0) { // domingo → lunes
       d.setDate(d.getDate() + 1);
-      document.getElementById('filter-desde').value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      if(desdeEl) desdeEl.value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     }
   }
   if(hasta) {
     const h = new Date(hasta + 'T00:00:00');
     if(h.getDay() === 6) { // sábado → viernes
       h.setDate(h.getDate() - 1);
-      document.getElementById('filter-hasta').value = h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-'+String(h.getDate()).padStart(2,'0');
+      if(hastaEl) hastaEl.value = h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-'+String(h.getDate()).padStart(2,'0');
     } else if(h.getDay() === 0) { // domingo → viernes
       h.setDate(h.getDate() - 2);
-      document.getElementById('filter-hasta').value = h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-'+String(h.getDate()).padStart(2,'0');
+      if(hastaEl) hastaEl.value = h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0')+'-'+String(h.getDate()).padStart(2,'0');
     }
   }
 }
@@ -9837,6 +9844,14 @@ function _escHtml(s) {
 
 function _escAttr(s) {
   return _escHtml(s);
+}
+
+function onRegMesChange() {
+  const d1 = document.getElementById('filter-desde');
+  const d2 = document.getElementById('filter-hasta');
+  if(d1) d1.value = '';
+  if(d2) d2.value = '';
+  try { renderRegistro(); } catch(e) {}
 }
 
 let _rexDesign = null;
@@ -13287,11 +13302,10 @@ async function iniciarFiltrosReportes() {
 
 async function initAlertas() {
   poblarSelectorMes('al-mes-select');
-  const dia = document.getElementById('al-dia-ref');
-  if(dia) {
-    dia.max = hoy();
-    dia.value = '';
-  }
+  const d1 = document.getElementById('al-desde');
+  const d2 = document.getElementById('al-hasta');
+  if(d1) { d1.max = hoy(); d1.value = ''; }
+  if(d2) { d2.max = hoy(); d2.value = ''; }
   try { onAlMesChangeAlertas(); } catch(e) {}
   await poblarFiltroNivel('al-nivel');
   await poblarFiltroGrado('al-grado', null);
@@ -13319,51 +13333,42 @@ function _alEndOfMonth(mesSel) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
-function _alAdjustToBusinessDay(iso) {
-  const s = String(iso || '');
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
-  const d = new Date(s + 'T12:00:00');
-  if(d.getDay() === 6) d.setDate(d.getDate() - 1);
-  if(d.getDay() === 0) d.setDate(d.getDate() - 2);
-  return d.toISOString().slice(0,10);
-}
-
-function _alGetDiaRefEfectivo(mesSel) {
-  const diaEl = document.getElementById('al-dia-ref');
-  const hs = hoy();
-  const finMes = _alEndOfMonth(mesSel);
-  if(diaEl && diaEl.value) {
-    const adj = _alAdjustToBusinessDay(diaEl.value);
-    if(adj && adj !== diaEl.value) diaEl.value = adj;
-    return adj || diaEl.value;
-  }
-  const ref = (finMes < hs) ? finMes : hs;
-  return _alAdjustToBusinessDay(ref) || ref;
-}
-
 function onAlMesChangeAlertas() {
-  const diaEl = document.getElementById('al-dia-ref');
-  if(diaEl) diaEl.value = '';
+  const d1 = document.getElementById('al-desde');
+  const d2 = document.getElementById('al-hasta');
+  const mesEl = document.getElementById('al-mes-select');
+  if(d1) d1.value = '';
+  if(d2) d2.value = '';
+  if(mesEl) { mesEl.disabled = false; mesEl.style.opacity = '1'; }
   _alClearAlertasOutput();
 }
 
-function onAlDiaRefChangeAlertas() {
-  const diaEl = document.getElementById('al-dia-ref');
+function onAlRangoChangeAlertas() {
+  const d1 = document.getElementById('al-desde');
+  const d2 = document.getElementById('al-hasta');
   const mesEl = document.getElementById('al-mes-select');
-  if(!diaEl || !mesEl) return;
-  const ref = diaEl.value;
-  if(ref) mesEl.value = ref.slice(0,7);
-  const adj = _alAdjustToBusinessDay(ref);
-  if(adj && adj !== ref) diaEl.value = adj;
+  try { validarRangoFecha('al-desde', 'al-hasta'); } catch(e) {}
+  let desde = d1 ? (d1.value || '') : '';
+  let hasta = d2 ? (d2.value || '') : '';
+  if(hasta && !desde) { if(d1) d1.value = hasta; desde = hasta; }
+  const hasRange = !!desde;
+  if(mesEl) { mesEl.disabled = hasRange; mesEl.style.opacity = hasRange ? '0.45' : '1'; }
+  _alClearAlertasOutput();
+}
+
+function onAlUmbralChangeAlertas() {
   _alClearAlertasOutput();
 }
 
 async function limpiarFiltrosAlertas() {
   const mesEl = document.getElementById('al-mes-select');
   if(mesEl) poblarSelectorMes('al-mes-select');
-  const dia = document.getElementById('al-dia-ref');
-  if(dia) dia.value = '';
-  try { onAlMesChangeAlertas(); } catch(e) {}
+  const d1 = document.getElementById('al-desde');
+  const d2 = document.getElementById('al-hasta');
+  if(d1) d1.value = '';
+  if(d2) d2.value = '';
+  if(mesEl) { mesEl.disabled = false; mesEl.style.opacity = '1'; }
+  _alClearAlertasOutput();
   const niv = document.getElementById('al-nivel');
   const gra = document.getElementById('al-grado');
   const sec = document.getElementById('al-seccion');
@@ -13388,6 +13393,7 @@ async function onAlNivelChangeAlertas() {
   const sec = document.getElementById('al-seccion');
   const q = document.getElementById('al-search');
   if(q) q.value = '';
+  _alClearAlertasOutput();
   if(gra) gra.value = '';
   if(sec) sec.value = '';
   _disableSelect('al-seccion');
@@ -13408,6 +13414,7 @@ async function onAlGradoChangeAlertas() {
   const sec = document.getElementById('al-seccion');
   const q = document.getElementById('al-search');
   if(q) q.value = '';
+  _alClearAlertasOutput();
   if(grado && grado !== 'TODOS') {
     await poblarFiltroSeccion('al-seccion', grado);
     _enableSelect('al-seccion');
@@ -13421,20 +13428,35 @@ async function onAlGradoChangeAlertas() {
 function onAlSeccionChangeAlertas() {
   const q = document.getElementById('al-search');
   if(q) q.value = '';
+  _alClearAlertasOutput();
 }
 
-function onAlSearchChangeAlertas() {
+async function onAlSearchChangeAlertas() {
   const q = (document.getElementById('al-search')?.value || '').trim();
+  _alClearAlertasOutput();
+  const n = document.getElementById('al-nivel');
+  const g = document.getElementById('al-grado');
+  const s = document.getElementById('al-seccion');
   if(q) {
-    const n = document.getElementById('al-nivel');
-    const g = document.getElementById('al-grado');
-    const s = document.getElementById('al-seccion');
     if(n) n.value = '';
     if(g) g.value = '';
     if(s) s.value = '';
+    await poblarFiltroGrado('al-grado', null);
+    await poblarFiltroSeccion('al-seccion', null);
     _disableSelect('al-grado');
     _disableSelect('al-seccion');
+    return;
   }
+  const nivel = (n?.value || '');
+  if(nivel) {
+    await poblarFiltroGrado('al-grado', (nivel === 'TODOS' ? null : nivel));
+    _enableSelect('al-grado');
+  } else {
+    if(g) g.value = '';
+    _disableSelect('al-grado');
+  }
+  if(s) s.value = '';
+  _disableSelect('al-seccion');
 }
 
 // Meses ya reconciliados en esta sesión — evita escribir repetidamente si la diferencia persiste
@@ -14109,7 +14131,7 @@ async function renderReportes(anioCompleto=false) {
   } catch(e) { console.error('renderReportes:', e); }
 }
 
-let _repAlertasCache = { weekStart:'', weekEnd:'', mes:'', tardTh:3, ausTh:3, tardyRows:[], absentRows:[] };
+let _repAlertasCache = { periodoInicio:'', periodoFin:'', mes:'', tardTh:3, ausTh:3, tardyRows:[], absentRows:[] };
 
 function _repIsoToDate(iso) {
   const s = String(iso||'');
@@ -14158,12 +14180,15 @@ async function generarAlertasAsistencia() {
   try {
     const tardTh = Math.max(1, parseInt(document.getElementById(prefix + '-alert-tard')?.value || '3', 10) || 3);
     const ausTh  = Math.max(1, parseInt(document.getElementById(prefix + '-alert-aus')?.value  || '3', 10) || 3);
-    const mesSel = (prefix === 'al' ? (document.getElementById('al-mes-select')?.value || mesActual()) : (document.getElementById('rep-mes-select')?.value || mesActual()));
-    const diaRef = (prefix === 'al'
-      ? _alGetDiaRefEfectivo(mesSel)
-      : (document.getElementById('rep-dia-select')?.value || hoy())
+    const mesSel = (prefix === 'al'
+      ? (document.getElementById('al-mes-select')?.value || mesActual())
+      : (document.getElementById('rep-mes-select')?.value || mesActual())
     );
-    const { weekStart, weekEnd } = _repWeekMonFri(diaRef);
+    const d1 = (prefix === 'al' ? (document.getElementById('al-desde')?.value || '') : '');
+    const d2 = (prefix === 'al' ? (document.getElementById('al-hasta')?.value || '') : '');
+    const usarRango = !!d1;
+    const rangoDesde = usarRango ? d1 : '';
+    const rangoHasta = usarRango ? (d2 || d1) : '';
 
     if(status) status.textContent = 'Calculando alertas...';
     if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
@@ -14171,19 +14196,6 @@ async function generarAlertasAsistencia() {
     const alumnos = await _repGetAlumnosActuales(prefix);
     const alumnosIds = new Set(alumnos.map(a=>a.id));
     if(!alumnos.length) throw new Error('No hay alumnos con los filtros actuales');
-
-    const regsSemana = await DB.getRegistros({ desde: weekStart, hasta: weekEnd });
-    const tardMap = {};
-    const tardDiasMap = {};
-    regsSemana
-      .filter(r => alumnosIds.has(r.alumnoId) && r.tipo === 'INGRESO' && r.estado === 'Tardanza')
-      .forEach(r => {
-        tardMap[r.alumnoId] = (tardMap[r.alumnoId] || 0) + 1;
-        if(r.fecha) {
-          if(!tardDiasMap[r.alumnoId]) tardDiasMap[r.alumnoId] = [];
-          tardDiasMap[r.alumnoId].push(r.fecha);
-        }
-      });
 
     const _diaLabel = (iso) => {
       const s = String(iso||'');
@@ -14193,62 +14205,154 @@ async function generarAlertasAsistencia() {
       const ddmm = s.slice(8,10) + '/' + s.slice(5,7);
       return (d ? (DOW[d.getDay()] + ' ') : '') + ddmm;
     };
-    const tardyRows = alumnos
-      .map(a => {
-        const dias = [...new Set(tardDiasMap[a.id] || [])].sort();
-        return {
-          alumnoId: a.id,
-          nombre: (a.apellidos+' '+a.nombres).trim(),
-          grado: a.grado,
-          seccion: a.seccion,
-          nivel: a.turno,
-          tardanzas: tardMap[a.id] || 0,
-          dias: dias.map(_diaLabel).filter(Boolean).join(', ')
-        };
-      })
-      .filter(x => x.tardanzas >= tardTh)
-      .sort((a,b) => b.tardanzas - a.tardanzas || a.nombre.localeCompare(b.nombre));
-
-    const diasHab = _calcDiasHabilesHasta(mesSel);
-    const resumen = await DB.getResumenMes(mesSel);
-    const resMap = {};
-    resumen.forEach(r => { if(alumnosIds.has(r.alumnoId)) resMap[r.alumnoId] = { puntual: r.puntual||0, tardanza: r.tardanza||0 }; });
-    let absentRows = alumnos
-      .map(a => {
-        const r = resMap[a.id] || { puntual: 0, tardanza: 0 };
-        const aus = Math.max(0, diasHab - (r.puntual + r.tardanza));
-        return { alumnoId: a.id, nombre: (a.apellidos+' '+a.nombres).trim(), grado: a.grado, seccion: a.seccion, nivel: a.turno, ausencias: aus };
-      })
-      .filter(x => x.ausencias >= ausTh)
-      .sort((a,b) => b.ausencias - a.ausencias || a.nombre.localeCompare(b.nombre));
-
-    if(absentRows.length) {
-      const mesStart = mesSel + '-01';
-      const mesEnd = (mesSel === hoy().slice(0,7)) ? hoy() : _alEndOfMonth(mesSel);
-      const endD = _repIsoToDate(mesEnd);
-      const diasMesHabiles = [];
-      for(let d = _repIsoToDate(mesStart); d && endD && d <= endD; d.setDate(d.getDate() + 1)) {
+    const _compact = (arr, max = 10) => arr.length <= max ? arr.join(', ') : (arr.slice(0, max).join(', ') + ` … (+${arr.length - max})`);
+    const _buildBusinessDays = (startIso, endIso) => {
+      const s = _repIsoToDate(startIso);
+      const e = _repIsoToDate(endIso);
+      if(!s || !e) return [];
+      const out = [];
+      for(let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
         const dow = d.getDay();
-        if(dow !== 0 && dow !== 6) diasMesHabiles.push(_repDateToIso(d));
+        if(dow !== 0 && dow !== 6) out.push(_repDateToIso(d));
       }
-      const idsAus = new Set(absentRows.map(r => r.alumnoId));
-      const regsMes = await DB.getRegistros({ desde: mesStart, hasta: mesEnd });
+      return out;
+    };
+
+    let periodoInicio = '';
+    let periodoFin = '';
+    let diasHab = 0;
+    let tardyRows = [];
+    let absentRows = [];
+
+    if(prefix === 'al' && usarRango) {
+      periodoInicio = rangoDesde;
+      periodoFin = rangoHasta;
+      const diasHabiles = _buildBusinessDays(periodoInicio, periodoFin);
+      diasHab = diasHabiles.length;
+
+      const regs = await DB.getRegistros({ desde: periodoInicio, hasta: periodoFin });
+
+      const tardMap = {};
+      const tardDiasMap = {};
+      regs
+        .filter(r => alumnosIds.has(r.alumnoId) && r.tipo === 'INGRESO' && r.estado === 'Tardanza')
+        .forEach(r => {
+          tardMap[r.alumnoId] = (tardMap[r.alumnoId] || 0) + 1;
+          if(r.fecha) {
+            if(!tardDiasMap[r.alumnoId]) tardDiasMap[r.alumnoId] = [];
+            tardDiasMap[r.alumnoId].push(r.fecha);
+          }
+        });
+
+      tardyRows = alumnos
+        .map(a => {
+          const dias = [...new Set(tardDiasMap[a.id] || [])].sort();
+          return {
+            alumnoId: a.id,
+            nombre: (a.apellidos+' '+a.nombres).trim(),
+            grado: a.grado,
+            seccion: a.seccion,
+            nivel: a.turno,
+            tardanzas: tardMap[a.id] || 0,
+            dias: dias.map(_diaLabel).filter(Boolean).join(', ')
+          };
+        })
+        .filter(x => x.tardanzas >= tardTh)
+        .sort((a,b) => b.tardanzas - a.tardanzas || a.nombre.localeCompare(b.nombre));
+
       const presMap = {};
-      regsMes
-        .filter(r => idsAus.has(r.alumnoId) && r.tipo === 'INGRESO' && r.fecha)
+      regs
+        .filter(r => alumnosIds.has(r.alumnoId) && r.tipo === 'INGRESO' && r.fecha)
         .forEach(r => {
           if(!presMap[r.alumnoId]) presMap[r.alumnoId] = new Set();
           presMap[r.alumnoId].add(r.fecha);
         });
-      const _compact = (arr, max = 10) => arr.length <= max ? arr.join(', ') : (arr.slice(0, max).join(', ') + ` … (+${arr.length - max})`);
-      absentRows = absentRows.map(row => {
-        const pres = presMap[row.alumnoId] || new Set();
-        const dias = diasMesHabiles.filter(d => !pres.has(d)).map(_diaLabel).filter(Boolean);
-        return { ...row, dias: _compact(dias, 10) };
-      });
+      absentRows = alumnos
+        .map(a => {
+          const pres = presMap[a.id] || new Set();
+          const faltas = diasHabiles.filter(d => !pres.has(d));
+          return {
+            alumnoId: a.id,
+            nombre: (a.apellidos+' '+a.nombres).trim(),
+            grado: a.grado,
+            seccion: a.seccion,
+            nivel: a.turno,
+            ausencias: faltas.length,
+            dias: _compact(faltas.map(_diaLabel).filter(Boolean), 10)
+          };
+        })
+        .filter(x => x.ausencias >= ausTh)
+        .sort((a,b) => b.ausencias - a.ausencias || a.nombre.localeCompare(b.nombre));
+    } else {
+      const mesStart = mesSel + '-01';
+      const mesEnd = (mesSel === hoy().slice(0,7)) ? hoy() : _alEndOfMonth(mesSel);
+      periodoInicio = mesStart;
+      periodoFin = mesEnd;
+      const diasHabiles = _buildBusinessDays(periodoInicio, periodoFin);
+      diasHab = diasHabiles.length;
+
+      const regsMes = await DB.getRegistros({ desde: periodoInicio, hasta: periodoFin });
+
+      const tardSemanaMap = {};
+      const tardSemanaDias = {};
+      regsMes
+        .filter(r => alumnosIds.has(r.alumnoId) && r.tipo === 'INGRESO' && r.estado === 'Tardanza' && r.fecha)
+        .forEach(r => {
+          const { weekStart, weekEnd } = _repWeekMonFri(r.fecha);
+          const key = r.alumnoId + '|' + weekStart;
+          tardSemanaMap[key] = (tardSemanaMap[key] || 0) + 1;
+          if(!tardSemanaDias[key]) tardSemanaDias[key] = { weekStart, weekEnd, dias: [] };
+          tardSemanaDias[key].dias.push(r.fecha);
+        });
+
+      const alumnoMap = {};
+      alumnos.forEach(a => { alumnoMap[a.id] = a; });
+      tardyRows = Object.keys(tardSemanaMap)
+        .map(key => {
+          const [alumnoId, weekStart] = key.split('|');
+          const meta = tardSemanaDias[key] || { weekStart, weekEnd: _repWeekMonFri(weekStart).weekEnd, dias: [] };
+          const a = alumnoMap[alumnoId] || {};
+          const dias = [...new Set(meta.dias || [])].sort();
+          return {
+            alumnoId,
+            nombre: ((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || alumnoId,
+            grado: a.grado,
+            seccion: a.seccion,
+            nivel: a.turno,
+            semana: meta.weekStart + ' a ' + meta.weekEnd,
+            dias: dias.map(_diaLabel).filter(Boolean).join(', '),
+            tardanzas: tardSemanaMap[key] || 0
+          };
+        })
+        .filter(x => x.tardanzas >= tardTh)
+        .sort((a,b) => b.tardanzas - a.tardanzas || String(a.semana||'').localeCompare(String(b.semana||'')) || a.nombre.localeCompare(b.nombre));
+
+      const presMap = {};
+      regsMes
+        .filter(r => alumnosIds.has(r.alumnoId) && r.tipo === 'INGRESO' && r.fecha)
+        .forEach(r => {
+          if(!presMap[r.alumnoId]) presMap[r.alumnoId] = new Set();
+          presMap[r.alumnoId].add(r.fecha);
+        });
+      absentRows = alumnos
+        .map(a => {
+          const pres = presMap[a.id] || new Set();
+          const faltas = diasHabiles.filter(d => !pres.has(d));
+          return {
+            alumnoId: a.id,
+            nombre: (a.apellidos+' '+a.nombres).trim(),
+            grado: a.grado,
+            seccion: a.seccion,
+            nivel: a.turno,
+            ausencias: faltas.length,
+            dias: _compact(faltas.map(_diaLabel).filter(Boolean), 10)
+          };
+        })
+        .filter(x => x.ausencias >= ausTh)
+        .sort((a,b) => b.ausencias - a.ausencias || a.nombre.localeCompare(b.nombre));
     }
 
-    _repAlertasCache = { weekStart, weekEnd, mes: mesSel, tardTh, ausTh, tardyRows, absentRows };
+    _repAlertasCache = { periodoInicio, periodoFin, mes: mesSel, tardTh, ausTh, tardyRows, absentRows };
 
     const mkTable = (title, cols, rows, opts = {}) => {
       if(!rows.length) return `<div style="color:var(--muted);font-size:.85rem;margin-top:6px;">${title}: sin resultados.</div>`;
@@ -14266,6 +14370,7 @@ async function generarAlertasAsistencia() {
                     <td>${_escHtml(String(r.grado||''))}</td>
                     <td>${_escHtml(String(r.seccion||''))}</td>
                     <td>${_escHtml(String(r.nivel||''))}</td>
+                    ${opts.semana ? `<td>${_escHtml(String(r.semana||''))}</td>` : ''}
                     ${opts.dias ? `<td>${_escHtml(String(r.dias||''))}</td>` : ''}
                     <td style="font-weight:800;">${_escHtml(String(r.tardanzas ?? r.ausencias ?? ''))}</td>
                   </tr>
@@ -14278,12 +14383,16 @@ async function generarAlertasAsistencia() {
     };
 
     const html = [];
-    html.push(`<div style="font-size:0.82rem;color:var(--muted);">Semana: ${weekStart} a ${weekEnd} · Día ref usado: ${diaRef} · Mes: ${mesSel} · Días hábiles (mes): ${diasHab}</div>`);
-    html.push(mkTable(`Tardanzas ≥ ${tardTh} (semana)`, ['DNI','Alumno','Grado','Sección','Nivel','Días','Tardanzas'], tardyRows, { dias: true }));
-    html.push(mkTable(`Ausencias ≥ ${ausTh} (mes)`, ['DNI','Alumno','Grado','Sección','Nivel','Días','Ausencias'], absentRows, { dias: true }));
+    html.push(`<div style="font-size:0.82rem;color:var(--muted);">Período: ${periodoInicio} a ${periodoFin} · Mes: ${mesSel} · Días hábiles (período): ${diasHab}</div>`);
+    html.push(mkTable(`Tardanzas ≥ ${tardTh} (${(prefix === 'al' && usarRango) ? 'rango' : 'por semana en el mes'})`, ['DNI','Alumno','Grado','Sección','Nivel', ...( (prefix === 'al' && usarRango) ? [] : ['Semana'] ), 'Días','Tardanzas'], tardyRows, { dias: true, semana: !(prefix === 'al' && usarRango) }));
+    html.push(mkTable(`Ausencias ≥ ${ausTh} (${(prefix === 'al' && usarRango) ? 'rango' : 'mes'})`, ['DNI','Alumno','Grado','Sección','Nivel','Días','Ausencias'], absentRows, { dias: true }));
 
     if(wrap) { wrap.innerHTML = html.join(''); wrap.style.display = ''; }
     if(status) status.textContent = `✅ Alertas generadas: ${tardyRows.length} con tardanzas y ${absentRows.length} con ausencias.`;
+    if(prefix === 'al') {
+      const mesEl = document.getElementById('al-mes-select');
+      if(mesEl) { mesEl.disabled = false; mesEl.style.opacity = '1'; }
+    }
   } catch(e) {
     if(status) status.textContent = '❌ ' + e.message;
     if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
@@ -14293,9 +14402,9 @@ async function generarAlertasAsistencia() {
 
 async function exportarAlertasAsistenciaXLSX() {
   try {
-    if(!_repAlertasCache?.weekStart) {
+    if(!_repAlertasCache?.periodoInicio) {
       await generarAlertasAsistencia();
-      if(!_repAlertasCache?.weekStart) return;
+      if(!_repAlertasCache?.periodoInicio) return;
     }
     if(!window.XLSX) {
       toast('Cargando libreria Excel...','info');
@@ -14306,18 +14415,30 @@ async function exportarAlertasAsistenciaXLSX() {
         document.head.appendChild(s);
       });
     }
-    const { weekStart, weekEnd, mes, tardTh, ausTh, tardyRows, absentRows } = _repAlertasCache;
+    const { periodoInicio, periodoFin, mes, tardTh, ausTh, tardyRows, absentRows } = _repAlertasCache;
     const wb = XLSX.utils.book_new();
 
-    const aoa1 = [['DNI','Alumno','Grado','Sección','Nivel','Días','Tardanzas','SemanaInicio','SemanaFin','Umbral'], ...tardyRows.map(r => [r.alumnoId,r.nombre,r.grado,r.seccion,r.nivel,r.dias||'',r.tardanzas,weekStart,weekEnd,tardTh])];
+    const includeSemana = (tardyRows || []).some(r => r && r.semana);
+    const aoa1 = [
+      ['DNI','Alumno','Grado','Sección','Nivel', ...(includeSemana ? ['Semana'] : []), 'Días','Tardanzas','PeriodoInicio','PeriodoFin','Mes','Umbral'],
+      ...tardyRows.map(r => [
+        r.alumnoId, r.nombre, r.grado, r.seccion, r.nivel,
+        ...(includeSemana ? [r.semana || ''] : []),
+        r.dias || '', r.tardanzas,
+        periodoInicio, periodoFin, mes, tardTh
+      ])
+    ];
     const ws1 = XLSX.utils.aoa_to_sheet(aoa1);
-    XLSX.utils.book_append_sheet(wb, ws1, 'TardanzasSemana');
+    XLSX.utils.book_append_sheet(wb, ws1, 'Tardanzas');
 
-    const aoa2 = [['DNI','Alumno','Grado','Sección','Nivel','Días','Ausencias','Mes','Umbral'], ...absentRows.map(r => [r.alumnoId,r.nombre,r.grado,r.seccion,r.nivel,r.dias||'',r.ausencias,mes,ausTh])];
+    const aoa2 = [
+      ['DNI','Alumno','Grado','Sección','Nivel','Días','Ausencias','PeriodoInicio','PeriodoFin','Mes','Umbral'],
+      ...absentRows.map(r => [r.alumnoId,r.nombre,r.grado,r.seccion,r.nivel,r.dias||'',r.ausencias,periodoInicio,periodoFin,mes,ausTh])
+    ];
     const ws2 = XLSX.utils.aoa_to_sheet(aoa2);
-    XLSX.utils.book_append_sheet(wb, ws2, 'AusenciasMes');
+    XLSX.utils.book_append_sheet(wb, ws2, 'Ausencias');
 
-    XLSX.writeFile(wb, `alertas_asistencia_${weekStart}_${mes}.xlsx`);
+    XLSX.writeFile(wb, `alertas_asistencia_${periodoInicio}_${periodoFin}_${mes}.xlsx`);
     toast('✅ Excel de alertas generado','success');
   } catch(e) {
     toast('❌ Error: ' + e.message, 'error');
