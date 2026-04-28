@@ -14163,11 +14163,38 @@ async function generarAlertasAsistencia() {
 
     const regsSemana = await DB.getRegistros({ desde: weekStart, hasta: weekEnd });
     const tardMap = {};
+    const tardDiasMap = {};
     regsSemana
       .filter(r => alumnosIds.has(r.alumnoId) && r.tipo === 'INGRESO' && r.estado === 'Tardanza')
-      .forEach(r => { tardMap[r.alumnoId] = (tardMap[r.alumnoId] || 0) + 1; });
+      .forEach(r => {
+        tardMap[r.alumnoId] = (tardMap[r.alumnoId] || 0) + 1;
+        if(r.fecha) {
+          if(!tardDiasMap[r.alumnoId]) tardDiasMap[r.alumnoId] = [];
+          tardDiasMap[r.alumnoId].push(r.fecha);
+        }
+      });
+
+    const _diaLabel = (iso) => {
+      const s = String(iso||'');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+      const d = _repIsoToDate(s);
+      const DOW = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+      const ddmm = s.slice(8,10) + '/' + s.slice(5,7);
+      return (d ? (DOW[d.getDay()] + ' ') : '') + ddmm;
+    };
     const tardyRows = alumnos
-      .map(a => ({ alumnoId: a.id, nombre: (a.apellidos+' '+a.nombres).trim(), grado: a.grado, seccion: a.seccion, nivel: a.turno, tardanzas: tardMap[a.id] || 0 }))
+      .map(a => {
+        const dias = [...new Set(tardDiasMap[a.id] || [])].sort();
+        return {
+          alumnoId: a.id,
+          nombre: (a.apellidos+' '+a.nombres).trim(),
+          grado: a.grado,
+          seccion: a.seccion,
+          nivel: a.turno,
+          tardanzas: tardMap[a.id] || 0,
+          dias: dias.map(_diaLabel).filter(Boolean).join(', ')
+        };
+      })
       .filter(x => x.tardanzas >= tardTh)
       .sort((a,b) => b.tardanzas - a.tardanzas || a.nombre.localeCompare(b.nombre));
 
@@ -14186,7 +14213,7 @@ async function generarAlertasAsistencia() {
 
     _repAlertasCache = { weekStart, weekEnd, mes: mesSel, tardTh, ausTh, tardyRows, absentRows };
 
-    const mkTable = (title, cols, rows) => {
+    const mkTable = (title, cols, rows, opts = {}) => {
       if(!rows.length) return `<div style="color:var(--muted);font-size:.85rem;margin-top:6px;">${title}: sin resultados.</div>`;
       return `
         <div style="margin-top:10px;">
@@ -14202,6 +14229,7 @@ async function generarAlertasAsistencia() {
                     <td>${_escHtml(String(r.grado||''))}</td>
                     <td>${_escHtml(String(r.seccion||''))}</td>
                     <td>${_escHtml(String(r.nivel||''))}</td>
+                    ${opts.dias ? `<td>${_escHtml(String(r.dias||''))}</td>` : ''}
                     <td style="font-weight:800;">${_escHtml(String(r.tardanzas ?? r.ausencias ?? ''))}</td>
                   </tr>
                 `).join('')}
@@ -14214,7 +14242,7 @@ async function generarAlertasAsistencia() {
 
     const html = [];
     html.push(`<div style="font-size:0.82rem;color:var(--muted);">Semana: ${weekStart} a ${weekEnd} · Mes: ${mesSel} · Días hábiles (mes): ${diasHab}</div>`);
-    html.push(mkTable(`Tardanzas ≥ ${tardTh} (semana)`, ['DNI','Alumno','Grado','Sección','Nivel','Tardanzas'], tardyRows));
+    html.push(mkTable(`Tardanzas ≥ ${tardTh} (semana)`, ['DNI','Alumno','Grado','Sección','Nivel','Días','Tardanzas'], tardyRows, { dias: true }));
     html.push(mkTable(`Ausencias ≥ ${ausTh} (mes)`, ['DNI','Alumno','Grado','Sección','Nivel','Ausencias'], absentRows));
 
     if(wrap) { wrap.innerHTML = html.join(''); wrap.style.display = ''; }
@@ -14244,7 +14272,7 @@ async function exportarAlertasAsistenciaXLSX() {
     const { weekStart, weekEnd, mes, tardTh, ausTh, tardyRows, absentRows } = _repAlertasCache;
     const wb = XLSX.utils.book_new();
 
-    const aoa1 = [['DNI','Alumno','Grado','Sección','Nivel','Tardanzas','SemanaInicio','SemanaFin','Umbral'], ...tardyRows.map(r => [r.alumnoId,r.nombre,r.grado,r.seccion,r.nivel,r.tardanzas,weekStart,weekEnd,tardTh])];
+    const aoa1 = [['DNI','Alumno','Grado','Sección','Nivel','Días','Tardanzas','SemanaInicio','SemanaFin','Umbral'], ...tardyRows.map(r => [r.alumnoId,r.nombre,r.grado,r.seccion,r.nivel,r.dias||'',r.tardanzas,weekStart,weekEnd,tardTh])];
     const ws1 = XLSX.utils.aoa_to_sheet(aoa1);
     XLSX.utils.book_append_sheet(wb, ws1, 'TardanzasSemana');
 
