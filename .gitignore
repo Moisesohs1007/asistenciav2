@@ -1,4 +1,9 @@
 supabase/.temp/
+cost_sim/out/
+cost_sim/out_test/
+cost_sim/out_audit_test/
+cost_sim/out_test_tmp/
+cost_sim/.temp/
 node_modules/
 .DS_Store
 npm-debug.log*

@@ -119,6 +119,9 @@ function main() {
   const weeksPerMonth = num(argVal(argv, '--weeksPerMonth', '4.345'), 4.345);
   const dbDiskGbInput = num(argVal(argv, '--dbDiskGb', '0'), 0);
   const storageGbBase = num(argVal(argv, '--storageGbBase', '0'), 0);
+  const alumnosTotalOverride = num(argVal(argv, '--alumnosTotal', ''), NaN);
+  const scansPerDayOverride = num(argVal(argv, '--scansPerDay', ''), NaN);
+  const mausOverride = num(argVal(argv, '--maus', ''), NaN);
 
   const pricing = readJson(path.join(__dirname, 'pricing.supabase.json'));
   const workloads = readJson(path.join(__dirname, 'workloads.json'));
@@ -147,8 +150,8 @@ function main() {
     }
   }
 
-  const alumnosTotal = scenario.school.alumnos_total || 0;
-  const scansPerDay = scenario.workload.scans_per_attendance_day || 0;
+  const alumnosTotal = Number.isFinite(alumnosTotalOverride) ? alumnosTotalOverride : (scenario.school.alumnos_total || 0);
+  const scansPerDay = Number.isFinite(scansPerDayOverride) ? scansPerDayOverride : (scenario.workload.scans_per_attendance_day || 0);
   const tardRate = scenario.workload.scan_tardanza_rate || 0;
   const scansByDay = dayFlags.map(on => (on ? scansPerDay : 0));
 
@@ -168,7 +171,7 @@ function main() {
   const upMb = num(scenario.workload.storage_upload_avg_mb, 0.5);
   const dlMb = num(scenario.workload.storage_download_avg_mb, 0.5);
 
-  const maus = scenario.actors.maus || 0;
+  const maus = Number.isFinite(mausOverride) ? mausOverride : (scenario.actors.maus || 0);
 
   const daily = [];
   const totals = {

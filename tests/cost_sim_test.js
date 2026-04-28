@@ -4,8 +4,8 @@ const path = require('path');
 
 function runSim() {
   const simPath = path.join(__dirname, '..', 'cost_sim', 'simulate_week.js');
-  const outDir = path.join(__dirname, '..', 'cost_sim', 'out_test');
-  fs.rmSync(outDir, { recursive: true, force: true });
+  const outDir = path.join(__dirname, '..', 'cost_sim', 'out_test_tmp', String(Date.now()));
+  fs.mkdirSync(outDir, { recursive: true });
   const { spawnSync } = require('child_process');
   const r = spawnSync(process.execPath, [simPath, '--scenario', 'bajo', '--plan', 'pro', '--out', outDir], { encoding: 'utf8' });
   assert.strictEqual(r.status, 0, r.stderr || r.stdout);
@@ -25,6 +25,20 @@ function runSim() {
   assert.ok(data.pricing_estimate);
   assert.strictEqual(data.pricing_estimate.plan, 'pro');
   assert.ok(typeof data.pricing_estimate.total_usd === 'number');
+})();
+
+(() => {
+  const root = path.join(__dirname, '..');
+  const script = path.join(root, 'cost_sim', 'run_all.js');
+  const { spawnSync } = require('child_process');
+  const r = spawnSync(process.execPath, [script], { cwd: root, encoding: 'utf8' });
+  assert.strictEqual(r.status, 0, r.stderr || r.stdout);
+  const outLines = (r.stdout || '').trim().split(/\r?\n/).filter(Boolean);
+  assert.ok(outLines.length >= 3);
+  outLines.forEach(p => {
+    const full = path.isAbsolute(p) ? p : path.join(root, p);
+    assert.ok(fs.existsSync(full), 'No existe: ' + full);
+  });
 })();
 
 console.log('OK cost_sim_test');
