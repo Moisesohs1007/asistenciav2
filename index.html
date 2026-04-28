@@ -7177,10 +7177,20 @@ async function renderRegistro() {
   }
 
   try {
-    // 1. Obtener registros del mes seleccionado (no todo el año)
-    let regs = desde || hasta
-      ? await DB.getRegistros({ mes: mesSel })
-      : await DB.getRegistros({ mes: mesSel });
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:18px;">Cargando...</td></tr>`;
+    empty.style.display = 'none';
+    count.textContent = 'Cargando...';
+
+    // 1. Obtener registros según rango (si aplica) o mes seleccionado
+    let filtroDb;
+    if(desde || hasta) {
+      const rangoDesde = desde || hasta;
+      const rangoHasta = hasta || desde || hasta;
+      filtroDb = { desde: rangoDesde, hasta: rangoHasta };
+    } else {
+      filtroDb = { mes: mesSel };
+    }
+    let regs = await DB.getRegistros(filtroDb);
 
     // Filtrar por rango de fechas y excluir siempre sábado y domingo
     regs = regs.filter(r => {
