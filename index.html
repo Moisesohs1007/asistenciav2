@@ -7242,14 +7242,21 @@ async function renderRegistro() {
     let filas = Object.values(grupos);
 
     if(q) {
-      // Rango: si hay desde/hasta usar ese, si no usar el mes seleccionado hasta hoy
-      const rangoDesde = desde || mesSel + '-01';
-      const rangoHasta = hasta || (() => {
-        const [y,m] = mesSel.split('-').map(Number);
-        const hoyStr = hoy();
-        const finMes = mesSel + '-' + String(new Date(y,m,0).getDate()).padStart(2,'0');
-        return finMes < hoyStr ? finMes : hoyStr;
-      })();
+      // Rango: si selecciona solo 1 día (solo Desde o solo Hasta), se considera 1 día.
+      // Si no hay fecha, usar el mes seleccionado hasta hoy/fin de mes.
+      let rangoDesde, rangoHasta;
+      if(desde && hasta) { rangoDesde = desde; rangoHasta = hasta; }
+      else if(desde && !hasta) { rangoDesde = desde; rangoHasta = desde; }
+      else if(!desde && hasta) { rangoDesde = hasta; rangoHasta = hasta; }
+      else {
+        rangoDesde = mesSel + '-01';
+        rangoHasta = (() => {
+          const [y,m] = mesSel.split('-').map(Number);
+          const hoyStr = hoy();
+          const finMes = mesSel + '-' + String(new Date(y,m,0).getDate()).padStart(2,'0');
+          return finMes < hoyStr ? finMes : hoyStr;
+        })();
+      }
 
       // Alumnos que coinciden con la búsqueda
       const todosAlumnos = await getAlumnosFiltrados();
@@ -7285,13 +7292,19 @@ async function renderRegistro() {
     // 3b. Si hay filtro de nivel/grado (sin búsqueda por texto), agregar "Sin registro"
     //     para alumnos del nivel/grado que no tienen registro en el período
     if(!q && (nivel || grado)) {
-      const rangoDesde = desde || mesSel + '-01';
-      const rangoHasta = hasta || (() => {
-        const [y,m] = mesSel.split('-').map(Number);
-        const hoyStr = hoy();
-        const finMes = mesSel + '-' + String(new Date(y,m,0).getDate()).padStart(2,'0');
-        return finMes < hoyStr ? finMes : hoyStr;
-      })();
+      let rangoDesde, rangoHasta;
+      if(desde && hasta) { rangoDesde = desde; rangoHasta = hasta; }
+      else if(desde && !hasta) { rangoDesde = desde; rangoHasta = desde; }
+      else if(!desde && hasta) { rangoDesde = hasta; rangoHasta = hasta; }
+      else {
+        rangoDesde = mesSel + '-01';
+        rangoHasta = (() => {
+          const [y,m] = mesSel.split('-').map(Number);
+          const hoyStr = hoy();
+          const finMes = mesSel + '-' + String(new Date(y,m,0).getDate()).padStart(2,'0');
+          return finMes < hoyStr ? finMes : hoyStr;
+        })();
+      }
 
       const todosAlumnos = await getAlumnosFiltrados();
       const alumnosFilt = todosAlumnos.filter(a => {
