@@ -2958,6 +2958,36 @@
     <div class="page-title">Configuración</div>
     <div class="page-sub">Ajustes generales del sistema escolar</div>
 
+    <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+      <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🏫 Datos del Colegio</div>
+      <div style="color:var(--muted);font-size:0.82rem;margin-bottom:16px;">Estos datos se aplican en el login, encabezado y reportes</div>
+      <div class="form-grid">
+        <div class="form-group form-full">
+          <label>Nombre del colegio</label>
+          <input type="text" id="cfg-colegio-nombre" placeholder="Ej: I.E.P. San Martín">
+        </div>
+        <div class="form-group form-full">
+          <label>Eslogan</label>
+          <input type="text" id="cfg-colegio-eslogan" placeholder="Ej: Disciplina y excelencia">
+        </div>
+        <div class="form-group">
+          <label>Año escolar</label>
+          <input type="text" id="cfg-colegio-anio" placeholder="2026" inputmode="numeric">
+        </div>
+        <div class="form-group">
+          <label>Logo (PNG/JPG &lt; 300KB)</label>
+          <input type="file" id="cfg-colegio-logo-file" accept="image/*" onchange="previsualizarLogoColegio(this)">
+        </div>
+        <div class="form-group form-full">
+          <img id="cfg-colegio-logo-preview" src="" style="display:none;width:90px;height:90px;object-fit:contain;border:1px solid var(--border);border-radius:12px;background:var(--surface2);padding:8px;">
+          <div id="cfg-colegio-status" style="margin-top:8px;font-size:0.8rem;color:var(--muted);"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
+        <button class="btn btn-primary" onclick="guardarInfoColegio()">💾 Guardar datos</button>
+      </div>
+    </div>
+
     <!-- Imágenes del banner de login -->
     <div class="card" style="margin-bottom:20px;padding:20px 24px;">
       <div style="font-family:var(--font-display);font-size:1rem;font-weight:700;margin-bottom:4px;color:var(--accent);">🖼 Imágenes del Banner</div>
@@ -3285,6 +3315,32 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="modal-bg" id="modal-setup">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:860px;">
+      <div class="modal-header">
+        <div class="modal-title">Configuración Inicial</div>
+        <button class="modal-close" id="btn-setup-close" onclick="closeModal('modal-setup')">✕</button>
+      </div>
+
+      <div id="setup-locked" style="display:none;margin:0 0 12px 0;padding:12px 14px;border-radius:12px;background:rgba(239,68,68,0.10);border:1px solid rgba(239,68,68,0.35);color:#ef4444;font-size:0.85rem;"></div>
+
+      <div class="card" style="padding:12px 14px;margin:0 0 12px 0;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+          <div id="setup-steps" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+          <div id="setup-step-title" style="font-weight:700;color:var(--text);"></div>
+        </div>
+      </div>
+
+      <div id="setup-body"></div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px;">
+        <button class="btn btn-ghost" id="btn-setup-back" onclick="setupPrev()" disabled>← Atrás</button>
+        <button class="btn btn-primary" id="btn-setup-next" onclick="setupNext()">Siguiente →</button>
       </div>
     </div>
   </div>
@@ -4803,43 +4859,44 @@ async function _buildGradoIdx() { return {}; } // mantenido por compatibilidad
 // COLEGIO_NOMBRE, COLEGIO_ESLOGAN y COLEGIO_LOGO vienen SOLO de compat.js — no se sobreescriben desde BD
 function _aplicarConfigColegio(cfg) {
   if (!cfg) return;
-  // NO sobreescribir COLEGIO_NOMBRE / COLEGIO_ESLOGAN / COLEGIO_LOGO desde BD
-  // Editar solo en compat.js
+  const nombre = String(cfg.nombreColegio || COLEGIO_NOMBRE || '').trim();
+  const eslogan = String(cfg.esloganColegio || COLEGIO_ESLOGAN || '').trim();
+  const logo = String(cfg.logoColegio || cfg.logoUrl || COLEGIO_LOGO || '').trim();
 
   // Header: logo + nombre + eslogan
   const headerImg = document.getElementById('header-logo-img');
-  if (headerImg && cfg.logoUrl) headerImg.src = cfg.logoUrl;
+  if (headerImg && logo) headerImg.src = logo;
   const headerTxt = document.getElementById('header-nombre-txt');
   if (headerTxt) {
-    const partes = COLEGIO_NOMBRE.match(/^(Institución Educativa|I\.E\.P\.?|I\.E\.)\s+(.+)$/i);
+    const partes = nombre.match(/^(Institución Educativa|I\.E\.P\.?|I\.E\.)\s+(.+)$/i);
     headerTxt.innerHTML = partes
       ? `I.E.P.<span> "${partes[2].replace(/^["']+|["']+$/g,'')}"</span>`
-      : COLEGIO_NOMBRE;
+      : nombre;
   }
   const headerEslogan = document.getElementById('header-eslogan-txt');
-  if (headerEslogan) headerEslogan.textContent = COLEGIO_ESLOGAN || '';
+  if (headerEslogan) headerEslogan.textContent = eslogan || '';
   // Login
   const loginImg = document.getElementById('login-img-colegio');
-  if (loginImg && cfg.logoUrl) loginImg.src = cfg.logoUrl;
+  if (loginImg && logo) loginImg.src = logo;
   // Sidebar móvil
   const msbImg = document.getElementById('msb-logo-img');
-  if (msbImg && cfg.logoUrl) msbImg.src = cfg.logoUrl;
+  if (msbImg && logo) msbImg.src = logo;
   const msbName = document.getElementById('msb-school-name');
-  if (msbName) msbName.textContent = COLEGIO_NOMBRE;
+  if (msbName) msbName.textContent = nombre;
   // Login título y eslogan
-  cargarInfoColegioLogin();
+  cargarInfoColegioLogin({ nombreColegio: nombre, esloganColegio: eslogan });
   // Campos de configuración visibles
   const cfgNombre = document.getElementById('cfg-nombre-colegio');
-  if (cfgNombre && cfgNombre.type !== 'hidden') cfgNombre.value = COLEGIO_NOMBRE;
+  if (cfgNombre && cfgNombre.type !== 'hidden') cfgNombre.value = nombre;
   const cfgEslogan = document.getElementById('cfg-eslogan-colegio');
-  if (cfgEslogan) cfgEslogan.value = COLEGIO_ESLOGAN;
+  if (cfgEslogan) cfgEslogan.value = eslogan;
   // Encabezado colegio en sección Configuración
   const schLogo2 = document.getElementById('cfg-school-logo');
-  if (schLogo2 && cfg.logoUrl) schLogo2.src = cfg.logoUrl;
+  if (schLogo2 && logo) schLogo2.src = logo;
   const schNom2 = document.getElementById('cfg-school-nombre');
-  if (schNom2) schNom2.textContent = COLEGIO_NOMBRE;
+  if (schNom2) schNom2.textContent = nombre;
   const schEsl2 = document.getElementById('cfg-school-eslogan');
-  if (schEsl2) schEsl2.textContent = COLEGIO_ESLOGAN || '';
+  if (schEsl2) schEsl2.textContent = eslogan || '';
 }
 const firebaseConfig = {
   apiKey: "AIzaSyBLI0I41vWjMK2q1ZjH1c1BK4SAFno7sfY",
@@ -5000,10 +5057,13 @@ let _apoderadoAlumno = null; // datos del alumno del apoderado
 
 // Cargar nombre/logo del colegio en login
 function cargarInfoColegioLogin() {
+  const c = arguments[0] || {};
+  const nombre = String(c.nombreColegio || COLEGIO_NOMBRE || '').trim();
+  const eslogan = String(c.esloganColegio || c.eslogan || COLEGIO_ESLOGAN || '').trim();
   // Nombre dividido en dos líneas: "Institución Educativa" + nombre propio
   const tituloEl = document.getElementById('login-titulo-colegio');
   if(tituloEl) {
-    const partes = COLEGIO_NOMBRE.match(/^(Institución Educativa|I\.E\.P\.?|I\.E\.)\s+(.+)$/i);
+    const partes = nombre.match(/^(Institución Educativa|I\.E\.P\.?|I\.E\.)\s+(.+)$/i);
     if(partes) {
       const n2 = partes[2].length;
       const fs = n2 > 30 ? '0.72rem' : n2 > 20 ? '0.82rem' : '0.92rem';
@@ -5011,18 +5071,18 @@ function cargarInfoColegioLogin() {
         '<div style="font-size:0.7rem;font-weight:400;opacity:0.8;">' + partes[1] + '</div>'
         + '<div style="font-size:' + fs + ';font-weight:700;">' + partes[2] + '</div>';
     } else {
-      const n = COLEGIO_NOMBRE.length;
+      const n = nombre.length;
       tituloEl.style.fontSize = n > 35 ? '0.72rem' : n > 25 ? '0.82rem' : '0.95rem';
-      tituloEl.textContent = COLEGIO_NOMBRE;
+      tituloEl.textContent = nombre;
     }
   }
   // Eslogan desde constante
   const esloganEl = document.getElementById('login-eslogan-colegio');
-  if(esloganEl) esloganEl.textContent = COLEGIO_ESLOGAN;
+  if(esloganEl) esloganEl.textContent = eslogan;
 }
 cargarInfoColegioLogin();
 // Aplicar nombre/logo en header, sidebar, etc. con los valores del código
-_aplicarConfigColegio({ nombreColegio: COLEGIO_NOMBRE, eslogan: COLEGIO_ESLOGAN, logoUrl: COLEGIO_LOGO });
+_aplicarConfigColegio({ nombreColegio: COLEGIO_NOMBRE, esloganColegio: COLEGIO_ESLOGAN, logoColegio: COLEGIO_LOGO, logoUrl: COLEGIO_LOGO });
 
 // ── Banner login ──
 var _bannerCurrent = 0;
@@ -5405,6 +5465,8 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('menu-user-rol').textContent = currentRol.toUpperCase();
     document.getElementById('avatar-btn').style.display = 'inline-flex';
     setTimeout(() => msbUpdateUser && msbUpdateUser(), 200);
+
+    if(!(await maybeRunSetupWizard())) return;
 
     // Cargar datos y configuración
     await cargarTutorActual();
@@ -14312,6 +14374,18 @@ async function ensureXLSX() {
   return window.XLSX;
 }
 
+async function ensureExcelJS() {
+  if(window.ExcelJS) return window.ExcelJS;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return window.ExcelJS;
+}
+
 function _normImportKey(k) {
   return String(k || '')
     .trim()
@@ -14396,26 +14470,60 @@ function openModalImportUsuarios() {
 
 async function downloadUsuariosTemplate() {
   try {
-    const XLSX = await ensureXLSX();
-    const rows = [
-      {
-        nombre: 'Juan Pérez',
-        email: 'juan.perez@colegio.com',
-        password: '123456',
-        rol: 'profesor',
-        telefono: '987654321',
-        cargo: 'Docente de aula',
-        es_tutor: 'SI',
-        tutor_grado: '3',
-        tutor_seccion: 'A',
-        restringir: 'NO',
-        asignaciones: '3:A,B;4:todas'
-      }
+    const ExcelJS = await ensureExcelJS();
+    const cfg = await getConfig();
+    const gradosAll = [...new Set(Object.values(cfg.grados || {}).flat().map(x => String(x || '').trim()).filter(Boolean))];
+    const secciones = (cfg.secciones || []).map(x => String(x || '').trim()).filter(Boolean);
+    const roles = ['admin','director','coordinador','profesor','portero'];
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('usuarios');
+    const wsl = wb.addWorksheet('listas');
+
+    wsl.getCell('A1').value = 'Grados';
+    gradosAll.forEach((g, i) => { wsl.getCell(2 + i, 1).value = g; });
+    wsl.getCell('B1').value = 'Secciones';
+    secciones.forEach((s, i) => { wsl.getCell(2 + i, 2).value = s; });
+
+    const headers = [
+      'nombre','email','password','rol','telefono','cargo',
+      'es_tutor','tutor_grado','tutor_seccion','restringir','asignaciones'
     ];
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'usuarios');
-    XLSX.writeFile(wb, 'plantilla_usuarios.xlsx');
+    ws.addRow(headers);
+    ws.getRow(1).font = { bold: true };
+    ws.columns = headers.map((h, idx) => ({ key: h, width: idx === 0 ? 26 : idx === 1 ? 28 : 16 }));
+
+    ws.addRow([
+      'Juan Pérez','juan.perez@colegio.com','123456','profesor','987654321','Docente de aula',
+      'SI', gradosAll[0] || '', secciones[0] || '', 'NO', '3:A,B;4:todas'
+    ]);
+
+    const roleFormula = `"${roles.join(',')}"`;
+    const yesNoFormula = '"SI,NO"';
+    const maxRows = 500;
+    const gradoEnd = Math.max(2, 1 + (gradosAll.length || 1));
+    const seccEnd = Math.max(2, 1 + (secciones.length || 1));
+
+    for(let r = 2; r <= maxRows; r++) {
+      ws.getCell(`D${r}`).dataValidation = { type: 'list', allowBlank: false, formulae: [roleFormula] };
+      ws.getCell(`G${r}`).dataValidation = { type: 'list', allowBlank: true, formulae: [yesNoFormula] };
+      ws.getCell(`J${r}`).dataValidation = { type: 'list', allowBlank: true, formulae: [yesNoFormula] };
+      ws.getCell(`H${r}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`listas!$A$2:$A$${gradoEnd}`] };
+      ws.getCell(`I${r}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`listas!$B$2:$B$${seccEnd}`] };
+    }
+
+    wsl.state = 'veryHidden';
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'plantilla_usuarios.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 500);
   } catch(e) {
     toast('No se pudo generar la plantilla','error');
   }
@@ -14448,6 +14556,9 @@ async function handleImportUsuariosFile() {
       return out;
     });
 
+    const cfg = await getConfig();
+    const gradeSet = new Set(Object.values(cfg.grados || {}).flat().map(x => String(x || '').trim()).filter(Boolean));
+    const sectionSet = new Set((cfg.secciones || []).map(x => String(x || '').trim()).filter(Boolean));
     const seenEmails = new Set();
     const allowedRoles = new Set(['admin','director','coordinador','profesor','portero']);
 
@@ -14477,9 +14588,19 @@ async function handleImportUsuariosFile() {
         if(!telefono) errors.push('Tutor sin teléfono');
         if(!tutorGrado) errors.push('Tutor sin grado');
         if(!tutorSeccion) errors.push('Tutor sin sección');
+        if(tutorGrado && gradeSet.size && !gradeSet.has(tutorGrado)) errors.push('Tutor grado no existe');
+        if(tutorSeccion && sectionSet.size && !sectionSet.has(tutorSeccion)) errors.push('Tutor sección no existe');
       }
       if(rol !== 'profesor' && (restringir || esTutor)) {
         errors.push('Restringir/Tutor solo aplica a profesor');
+      }
+      if(rol === 'profesor' && restringir) {
+        const keys = Object.keys(asignaciones || {});
+        keys.forEach(g => {
+          if(gradeSet.size && !gradeSet.has(g)) errors.push('Asignación grado inválido: ' + g);
+          const ss = (asignaciones || {})[g] || [];
+          (ss || []).forEach(s => { if(sectionSet.size && !sectionSet.has(s)) errors.push('Asignación sección inválida: ' + g + ':' + s); });
+        });
       }
 
       const payload = {
@@ -14998,7 +15119,9 @@ async function inicializarFiltros() {
 // Config defaults
 const CONFIG_DEFAULTS = {
   nombreColegio: COLEGIO_NOMBRE,
-  anio: '2026',
+  esloganColegio: COLEGIO_ESLOGAN || '',
+  logoColegio: COLEGIO_LOGO || '',
+  anio: COLEGIO_ANIO || '2026',
   rolExamenesConfig: {},
   niveles: [
     { nombre: 'Inicial',    horaApertura: '07:00', horaLimite: '08:00', horaCorte: '10:30', horaSalida: '13:00' },
@@ -15034,6 +15157,289 @@ async function getConfig() {
 function invalidateConfig() {
   configCache = null;
   LSC.del('config');
+}
+
+let _setupState = null;
+
+function _setupIsCompleted(cfg) {
+  return !!(cfg && cfg.setupCompleted);
+}
+
+function openSetupWizard({ locked = false, message = '' } = {}) {
+  const m = document.getElementById('modal-setup');
+  if(!m) return;
+  const lockEl = document.getElementById('setup-locked');
+  const closeBtn = document.getElementById('btn-setup-close');
+  if(lockEl) {
+    lockEl.style.display = locked ? '' : 'none';
+    lockEl.textContent = message || '';
+  }
+  if(closeBtn) closeBtn.style.display = locked ? 'none' : '';
+
+  m.style.display = '';
+  _modalLockOn();
+  m.classList.add('open');
+}
+
+function _setupRenderSteps() {
+  const stepsEl = document.getElementById('setup-steps');
+  const titleEl = document.getElementById('setup-step-title');
+  const backBtn = document.getElementById('btn-setup-back');
+  const nextBtn = document.getElementById('btn-setup-next');
+  if(!stepsEl || !_setupState) return;
+  const labels = ['Colegio','Niveles','Grados/Secciones','Usuarios'];
+  const s = _setupState.step || 1;
+  stepsEl.innerHTML = labels.map((t, i) => {
+    const n = i + 1;
+    const active = n === s;
+    const done = n < s;
+    const bg = active ? 'rgba(96,165,250,0.18)' : done ? 'rgba(34,197,94,0.16)' : 'rgba(255,255,255,0.05)';
+    const bd = active ? 'rgba(96,165,250,0.35)' : done ? 'rgba(34,197,94,0.30)' : 'rgba(255,255,255,0.10)';
+    return `<span style="padding:6px 10px;border-radius:999px;border:1px solid ${bd};background:${bg};font-size:0.78rem;color:var(--text);">${n}. ${t}</span>`;
+  }).join('');
+  if(titleEl) titleEl.textContent = labels[s - 1] || '';
+  if(backBtn) backBtn.disabled = s <= 1;
+  if(nextBtn) nextBtn.textContent = s >= 4 ? 'Finalizar' : 'Siguiente →';
+}
+
+function _setupBodySet(html) {
+  const body = document.getElementById('setup-body');
+  if(body) body.innerHTML = html;
+}
+
+function _setupReadInput(id) {
+  const el = document.getElementById(id);
+  return el ? String(el.value || '').trim() : '';
+}
+
+function setupPrev() {
+  if(!_setupState) return;
+  if(_setupState.step <= 1) return;
+  _setupState.step -= 1;
+  setupRender();
+}
+
+async function setupNext() {
+  if(!_setupState) return;
+  const s = _setupState.step;
+  if(s === 1) {
+    const nombre = _setupReadInput('setup-nombre');
+    const eslogan = _setupReadInput('setup-eslogan');
+    const anio = _setupReadInput('setup-anio');
+    if(!nombre) { toast('Completa el nombre del colegio','warning'); return; }
+    const payload = { nombreColegio: nombre, esloganColegio: eslogan, anio: anio || (COLEGIO_ANIO || '') };
+    if(_setupState.logoTmp) payload.logoColegio = _setupState.logoTmp;
+    await db.collection('config').doc('general').set(payload, { merge: true });
+    invalidateConfig();
+  }
+  if(s === 2) {
+    const levels = [];
+    for(let i = 0; i < (_setupState.niveles || []).length; i++) {
+      const nombre = _setupReadInput('setup-nivel-nombre-' + i);
+      const apertura = _setupReadInput('setup-nivel-apertura-' + i) || '07:00';
+      const limite = _setupReadInput('setup-nivel-limite-' + i) || '08:00';
+      const corte = _setupReadInput('setup-nivel-corte-' + i) || '10:30';
+      const salida = _setupReadInput('setup-nivel-salida-' + i) || '13:00';
+      if(!nombre) { toast('Cada nivel debe tener nombre','warning'); return; }
+      levels.push({ nombre, horaApertura: apertura, horaLimite: limite, horaCorte: corte, horaSalida: salida });
+    }
+    const uniq = new Set(levels.map(x => x.nombre));
+    if(uniq.size !== levels.length) { toast('Niveles duplicados','warning'); return; }
+    await db.collection('config').doc('general').set({ niveles: levels }, { merge: true });
+    invalidateConfig();
+  }
+  if(s === 3) {
+    const cfg = await getConfig();
+    const niveles = _setupState.niveles || cfg.niveles || [];
+    const grados = {};
+    niveles.forEach((n, i) => {
+      const val = _setupReadInput('setup-grados-' + i);
+      grados[n.nombre] = val.split(',').map(x => x.trim()).filter(Boolean);
+    });
+    const secc = _setupReadInput('setup-secciones');
+    const secciones = secc.split(',').map(x => x.trim()).filter(Boolean);
+    if(!secciones.length) { toast('Completa las secciones','warning'); return; }
+    await db.collection('config').doc('general').set({ grados, secciones }, { merge: true });
+    invalidateConfig();
+  }
+  if(s === 4) {
+    await db.collection('config').doc('general').set({ setupCompleted: true }, { merge: true });
+    invalidateConfig();
+    toast('Configuración inicial completada','success');
+    setTimeout(() => window.location.reload(), 400);
+    return;
+  }
+
+  _setupState.step += 1;
+  setupRender();
+}
+
+function setupAddNivel() {
+  if(!_setupState) return;
+  _setupState.niveles = _setupState.niveles || [];
+  _setupState.niveles.push({ nombre: 'Nuevo nivel', horaApertura: '07:00', horaLimite: '08:00', horaCorte: '10:30', horaSalida: '13:00' });
+  setupRender();
+}
+
+function setupRemoveNivel(i) {
+  if(!_setupState) return;
+  _setupState.niveles = (_setupState.niveles || []).filter((_, idx) => idx !== i);
+  setupRender();
+}
+
+function setupPickLogo(input) {
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const MAX = 300 * 1024;
+  if(file.size > MAX) { toast('La imagen supera 300 KB. Reduce el tamaño.','warning'); input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    _setupState.logoTmp = e.target.result;
+    const prev = document.getElementById('setup-logo-prev');
+    if(prev) { prev.src = _setupState.logoTmp; prev.style.display = 'block'; }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function setupRender() {
+  if(!_setupState) return;
+  _setupRenderSteps();
+  const s = _setupState.step;
+  if(s === 1) {
+    _setupBodySet(`
+      <div class="card" style="padding:16px 16px;margin:0;">
+        <div class="form-grid">
+          <div class="form-group form-full">
+            <label>Nombre del colegio</label>
+            <input id="setup-nombre" type="text" value="${_escAttr(_setupState.nombreColegio||'')}" placeholder="Ej: I.E.P. San Martín">
+          </div>
+          <div class="form-group form-full">
+            <label>Eslogan</label>
+            <input id="setup-eslogan" type="text" value="${_escAttr(_setupState.esloganColegio||'')}" placeholder="Ej: Disciplina y excelencia">
+          </div>
+          <div class="form-group">
+            <label>Año escolar</label>
+            <input id="setup-anio" type="text" value="${_escAttr(_setupState.anio||'')}" placeholder="2026" inputmode="numeric">
+          </div>
+          <div class="form-group">
+            <label>Logo (PNG/JPG &lt; 300KB)</label>
+            <input type="file" accept="image/*" onchange="setupPickLogo(this)">
+          </div>
+          <div class="form-group form-full">
+            <img id="setup-logo-prev" src="${_escAttr(_setupState.logoTmp || _setupState.logoColegio || '')}" style="display:${(_setupState.logoTmp || _setupState.logoColegio) ? 'block' : 'none'};width:90px;height:90px;object-fit:contain;border:1px solid var(--border);border-radius:12px;background:var(--surface2);padding:8px;">
+          </div>
+        </div>
+      </div>
+    `);
+    return;
+  }
+  if(s === 2) {
+    const niveles = _setupState.niveles || [];
+    _setupBodySet(`
+      <div class="card" style="padding:16px 16px;margin:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+          <div style="color:var(--muted);font-size:0.82rem;">Define niveles y horarios</div>
+          <button class="btn btn-ghost" onclick="setupAddNivel()">+ Añadir nivel</button>
+        </div>
+        ${niveles.map((n,i) => `
+          <div style="margin-bottom:14px;padding:12px 14px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid rgba(255,255,255,0.08);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+              <div style="font-weight:700;color:var(--accent);">Nivel ${i+1}</div>
+              <button class="btn btn-danger" style="padding:6px 10px;font-size:0.8rem;" onclick="setupRemoveNivel(${i})">✕</button>
+            </div>
+            <div class="form-grid">
+              <div class="form-group form-full">
+                <label>Nombre</label>
+                <input type="text" id="setup-nivel-nombre-${i}" value="${_escAttr(n.nombre||'')}">
+              </div>
+              <div class="form-group">
+                <label>Apertura</label>
+                <input type="time" id="setup-nivel-apertura-${i}" value="${_escAttr(n.horaApertura||'07:00')}">
+              </div>
+              <div class="form-group">
+                <label>Límite</label>
+                <input type="time" id="setup-nivel-limite-${i}" value="${_escAttr(n.horaLimite||'08:00')}">
+              </div>
+              <div class="form-group">
+                <label>Corte</label>
+                <input type="time" id="setup-nivel-corte-${i}" value="${_escAttr(n.horaCorte||'10:30')}">
+              </div>
+              <div class="form-group">
+                <label>Salida</label>
+                <input type="time" id="setup-nivel-salida-${i}" value="${_escAttr(n.horaSalida||'13:00')}">
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `);
+    return;
+  }
+  if(s === 3) {
+    const niveles = _setupState.niveles || [];
+    const secciones = (_setupState.secciones || []).join(', ');
+    _setupBodySet(`
+      <div class="card" style="padding:16px 16px;margin:0;">
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:12px;">Define grados por nivel y secciones</div>
+        ${niveles.map((n,i) => `
+          <div style="margin-bottom:14px;">
+            <div style="font-weight:650;margin-bottom:6px;">${_escHtml(n.nombre||'')}</div>
+            <input type="text" id="setup-grados-${i}" value="${_escAttr(((_setupState.grados||{})[n.nombre]||[]).join(', '))}" placeholder="Ej: 1°, 2°, 3°" style="width:100%;box-sizing:border-box;">
+            <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">Separados por coma</div>
+          </div>
+        `).join('')}
+        <div style="margin-top:10px;">
+          <div style="font-weight:650;margin-bottom:6px;">Secciones</div>
+          <input type="text" id="setup-secciones" value="${_escAttr(secciones)}" placeholder="A, B, C, D" style="width:100%;box-sizing:border-box;">
+          <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">Separadas por coma</div>
+        </div>
+      </div>
+    `);
+    return;
+  }
+  if(s === 4) {
+    _setupBodySet(`
+      <div class="card" style="padding:16px 16px;margin:0;">
+        <div style="color:var(--muted);font-size:0.82rem;margin-bottom:12px;">Crea usuarios del personal manualmente o importando un Excel</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-ghost" onclick="downloadUsuariosTemplate()">⬇ Plantilla Excel</button>
+          <button class="btn btn-ghost" onclick="openModalImportUsuarios()">📥 Importar Excel</button>
+          <button class="btn btn-primary" onclick="openModalUsuario()">+ Nuevo Usuario</button>
+        </div>
+      </div>
+    `);
+    return;
+  }
+}
+
+async function maybeRunSetupWizard() {
+  const cfg = await getConfig();
+  if(_setupIsCompleted(cfg)) return true;
+  const isAdmin = currentRol === 'admin' || currentRol === 'director';
+  if(!isAdmin) {
+    openSetupWizard({ locked: true, message: 'Falta completar la configuración inicial. Pide al administrador que la complete.' });
+    _setupState = { step: 1, nombreColegio: cfg.nombreColegio, esloganColegio: cfg.esloganColegio, logoColegio: cfg.logoColegio, anio: cfg.anio, niveles: cfg.niveles || [], grados: cfg.grados || {}, secciones: cfg.secciones || [] };
+    setupRender();
+    const nextBtn = document.getElementById('btn-setup-next');
+    const backBtn = document.getElementById('btn-setup-back');
+    if(nextBtn) { nextBtn.textContent = 'Cerrar sesión'; nextBtn.onclick = doLogout; }
+    if(backBtn) backBtn.style.display = 'none';
+    return false;
+  }
+  _setupState = {
+    step: 1,
+    nombreColegio: cfg.nombreColegio || COLEGIO_NOMBRE || '',
+    esloganColegio: cfg.esloganColegio || COLEGIO_ESLOGAN || '',
+    logoColegio: cfg.logoColegio || COLEGIO_LOGO || '',
+    anio: cfg.anio || COLEGIO_ANIO || '',
+    niveles: cfg.niveles || [],
+    grados: cfg.grados || {},
+    secciones: cfg.secciones || [],
+    logoTmp: ''
+  };
+  openSetupWizard({ locked: true, message: 'Completa la configuración inicial para usar el sistema.' });
+  setupRender();
+  return false;
 }
 
 let _alumnosTsUnsubscribe = null;
@@ -15127,10 +15533,20 @@ async function renderConfig() {
   const schNombre = document.getElementById('cfg-school-nombre');
   const schEslogan= document.getElementById('cfg-school-eslogan');
   const schAnio   = document.getElementById('cfg-school-anio');
-  if(schLogo)    schLogo.src          = COLEGIO_LOGO;
-  if(schNombre)  schNombre.textContent = COLEGIO_NOMBRE;
-  if(schEslogan) schEslogan.textContent= COLEGIO_ESLOGAN || '';
-  if(schAnio)    schAnio.textContent   = COLEGIO_ANIO;
+  if(schLogo)    schLogo.src           = String(cfg.logoColegio || COLEGIO_LOGO || '');
+  if(schNombre)  schNombre.textContent = String(cfg.nombreColegio || COLEGIO_NOMBRE || '');
+  if(schEslogan) schEslogan.textContent= String(cfg.esloganColegio || COLEGIO_ESLOGAN || '');
+  if(schAnio)    schAnio.textContent   = String(cfg.anio || COLEGIO_ANIO || '');
+
+  const inNom = document.getElementById('cfg-colegio-nombre');
+  if(inNom) inNom.value = String(cfg.nombreColegio || COLEGIO_NOMBRE || '');
+  const inEsl = document.getElementById('cfg-colegio-eslogan');
+  if(inEsl) inEsl.value = String(cfg.esloganColegio || COLEGIO_ESLOGAN || '');
+  const inAn = document.getElementById('cfg-colegio-anio');
+  if(inAn) inAn.value = String(cfg.anio || COLEGIO_ANIO || '');
+  const prevLogo = document.getElementById('cfg-colegio-logo-preview');
+  const logoSrc = String(cfg.logoColegio || COLEGIO_LOGO || '');
+  if(prevLogo && logoSrc) { prevLogo.src = logoSrc; prevLogo.style.display = 'block'; }
 
   // Niveles y horarios
   const nivelesEl = document.getElementById('cfg-niveles-list');
@@ -15317,14 +15733,44 @@ function previsualizarLogo(input) {
   reader.readAsDataURL(file);
 }
 
-async function guardarLogo() {
-  toast('Para cambiar la insignia: reemplaza el archivo img/logo-colegio.png y actualiza COLEGIO_LOGO en el código','info');
+let _colegioLogoTmp = '';
+function previsualizarLogoColegio(input) {
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const MAX = 300 * 1024;
+  if(file.size > MAX) { toast('La imagen supera 300 KB. Reduce el tamaño.','warning'); input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    _colegioLogoTmp = e.target.result;
+    const prev = document.getElementById('cfg-colegio-logo-preview');
+    if(prev) { prev.src = _colegioLogoTmp; prev.style.display = 'block'; }
+    const st = document.getElementById('cfg-colegio-status');
+    if(st) st.textContent = '✔ Logo listo para guardar';
+  };
+  reader.readAsDataURL(file);
 }
-async function eliminarLogo() {
-  toast('Para cambiar la insignia: reemplaza el archivo img/logo-colegio.png','info');
-}
+
 async function guardarInfoColegio() {
-  toast('Para cambiar nombre o eslogan: edita COLEGIO_NOMBRE y COLEGIO_ESLOGAN en el código','info');
+  try {
+    const cfg = await getConfig();
+    const nombre = document.getElementById('cfg-colegio-nombre')?.value?.trim() || '';
+    const eslogan = document.getElementById('cfg-colegio-eslogan')?.value?.trim() || '';
+    const anio = document.getElementById('cfg-colegio-anio')?.value?.trim() || '';
+    if(!nombre) { toast('Completa el nombre del colegio','warning'); return; }
+    const payload = {
+      nombreColegio: nombre,
+      esloganColegio: eslogan,
+      anio: anio || (cfg.anio || COLEGIO_ANIO || ''),
+    };
+    if(_colegioLogoTmp) payload.logoColegio = _colegioLogoTmp;
+    await db.collection('config').doc('general').set(payload, { merge: true });
+    invalidateConfig();
+    const newCfg = await getConfig();
+    _aplicarConfigColegio(newCfg);
+    toast('Datos del colegio guardados','success');
+  } catch(e) {
+    toast('Error al guardar: ' + (e?.message || ''),'error');
+  }
 }
 
 async function guardarHorarios() {
