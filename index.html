@@ -14122,9 +14122,16 @@ function _repWeekMonFri(iso) {
 }
 
 async function _repGetAlumnosActuales(prefix = 'rep') {
-  const nivel   = document.getElementById(prefix + '-nivel')?.value   || '';
-  const grado   = document.getElementById(prefix + '-grado')?.value   || '';
-  const seccion = document.getElementById(prefix + '-seccion')?.value || '';
+  const _norm = (v) => {
+    const s = String(v ?? '').trim();
+    if(!s) return '';
+    const up = s.toUpperCase();
+    if(up === 'TODOS' || up === 'TODO') return '';
+    return s;
+  };
+  const nivel   = _norm(document.getElementById(prefix + '-nivel')?.value);
+  const grado   = _norm(document.getElementById(prefix + '-grado')?.value);
+  const seccion = _norm(document.getElementById(prefix + '-seccion')?.value);
   const q       = (document.getElementById(prefix + '-search')?.value || '').toLowerCase().trim();
   let alumnos = await getAlumnosFiltrados();
   if(nivel)   alumnos = alumnos.filter(a => a.turno   === nivel);
