@@ -14202,7 +14202,7 @@ async function generarAlertasAsistencia() {
     const resumen = await DB.getResumenMes(mesSel);
     const resMap = {};
     resumen.forEach(r => { if(alumnosIds.has(r.alumnoId)) resMap[r.alumnoId] = { puntual: r.puntual||0, tardanza: r.tardanza||0 }; });
-    const absentRows = alumnos
+    let absentRows = alumnos
       .map(a => {
         const r = resMap[a.id] || { puntual: 0, tardanza: 0 };
         const aus = Math.max(0, diasHab - (r.puntual + r.tardanza));
@@ -14210,6 +14210,32 @@ async function generarAlertasAsistencia() {
       })
       .filter(x => x.ausencias >= ausTh)
       .sort((a,b) => b.ausencias - a.ausencias || a.nombre.localeCompare(b.nombre));
+
+    if(absentRows.length) {
+      const mesStart = mesSel + '-01';
+      const mesEnd = (mesSel === hoy().slice(0,7)) ? hoy() : _alEndOfMonth(mesSel);
+      const endD = _repIsoToDate(mesEnd);
+      const diasMesHabiles = [];
+      for(let d = _repIsoToDate(mesStart); d && endD && d <= endD; d.setDate(d.getDate() + 1)) {
+        const dow = d.getDay();
+        if(dow !== 0 && dow !== 6) diasMesHabiles.push(_repDateToIso(d));
+      }
+      const idsAus = new Set(absentRows.map(r => r.alumnoId));
+      const regsMes = await DB.getRegistros({ desde: mesStart, hasta: mesEnd });
+      const presMap = {};
+      regsMes
+        .filter(r => idsAus.has(r.alumnoId) && r.tipo === 'INGRESO' && r.fecha)
+        .forEach(r => {
+          if(!presMap[r.alumnoId]) presMap[r.alumnoId] = new Set();
+          presMap[r.alumnoId].add(r.fecha);
+        });
+      const _compact = (arr, max = 10) => arr.length <= max ? arr.join(', ') : (arr.slice(0, max).join(', ') + ` … (+${arr.length - max})`);
+      absentRows = absentRows.map(row => {
+        const pres = presMap[row.alumnoId] || new Set();
+        const dias = diasMesHabiles.filter(d => !pres.has(d)).map(_diaLabel).filter(Boolean);
+        return { ...row, dias: _compact(dias, 10) };
+      });
+    }
 
     _repAlertasCache = { weekStart, weekEnd, mes: mesSel, tardTh, ausTh, tardyRows, absentRows };
 
@@ -14243,7 +14269,7 @@ async function generarAlertasAsistencia() {
     const html = [];
     html.push(`<div style="font-size:0.82rem;color:var(--muted);">Semana: ${weekStart} a ${weekEnd} · Mes: ${mesSel} · Días hábiles (mes): ${diasHab}</div>`);
     html.push(mkTable(`Tardanzas ≥ ${tardTh} (semana)`, ['DNI','Alumno','Grado','Sección','Nivel','Días','Tardanzas'], tardyRows, { dias: true }));
-    html.push(mkTable(`Ausencias ≥ ${ausTh} (mes)`, ['DNI','Alumno','Grado','Sección','Nivel','Ausencias'], absentRows));
+    html.push(mkTable(`Ausencias ≥ ${ausTh} (mes)`, ['DNI','Alumno','Grado','Sección','Nivel','Días','Ausencias'], absentRows, { dias: true }));
 
     if(wrap) { wrap.innerHTML = html.join(''); wrap.style.display = ''; }
     if(status) status.textContent = `✅ Alertas generadas: ${tardyRows.length} con tardanzas y ${absentRows.length} con ausencias.`;
@@ -14276,7 +14302,7 @@ async function exportarAlertasAsistenciaXLSX() {
     const ws1 = XLSX.utils.aoa_to_sheet(aoa1);
     XLSX.utils.book_append_sheet(wb, ws1, 'TardanzasSemana');
 
-    const aoa2 = [['DNI','Alumno','Grado','Sección','Nivel','Ausencias','Mes','Umbral'], ...absentRows.map(r => [r.alumnoId,r.nombre,r.grado,r.seccion,r.nivel,r.ausencias,mes,ausTh])];
+    const aoa2 = [['DNI','Alumno','Grado','Sección','Nivel','Días','Ausencias','Mes','Umbral'], ...absentRows.map(r => [r.alumnoId,r.nombre,r.grado,r.seccion,r.nivel,r.dias||'',r.ausencias,mes,ausTh])];
     const ws2 = XLSX.utils.aoa_to_sheet(aoa2);
     XLSX.utils.book_append_sheet(wb, ws2, 'AusenciasMes');
 
