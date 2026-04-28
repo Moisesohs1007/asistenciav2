@@ -112,7 +112,6 @@ serve(async (req) => {
       es_tutor: esTutor && rol === 'profesor',
       tutor_grado: esTutor && rol === 'profesor' ? tutorGrado : null,
       tutor_seccion: esTutor && rol === 'profesor' ? tutorSeccion : null,
-      updated_at: new Date().toISOString(),
     };
 
     const { error: upsertError } = await supabaseAdmin

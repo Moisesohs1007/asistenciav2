@@ -15228,7 +15228,21 @@ function invalidateConfig() {
 let _setupState = null;
 
 function _setupIsCompleted(cfg) {
-  return !!(cfg && cfg.setupCompleted);
+  if(!cfg) return false;
+  const nombre = String(cfg.nombreColegio || cfg.nombre || '').trim();
+  const niveles = Array.isArray(cfg.niveles) ? cfg.niveles : [];
+  const grados = (cfg.grados && typeof cfg.grados === 'object') ? cfg.grados : {};
+  const secciones = Array.isArray(cfg.secciones) ? cfg.secciones : [];
+  if(!nombre) return false;
+  if(!niveles.length) return false;
+  if(!secciones.length) return false;
+  for(const n of niveles) {
+    const key = (typeof n === 'string') ? n : (n && typeof n === 'object') ? String(n.nombre || '').trim() : '';
+    if(!key) continue;
+    const arr = grados[key];
+    if(!Array.isArray(arr) || !arr.length) return false;
+  }
+  return true;
 }
 
 function openSetupWizard({ locked = false, message = '' } = {}) {
@@ -15293,8 +15307,8 @@ async function setupNext() {
     const eslogan = _setupReadInput('setup-eslogan');
     const anio = _setupReadInput('setup-anio');
     if(!nombre) { toast('Completa el nombre del colegio','warning'); return; }
-    const payload = { nombreColegio: nombre, esloganColegio: eslogan, anio: anio || (COLEGIO_ANIO || '') };
-    if(_setupState.logoTmp) payload.logoColegio = _setupState.logoTmp;
+    const payload = { nombreColegio: nombre, eslogan: eslogan, anio: anio || (COLEGIO_ANIO || '') };
+    if(_setupState.logoTmp) payload.logoUrl = _setupState.logoTmp;
     await db.collection('config').doc('general').set(payload, { merge: true });
     invalidateConfig();
   }
@@ -15329,8 +15343,6 @@ async function setupNext() {
     invalidateConfig();
   }
   if(s === 4) {
-    await db.collection('config').doc('general').set({ setupCompleted: true }, { merge: true });
-    invalidateConfig();
     toast('Configuración inicial completada','success');
     setTimeout(() => window.location.reload(), 400);
     return;
@@ -15484,7 +15496,7 @@ async function maybeRunSetupWizard() {
   const isAdmin = currentRol === 'admin' || currentRol === 'director';
   if(!isAdmin) {
     openSetupWizard({ locked: true, message: 'Falta completar la configuración inicial. Pide al administrador que la complete.' });
-    _setupState = { step: 1, nombreColegio: cfg.nombreColegio, esloganColegio: cfg.esloganColegio, logoColegio: cfg.logoColegio, anio: cfg.anio, niveles: cfg.niveles || [], grados: cfg.grados || {}, secciones: cfg.secciones || [] };
+    _setupState = { step: 1, nombreColegio: cfg.nombreColegio, esloganColegio: cfg.eslogan || cfg.esloganColegio, logoColegio: cfg.logoUrl || cfg.logoColegio, anio: cfg.anio, niveles: cfg.niveles || [], grados: cfg.grados || {}, secciones: cfg.secciones || [] };
     setupRender();
     const nextBtn = document.getElementById('btn-setup-next');
     const backBtn = document.getElementById('btn-setup-back');
@@ -15495,8 +15507,8 @@ async function maybeRunSetupWizard() {
   _setupState = {
     step: 1,
     nombreColegio: cfg.nombreColegio || COLEGIO_NOMBRE || '',
-    esloganColegio: cfg.esloganColegio || COLEGIO_ESLOGAN || '',
-    logoColegio: cfg.logoColegio || COLEGIO_LOGO || '',
+    esloganColegio: cfg.eslogan || cfg.esloganColegio || COLEGIO_ESLOGAN || '',
+    logoColegio: cfg.logoUrl || cfg.logoColegio || COLEGIO_LOGO || '',
     anio: cfg.anio || COLEGIO_ANIO || '',
     niveles: cfg.niveles || [],
     grados: cfg.grados || {},
