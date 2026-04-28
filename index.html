@@ -14232,7 +14232,7 @@ async function saveUsuario() {
 
   if(!nombre){ toast('Completa el nombre','warning'); return; }
   if(!editingUsuarioId && !email){ toast('Completa el correo','warning'); return; }
-  if(!editingUsuarioId && email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Correo inválido','warning'); return; }
+  if(!editingUsuarioId && email && !_looksLikeEmail(email)) { toast('Correo inválido','warning'); return; }
 
   try {
     // Obtener asignaciones si es profesor
@@ -14459,6 +14459,17 @@ function _sanitizeEmail(v) {
   return `${local}@${dom}`;
 }
 
+function _looksLikeEmail(s) {
+  const v = String(s || '').trim();
+  const at = v.indexOf('@');
+  if(at <= 0) return false;
+  const dot = v.indexOf('.', at + 2);
+  if(dot <= at + 1) return false;
+  if(dot === v.length - 1) return false;
+  if(v.includes(' ')) return false;
+  return true;
+}
+
 function _parseAsignaciones(v) {
   const s = String(v || '').trim();
   if(!s) return {};
@@ -14633,7 +14644,7 @@ async function handleImportUsuariosFile() {
       const errors = [];
       if(!nombre) errors.push('Falta nombre');
       if(!email) errors.push('Falta email');
-      if(email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) errors.push('Email inválido: ' + email);
+      if(email && !_looksLikeEmail(email)) errors.push('Email inválido: ' + email);
       if(!password || password.length < 6) errors.push('Password < 6');
       if(!rol) errors.push('Falta rol');
       if(rol && !allowedRoles.has(rol)) errors.push('Rol inválido');
