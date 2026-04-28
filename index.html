@@ -14223,7 +14223,7 @@ async function openModalUsuario(uid, nombre, rol, email) {
 
 async function saveUsuario() {
   const nombre = document.getElementById('u-nombre').value.trim();
-  const email  = document.getElementById('u-email').value.trim();
+  const email  = _sanitizeEmail(document.getElementById('u-email').value);
   const pass   = document.getElementById('u-pass').value;
   const rol    = document.getElementById('u-rol').value;
   // Sync cargo hidden field
@@ -14232,6 +14232,7 @@ async function saveUsuario() {
 
   if(!nombre){ toast('Completa el nombre','warning'); return; }
   if(!editingUsuarioId && !email){ toast('Completa el correo','warning'); return; }
+  if(!editingUsuarioId && email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Correo inválido','warning'); return; }
 
   try {
     // Obtener asignaciones si es profesor
@@ -14414,12 +14415,48 @@ function _getRowVal(row, keys) {
   return '';
 }
 
+function _cellText(v) {
+  if(v == null) return '';
+  if(typeof v === 'object') {
+    if(typeof v.text === 'string') return v.text;
+    if(typeof v.v === 'string' || typeof v.v === 'number') return String(v.v);
+    if(typeof v.w === 'string') return v.w;
+    if(typeof v.result === 'string' || typeof v.result === 'number') return String(v.result);
+  }
+  return String(v);
+}
+
 function _parseBool(v) {
   const s = String(v || '').trim().toLowerCase();
   if(!s) return false;
   if(['1','true','si','sí','s','y','yes','x'].includes(s)) return true;
   if(['0','false','no','n'].includes(s)) return false;
   return false;
+}
+
+function _cleanEmail(v) {
+  let s = _cellText(v ?? '');
+  try { s = s.normalize('NFKC'); } catch(_e) {}
+  s = s.replace(/^mailto:/i, '');
+  s = s.replace(/＠/g, '@');
+  s = s.replace(/[。．﹒｡·∙•]/g, '.');
+  s = s.replace(/[\u0000-\u001F\u007F]/g, '');
+  s = s.replace(/[\u00A0\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '');
+  s = s.trim().toLowerCase();
+  s = s.replace(/\s+/g, '');
+  return s;
+}
+
+function _sanitizeEmail(v) {
+  const s0 = _cleanEmail(v);
+  const at = s0.indexOf('@');
+  if(at <= 0) return s0;
+  const local0 = s0.slice(0, at);
+  const dom0 = s0.slice(at + 1);
+  const local = local0.replace(/[^a-z0-9.!#$%&'*+/=?^_`{|}~-]/gi, '');
+  let dom = dom0.replace(/[^a-z0-9.-]/gi, '');
+  dom = dom.replace(/\.+/g, '.').replace(/^\.+|\.+$/g, '');
+  return `${local}@${dom}`;
 }
 
 function _parseAsignaciones(v) {
@@ -14582,7 +14619,7 @@ async function handleImportUsuariosFile() {
 
     _importUsuariosRows = normalized.map((r, idx) => {
       const nombre = String(_getRowVal(r, ['nombre','nombres','nombre_completo'])).trim();
-      const email = String(_getRowVal(r, ['email','correo','correo_electronico','mail'])).trim().toLowerCase();
+      const email = _sanitizeEmail(_getRowVal(r, ['email','correo','correo_electronico','mail']));
       const password = String(_getRowVal(r, ['password','contrasena','contraseña','clave'])).trim();
       const rol = String(_getRowVal(r, ['rol','role'])).trim().toLowerCase();
       const telefono = String(_getRowVal(r, ['telefono','tel','celular','whatsapp'])).trim();
@@ -14590,13 +14627,13 @@ async function handleImportUsuariosFile() {
       const esTutor = _parseBool(_getRowVal(r, ['es_tutor','tutor','estutor']));
       const tutorGrado = String(_getRowVal(r, ['tutor_grado','grado_tutor','tutorgrado'])).trim();
       const tutorSeccion = String(_getRowVal(r, ['tutor_seccion','seccion_tutor','tutorseccion'])).trim();
-      const restringir = _parseBool(_getRowVal(r, ['restringir','restricto','restringido']));
+      const restringir = _parseBool(_getRowVal(r, ['restringir','restrignir','restricto','restringido']));
       const asignaciones = _parseAsignaciones(_getRowVal(r, ['asignaciones','asignaciones_json']));
 
       const errors = [];
       if(!nombre) errors.push('Falta nombre');
       if(!email) errors.push('Falta email');
-      if(email && !/^[^@]+@[^@]+\\.[^@]+$/.test(email)) errors.push('Email inválido');
+      if(email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) errors.push('Email inválido: ' + email);
       if(!password || password.length < 6) errors.push('Password < 6');
       if(!rol) errors.push('Falta rol');
       if(rol && !allowedRoles.has(rol)) errors.push('Rol inválido');
