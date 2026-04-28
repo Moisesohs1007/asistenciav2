@@ -9752,6 +9752,10 @@ function _escHtml(s) {
   ));
 }
 
+function _escAttr(s) {
+  return _escHtml(s);
+}
+
 let _rexDesign = null;
 const REX_THEME_PRESETS = [
   { id: 'azul',    name: 'Azul escolar',   palette: { primary:'#0f3b7a', secondary:'#2a76d2', accent:'#60a5fa', bg:'#e9f4ff', ink:'#0b2a55' }, decorHue: '0deg' },
