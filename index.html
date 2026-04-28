@@ -14209,7 +14209,16 @@ async function openModalUsuario(uid, nombre, rol, email) {
   togglePrivilegios();
   toggleBtnConfigurar();
   const mUsr = document.getElementById('modal-usuario');
-  if(mUsr) { mUsr.style.display = ''; _modalLockOn(); mUsr.classList.add('open'); }
+  if(mUsr) {
+    const mSetup = document.getElementById('modal-setup');
+    if(mSetup && mSetup.classList.contains('open')) {
+      mSetup.style.zIndex = '10005';
+      mUsr.style.zIndex = '10010';
+    }
+    mUsr.style.display = '';
+    _modalLockOn();
+    mUsr.classList.add('open');
+  }
 }
 
 async function saveUsuario() {
@@ -14467,6 +14476,11 @@ function openModalImportUsuarios() {
   if(counts) counts.textContent = '';
   const btn = document.getElementById('btn-import-run');
   if(btn) btn.disabled = true;
+  const mSetup = document.getElementById('modal-setup');
+  if(mSetup && mSetup.classList.contains('open')) {
+    mSetup.style.zIndex = '10005';
+    m.style.zIndex = '10010';
+  }
   m.style.display = '';
   _modalLockOn();
   m.classList.add('open');
