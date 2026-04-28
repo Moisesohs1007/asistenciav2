@@ -18,6 +18,14 @@ function num(v, def) {
   return Number.isFinite(n) ? n : def;
 }
 
+function optNum(v) {
+  if (v == null) return NaN;
+  const s = String(v).trim();
+  if (!s) return NaN;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 function round2(x) {
   return Math.round(x * 100) / 100;
 }
@@ -119,9 +127,15 @@ function main() {
   const weeksPerMonth = num(argVal(argv, '--weeksPerMonth', '4.345'), 4.345);
   const dbDiskGbInput = num(argVal(argv, '--dbDiskGb', '0'), 0);
   const storageGbBase = num(argVal(argv, '--storageGbBase', '0'), 0);
-  const alumnosTotalOverride = num(argVal(argv, '--alumnosTotal', ''), NaN);
-  const scansPerDayOverride = num(argVal(argv, '--scansPerDay', ''), NaN);
-  const mausOverride = num(argVal(argv, '--maus', ''), NaN);
+  const alumnosTotalOverride = optNum(argVal(argv, '--alumnosTotal', null));
+  const scansPerDayOverride = optNum(argVal(argv, '--scansPerDay', null));
+  const mausOverride = optNum(argVal(argv, '--maus', null));
+  const tutoresOverride = optNum(argVal(argv, '--tutores', null));
+  const profesoresOverride = optNum(argVal(argv, '--docentes', null));
+  const adminsOverride = optNum(argVal(argv, '--admins', null));
+  const porterosOverride = optNum(argVal(argv, '--escaners', null));
+  const apoderadosPerDay = num(argVal(argv, '--apoderadosPorDia', '0'), 0);
+  const apoderadosMauOverride = optNum(argVal(argv, '--apoderadosMau', null));
 
   const pricing = readJson(path.join(__dirname, 'pricing.supabase.json'));
   const workloads = readJson(path.join(__dirname, 'workloads.json'));
@@ -151,27 +165,43 @@ function main() {
   }
 
   const alumnosTotal = Number.isFinite(alumnosTotalOverride) ? alumnosTotalOverride : (scenario.school.alumnos_total || 0);
-  const scansPerDay = Number.isFinite(scansPerDayOverride) ? scansPerDayOverride : (scenario.workload.scans_per_attendance_day || 0);
+  const scansPerDayDefault = alumnosTotal ? Math.round(alumnosTotal * 0.9) : (scenario.workload.scans_per_attendance_day || 0);
+  const scansPerDay = Number.isFinite(scansPerDayOverride) ? scansPerDayOverride : scansPerDayDefault;
   const tardRate = scenario.workload.scan_tardanza_rate || 0;
   const scansByDay = dayFlags.map(on => (on ? scansPerDay : 0));
 
-  const reportRuns = scenario.workload.report_runs_per_week || { dia: 0, mes: 0, rango: 0, anio: 0 };
-  const reportDia = spreadWeekly(reportRuns.dia || 0, days);
-  const reportMes = spreadWeekly(reportRuns.mes || 0, days);
-  const reportRango = spreadWeekly(reportRuns.rango || 0, days);
-  const reportAnio = spreadWeekly(reportRuns.anio || 0, days);
+  const actors = {
+    admins: Number.isFinite(adminsOverride) ? adminsOverride : (scenario.actors.admins || 0),
+    porteros: Number.isFinite(porterosOverride) ? porterosOverride : (scenario.actors.porteros || 0),
+    tutores: Number.isFinite(tutoresOverride) ? tutoresOverride : (scenario.actors.tutores || 0),
+    profesores: Number.isFinite(profesoresOverride) ? profesoresOverride : (scenario.actors.profesores || 0)
+  };
 
-  const wpp = spreadWeekly(scenario.workload.whatsapp_messages_per_week || 0, days);
-  const comunicados = spreadWeekly(scenario.workload.comunicados_per_week || 0, days);
-  const prompts = spreadWeekly(scenario.workload.ai_prompts_per_week || 0, days);
-  const materialOps = spreadWeekly(scenario.workload.material_ops_per_week || 0, days);
-  const uploads = spreadWeekly(scenario.workload.storage_uploads_per_week || 0, days);
-  const downloads = spreadWeekly(scenario.workload.storage_downloads_per_week || 0, days);
+  const reportRunsBase = scenario.workload.report_runs_per_week || { dia: 0, mes: 0, rango: 0, anio: 0 };
+  const reportRuns = {
+    dia:  Math.max(reportRunsBase.dia || 0,  Math.round(actors.admins * 8 + actors.tutores * 3 + actors.profesores * 1)),
+    mes:  Math.max(reportRunsBase.mes || 0,  Math.round(actors.admins * 2 + actors.tutores * 1)),
+    rango:Math.max(reportRunsBase.rango || 0,Math.round(actors.admins * 1 + actors.tutores * 0.5)),
+    anio: Math.max(reportRunsBase.anio || 0, Math.round(actors.admins * 0.25))
+  };
+  const reportDia = spreadWeekly(reportRuns.dia, days);
+  const reportMes = spreadWeekly(reportRuns.mes, days);
+  const reportRango = spreadWeekly(reportRuns.rango, days);
+  const reportAnio = spreadWeekly(reportRuns.anio, days);
+
+  const wpp = spreadWeekly(Math.max(scenario.workload.whatsapp_messages_per_week || 0, Math.round(actors.tutores * 15 + actors.admins * 20)), days);
+  const comunicados = spreadWeekly(Math.max(scenario.workload.comunicados_per_week || 0, Math.round(actors.admins * 3)), days);
+  const prompts = spreadWeekly(Math.max(scenario.workload.ai_prompts_per_week || 0, Math.round(actors.admins * 4)), days);
+  const materialOps = spreadWeekly(Math.max(scenario.workload.material_ops_per_week || 0, Math.round(actors.tutores * 90 + actors.admins * 60)), days);
+  const uploads = spreadWeekly(Math.max(scenario.workload.storage_uploads_per_week || 0, Math.round(actors.admins * 4)), days);
+  const downloads = spreadWeekly(Math.max(scenario.workload.storage_downloads_per_week || 0, Math.round(actors.tutores * 25 + actors.admins * 35)), days);
 
   const upMb = num(scenario.workload.storage_upload_avg_mb, 0.5);
   const dlMb = num(scenario.workload.storage_download_avg_mb, 0.5);
 
-  const maus = Number.isFinite(mausOverride) ? mausOverride : (scenario.actors.maus || 0);
+  const apoderadosMau = Number.isFinite(apoderadosMauOverride) ? apoderadosMauOverride : Math.round(apoderadosPerDay * 7 * 0.7);
+  const mausBase = actors.admins + actors.porteros + actors.tutores + actors.profesores;
+  const maus = Number.isFinite(mausOverride) ? mausOverride : (mausBase + apoderadosMau);
 
   const daily = [];
   const totals = {
@@ -199,7 +229,7 @@ function main() {
 
     const dayDbWrites = scans;
     const dayRpc = scans;
-    const dayAuth = scans;
+    const dayAuth = scans + apoderadosPerDay;
 
     const alumnosReads = 1;
     const configReads = 1;
@@ -227,6 +257,9 @@ function main() {
     const dayMaterialWrites = Math.round(materialOps[i] * 0.35);
     const dayMaterialReads = Math.round(materialOps[i] * 0.65);
 
+    const apoderadoDbReads = apoderadosPerDay * 2;
+    const apoderadoBytes = apoderadosPerDay * (authUserBytes + overhead * 2 + (rowSize.alumnos || 260));
+
     const bytesRegistrosReads = estimateQueryBytes({ rows: dayDbReadsBigRows, rowSize: rowSize.registros || 220, overhead });
     const bytesAlumnosReads = estimateQueryBytes({ rows: alumnosTotal, rowSize: rowSize.alumnos || 260, overhead }) * alumnosReads;
     const bytesResumenReads = estimateQueryBytes({ rows: alumnosTotal, rowSize: rowSize.resumen_mensual || 80, overhead }) * (reportMes[i] + reportRango[i]);
@@ -249,6 +282,7 @@ function main() {
       bytesWritesEdge +
       bytesAuth +
       bytesEdge +
+      apoderadoBytes +
       bytesStorageUp +
       bytesStorageDl;
 
@@ -258,6 +292,7 @@ function main() {
       dayRpc +
       dayEdgeDbReads +
       dayEdgeDbWrites +
+      apoderadoDbReads +
       uploads[i] +
       downloads[i] +
       dayEdge +
@@ -336,9 +371,14 @@ function main() {
       days
     },
     inputs: {
-      actors: scenario.actors,
-      school: scenario.school,
-      workload: scenario.workload
+      actors: {
+        ...scenario.actors,
+        ...actors,
+        apoderados_por_dia: apoderadosPerDay,
+        apoderados_mau: apoderadosMau
+      },
+      school: { ...(scenario.school || {}), alumnos_total: alumnosTotal },
+      workload: { ...(scenario.workload || {}), scans_per_attendance_day: scansPerDay }
     },
     totals_week: {
       ...totals,

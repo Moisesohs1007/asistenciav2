@@ -33,10 +33,36 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) return jsonResponse({ error: 'Token inválido o expirado' }, 401);
 
-    const requesterRol = String(user.app_metadata?.rol || '');
-    const colegioId = String(user.app_metadata?.colegio_id || '');
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    const requesterRolMeta = String(user.app_metadata?.rol || '');
+    const colegioIdMeta = String(user.app_metadata?.colegio_id || '');
+
+    const { data: requesterRows, error: requesterRowError } = await supabaseAdmin
+      .from('usuarios')
+      .select('colegio_id,rol')
+      .eq('id', user.id)
+      .limit(1);
+
+    if (requesterRowError) return jsonResponse({ error: requesterRowError.message }, 500);
+    const requesterRow = Array.isArray(requesterRows) ? requesterRows[0] : null;
+    const requesterRolDb = String((requesterRow as any)?.rol || '');
+    const colegioIdDb = String((requesterRow as any)?.colegio_id || '');
+
+    const requesterRol = requesterRolDb || requesterRolMeta;
+    const colegioId = colegioIdDb || colegioIdMeta;
+
     if (!colegioId) return jsonResponse({ error: 'Usuario no asociado a un colegio' }, 400);
     if (!['admin', 'director'].includes(requesterRol)) return jsonResponse({ error: 'No permitido' }, 403);
+
+    if (requesterRolMeta !== requesterRol || colegioIdMeta !== colegioId) {
+      await supabaseAdmin.auth.admin.updateUserById(user.id, {
+        app_metadata: { ...(user.app_metadata || {}), colegio_id: colegioId, rol: requesterRol },
+      }).catch(() => {});
+    }
 
     const body = await req.json().catch(() => ({}));
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
@@ -58,11 +84,6 @@ serve(async (req) => {
     if (requesterRol === 'director' && rol === 'admin') return jsonResponse({ error: 'No permitido' }, 403);
     if (password.length < 6) return jsonResponse({ error: 'La contraseña debe tener al menos 6 caracteres' }, 400);
     if (!/^[^@]+@[^@]+\.[^@]+$/.test(email)) return jsonResponse({ error: 'Correo inválido' }, 400);
-
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
 
     const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,

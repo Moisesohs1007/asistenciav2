@@ -1,5 +1,6 @@
 supabase/.temp/
 cost_sim/out/
+cost_sim/out_agresivo/
 cost_sim/out_test/
 cost_sim/out_audit_test/
 cost_sim/out_test_tmp/
