@@ -13290,7 +13290,7 @@ async function initAlertas() {
   const dia = document.getElementById('al-dia-ref');
   if(dia) {
     dia.max = hoy();
-    if(!dia.value) dia.value = hoy();
+    dia.value = '';
   }
   try { onAlMesChangeAlertas(); } catch(e) {}
   await poblarFiltroNivel('al-nivel');
@@ -13319,26 +13319,31 @@ function _alEndOfMonth(mesSel) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
-function _alClampDiaRefToMes() {
-  const mesSel = document.getElementById('al-mes-select')?.value || mesActual();
-  const diaEl = document.getElementById('al-dia-ref');
-  if(!diaEl) return;
-  const hs = hoy();
-  const finMes = _alEndOfMonth(mesSel);
-  let ref = diaEl.value || (finMes < hs ? finMes : hs);
-  const refMes = String(ref || '').slice(0,7);
-  if(refMes !== mesSel) {
-    ref = finMes < hs ? finMes : hs;
-  }
-  // Ajustar a día hábil (L-V): si cae sábado/domingo, mover a viernes
-  const d = new Date(ref + 'T12:00:00');
+function _alAdjustToBusinessDay(iso) {
+  const s = String(iso || '');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+  const d = new Date(s + 'T12:00:00');
   if(d.getDay() === 6) d.setDate(d.getDate() - 1);
   if(d.getDay() === 0) d.setDate(d.getDate() - 2);
-  diaEl.value = d.toISOString().slice(0,10);
+  return d.toISOString().slice(0,10);
+}
+
+function _alGetDiaRefEfectivo(mesSel) {
+  const diaEl = document.getElementById('al-dia-ref');
+  const hs = hoy();
+  const finMes = _alEndOfMonth(mesSel);
+  if(diaEl && diaEl.value) {
+    const adj = _alAdjustToBusinessDay(diaEl.value);
+    if(adj && adj !== diaEl.value) diaEl.value = adj;
+    return adj || diaEl.value;
+  }
+  const ref = (finMes < hs) ? finMes : hs;
+  return _alAdjustToBusinessDay(ref) || ref;
 }
 
 function onAlMesChangeAlertas() {
-  _alClampDiaRefToMes();
+  const diaEl = document.getElementById('al-dia-ref');
+  if(diaEl) diaEl.value = '';
   _alClearAlertasOutput();
 }
 
@@ -13346,7 +13351,10 @@ function onAlDiaRefChangeAlertas() {
   const diaEl = document.getElementById('al-dia-ref');
   const mesEl = document.getElementById('al-mes-select');
   if(!diaEl || !mesEl) return;
-  _alClampDiaRefToMes();
+  const ref = diaEl.value;
+  if(ref) mesEl.value = ref.slice(0,7);
+  const adj = _alAdjustToBusinessDay(ref);
+  if(adj && adj !== ref) diaEl.value = adj;
   _alClearAlertasOutput();
 }
 
@@ -13354,7 +13362,7 @@ async function limpiarFiltrosAlertas() {
   const mesEl = document.getElementById('al-mes-select');
   if(mesEl) poblarSelectorMes('al-mes-select');
   const dia = document.getElementById('al-dia-ref');
-  if(dia) dia.value = hoy();
+  if(dia) dia.value = '';
   try { onAlMesChangeAlertas(); } catch(e) {}
   const niv = document.getElementById('al-nivel');
   const gra = document.getElementById('al-grado');
@@ -14151,7 +14159,10 @@ async function generarAlertasAsistencia() {
     const tardTh = Math.max(1, parseInt(document.getElementById(prefix + '-alert-tard')?.value || '3', 10) || 3);
     const ausTh  = Math.max(1, parseInt(document.getElementById(prefix + '-alert-aus')?.value  || '3', 10) || 3);
     const mesSel = (prefix === 'al' ? (document.getElementById('al-mes-select')?.value || mesActual()) : (document.getElementById('rep-mes-select')?.value || mesActual()));
-    const diaRef = (prefix === 'al' ? (document.getElementById('al-dia-ref')?.value || hoy()) : (document.getElementById('rep-dia-select')?.value || hoy()));
+    const diaRef = (prefix === 'al'
+      ? _alGetDiaRefEfectivo(mesSel)
+      : (document.getElementById('rep-dia-select')?.value || hoy())
+    );
     const { weekStart, weekEnd } = _repWeekMonFri(diaRef);
 
     if(status) status.textContent = 'Calculando alertas...';
@@ -14267,7 +14278,7 @@ async function generarAlertasAsistencia() {
     };
 
     const html = [];
-    html.push(`<div style="font-size:0.82rem;color:var(--muted);">Semana: ${weekStart} a ${weekEnd} · Mes: ${mesSel} · Días hábiles (mes): ${diasHab}</div>`);
+    html.push(`<div style="font-size:0.82rem;color:var(--muted);">Semana: ${weekStart} a ${weekEnd} · Día ref usado: ${diaRef} · Mes: ${mesSel} · Días hábiles (mes): ${diasHab}</div>`);
     html.push(mkTable(`Tardanzas ≥ ${tardTh} (semana)`, ['DNI','Alumno','Grado','Sección','Nivel','Días','Tardanzas'], tardyRows, { dias: true }));
     html.push(mkTable(`Ausencias ≥ ${ausTh} (mes)`, ['DNI','Alumno','Grado','Sección','Nivel','Días','Ausencias'], absentRows, { dias: true }));
 
