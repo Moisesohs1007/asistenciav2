@@ -2145,6 +2145,9 @@
       <button class="msb-subitem" onclick="msbPickSub(this,'reportes','asistencia','📊 Reportes')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Reportes</span>
       </button>
+      <button class="msb-subitem" onclick="msbPickSub(this,'alertas','asistencia','🚨 Alertas automáticas')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Alertas automáticas</span>
+      </button>
     </div>
 
     <!-- Aula -->
@@ -2536,6 +2539,7 @@
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('scan');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Escanear QR</div>
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('registro');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Registro del día</div>
         <div class="nav-drop-item" onclick="event.stopPropagation();showSection('reportes');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Reportes</div>
+        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('alertas');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Alertas automáticas</div>
       </div>
     </button>
     <!-- Aula -->
@@ -2580,6 +2584,7 @@
     <button id="tab-scan" style="display:none;"></button>
     <button id="tab-registro" style="display:none;"></button>
     <button id="tab-reportes" style="display:none;"></button>
+    <button id="tab-alertas" style="display:none;"></button>
     <button id="tab-incidentes" style="display:none;"></button>
 </nav>
 
@@ -4431,6 +4436,67 @@
     </div>
   </div>
 
+  <!-- ===== ALERTAS ===== -->
+  <div class="section" id="sec-alertas">
+    <div class="page-title">Alertas automáticas</div>
+    <div class="page-sub">Tardanzas semanales y ausencias mensuales según filtros</div>
+
+    <div class="card" style="padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Período:</label>
+        <select id="al-mes-select"></select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">Día ref.:</label>
+        <input type="date" id="al-dia-ref"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:4px 8px;font-family:var(--font-body);font-size:0.82rem;">
+      </div>
+      <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);">Nivel:</label>
+        <select id="al-nivel" onchange="onAlNivelChangeAlertas()">
+          <option value="" disabled selected>-- Nivel --</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);">Grado:</label>
+        <select id="al-grado" onchange="onAlGradoChangeAlertas()" disabled style="opacity:0.45;">
+          <option value="" disabled selected>-- Grado --</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:0.78rem;color:var(--muted);">Sección:</label>
+        <select id="al-seccion" onchange="onAlSeccionChangeAlertas()" disabled style="opacity:0.45;">
+          <option value="" disabled selected>-- Sección --</option>
+        </select>
+      </div>
+      <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
+      <div style="flex:1;min-width:150px;">
+        <input type="text" id="al-search" placeholder="Buscar alumno..." oninput="onAlSearchChangeAlertas()"
+          style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 10px;font-family:var(--font-body);font-size:0.82rem;">
+      </div>
+      <button class="btn btn-ghost" onclick="limpiarFiltrosAlertas()" style="font-size:0.78rem;padding:5px 10px;">✕ Limpiar</button>
+    </div>
+
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-title"><span class="dot" style="background:var(--danger)"></span>Generador</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-top:10px;">
+        <div class="form-group" style="margin:0;min-width:220px;">
+          <label>Tardanzas por semana (≥)</label>
+          <input id="al-alert-tard" type="number" min="1" max="20" step="1" value="3">
+        </div>
+        <div class="form-group" style="margin:0;min-width:220px;">
+          <label>Ausencias por mes (≥)</label>
+          <input id="al-alert-aus" type="number" min="1" max="31" step="1" value="3">
+        </div>
+        <button class="btn btn-primary" onclick="generarAlertasAsistencia()" style="justify-content:center;min-width:220px;">Generar alertas</button>
+        <button class="btn btn-ghost" onclick="exportarAlertasAsistenciaXLSX()" style="justify-content:center;border-color:var(--accent2);color:var(--accent2);">⬇ Excel</button>
+      </div>
+      <div id="al-alertas-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
+      <div id="al-alertas-wrap" style="margin-top:10px;display:none;"></div>
+    </div>
+  </div>
+
   <!-- ===== REPORTES ===== -->
   <div class="section" id="sec-reportes">
     <div class="page-title">Reportes y Estadísticas</div>
@@ -4498,24 +4564,6 @@
       <div class="stat-card yellow"><div class="stat-num" id="rep-tardanzas">0</div><div class="stat-label">Tardanzas</div></div>
       <div class="stat-card red"><div class="stat-num" id="rep-faltas">0</div><div class="stat-label">Ausencias</div></div>
       <div class="stat-card"><div class="stat-num" id="rep-hoy">0</div><div class="stat-label" id="rep-hoy-label">Presentes hoy</div></div>
-    </div>
-
-    <div class="card" style="margin-bottom:14px;">
-      <div class="card-title"><span class="dot" style="background:var(--danger)"></span>Alertas automáticas</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-top:10px;">
-        <div class="form-group" style="margin:0;min-width:220px;">
-          <label>Tardanzas por semana (≥)</label>
-          <input id="rep-alert-tard" type="number" min="1" max="20" step="1" value="3">
-        </div>
-        <div class="form-group" style="margin:0;min-width:220px;">
-          <label>Ausencias por mes (≥)</label>
-          <input id="rep-alert-aus" type="number" min="1" max="31" step="1" value="3">
-        </div>
-        <button class="btn btn-primary" onclick="generarAlertasAsistencia()" style="justify-content:center;min-width:220px;">Generar alertas</button>
-        <button class="btn btn-ghost" onclick="exportarAlertasAsistenciaXLSX()" style="justify-content:center;border-color:var(--accent2);color:var(--accent2);">⬇ Excel</button>
-      </div>
-      <div id="rep-alertas-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
-      <div id="rep-alertas-wrap" style="margin-top:10px;display:none;"></div>
     </div>
 
     <!-- Gráficos -->
@@ -5540,8 +5588,8 @@ function aplicarPermisos(rol) {
   setTimeout(renderBottomNav, 100);
   // Pestañas visibles según rol
   const permisos = {
-    admin:    ['inicio','scan','alumnos','registro','reportes','incidentes','comunicacion','comunicado','agenda','usuarios','config'],
-    director: ['inicio','registro','reportes','incidentes','comunicacion','comunicado','agenda'],
+    admin:    ['inicio','scan','alumnos','registro','reportes','alertas','incidentes','comunicacion','comunicado','agenda','usuarios','config'],
+    director: ['inicio','registro','reportes','alertas','incidentes','comunicacion','comunicado','agenda'],
     profesor: ['inicio','alumnos','registro','incidentes','comunicacion','comunicado','agenda'],
     portero:  ['inicio','scan'],
   };
@@ -5558,7 +5606,7 @@ function aplicarPermisos(rol) {
   }
 
   // Mostrar/ocultar tabs
-  ['scan','alumnos','registro','reportes','incidentes','comunicacion','agenda','usuarios','config'].forEach(t => {
+  ['scan','alumnos','registro','reportes','alertas','incidentes','comunicacion','agenda','usuarios','config'].forEach(t => {
     const el = document.getElementById('tab-'+t);
     if(el) el.style.display = tabs.includes(t) ? '' : 'none';
   });
@@ -5619,6 +5667,9 @@ function showSectionDirect(id) {
     mostrarBtnAnio();
     repResetReportesUI();
     setTimeout(() => { try { renderReportes(); } catch(e) {} }, 0);
+  }
+  if(id==='alertas') {
+    initAlertas();
   }
   if(id==='inicio') cargarDashboardInicio();
   if(id==='materiales') { initMateriales(); }
@@ -13234,6 +13285,99 @@ async function iniciarFiltrosReportes() {
   (cfg.niveles||[]).forEach(n => { nivEl.innerHTML += `<option value="${n.nombre}">${n.nombre}</option>`; });
 }
 
+async function initAlertas() {
+  poblarSelectorMes('al-mes-select');
+  const dia = document.getElementById('al-dia-ref');
+  if(dia && !dia.value) dia.value = hoy();
+  await poblarFiltroNivel('al-nivel');
+  await poblarFiltroGrado('al-grado', null);
+  await poblarFiltroSeccion('al-seccion', null);
+  _disableSelect('al-grado');
+  _disableSelect('al-seccion');
+  const st = document.getElementById('al-alertas-status');
+  const wrap = document.getElementById('al-alertas-wrap');
+  if(st) st.textContent = '';
+  if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
+}
+
+async function limpiarFiltrosAlertas() {
+  const mesEl = document.getElementById('al-mes-select');
+  if(mesEl) poblarSelectorMes('al-mes-select');
+  const dia = document.getElementById('al-dia-ref');
+  if(dia) dia.value = hoy();
+  const niv = document.getElementById('al-nivel');
+  const gra = document.getElementById('al-grado');
+  const sec = document.getElementById('al-seccion');
+  const q = document.getElementById('al-search');
+  if(niv) niv.value = '';
+  if(gra) gra.value = '';
+  if(sec) sec.value = '';
+  if(q) q.value = '';
+  await poblarFiltroGrado('al-grado', null);
+  await poblarFiltroSeccion('al-seccion', null);
+  _disableSelect('al-grado');
+  _disableSelect('al-seccion');
+  const st = document.getElementById('al-alertas-status');
+  const wrap = document.getElementById('al-alertas-wrap');
+  if(st) st.textContent = '';
+  if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
+}
+
+async function onAlNivelChangeAlertas() {
+  const nivel = document.getElementById('al-nivel').value;
+  const gra = document.getElementById('al-grado');
+  const sec = document.getElementById('al-seccion');
+  const q = document.getElementById('al-search');
+  if(q) q.value = '';
+  if(gra) gra.value = '';
+  if(sec) sec.value = '';
+  _disableSelect('al-seccion');
+  if(nivel && nivel !== 'TODOS') {
+    await poblarFiltroGrado('al-grado', nivel);
+    _enableSelect('al-grado');
+  } else if(nivel === 'TODOS') {
+    await poblarFiltroGrado('al-grado', null);
+    _enableSelect('al-grado');
+  } else {
+    _disableSelect('al-grado');
+  }
+  await poblarFiltroSeccion('al-seccion', null);
+}
+
+async function onAlGradoChangeAlertas() {
+  const grado = document.getElementById('al-grado').value;
+  const sec = document.getElementById('al-seccion');
+  const q = document.getElementById('al-search');
+  if(q) q.value = '';
+  if(grado && grado !== 'TODOS') {
+    await poblarFiltroSeccion('al-seccion', grado);
+    _enableSelect('al-seccion');
+  } else {
+    if(sec) sec.value = '';
+    _disableSelect('al-seccion');
+    await poblarFiltroSeccion('al-seccion', null);
+  }
+}
+
+function onAlSeccionChangeAlertas() {
+  const q = document.getElementById('al-search');
+  if(q) q.value = '';
+}
+
+function onAlSearchChangeAlertas() {
+  const q = (document.getElementById('al-search')?.value || '').trim();
+  if(q) {
+    const n = document.getElementById('al-nivel');
+    const g = document.getElementById('al-grado');
+    const s = document.getElementById('al-seccion');
+    if(n) n.value = '';
+    if(g) g.value = '';
+    if(s) s.value = '';
+    _disableSelect('al-grado');
+    _disableSelect('al-seccion');
+  }
+}
+
 // Meses ya reconciliados en esta sesión — evita escribir repetidamente si la diferencia persiste
 const _resumenReconciliado = new Set();
 
@@ -13926,11 +14070,11 @@ function _repWeekMonFri(iso) {
   return { weekStart: _repDateToIso(mon), weekEnd: _repDateToIso(fri) };
 }
 
-async function _repGetAlumnosActuales() {
-  const nivel   = document.getElementById('rep-nivel')?.value   || '';
-  const grado   = document.getElementById('rep-grado')?.value   || '';
-  const seccion = document.getElementById('rep-seccion')?.value || '';
-  const q       = (document.getElementById('rep-search')?.value || '').toLowerCase().trim();
+async function _repGetAlumnosActuales(prefix = 'rep') {
+  const nivel   = document.getElementById(prefix + '-nivel')?.value   || '';
+  const grado   = document.getElementById(prefix + '-grado')?.value   || '';
+  const seccion = document.getElementById(prefix + '-seccion')?.value || '';
+  const q       = (document.getElementById(prefix + '-search')?.value || '').toLowerCase().trim();
   let alumnos = await getAlumnosFiltrados();
   if(nivel)   alumnos = alumnos.filter(a => a.turno   === nivel);
   if(grado)   alumnos = alumnos.filter(a => a.grado   === grado);
@@ -13942,19 +14086,20 @@ async function _repGetAlumnosActuales() {
 }
 
 async function generarAlertasAsistencia() {
-  const status = document.getElementById('rep-alertas-status');
-  const wrap = document.getElementById('rep-alertas-wrap');
+  const prefix = (document.getElementById('sec-alertas')?.classList.contains('active')) ? 'al' : 'rep';
+  const status = document.getElementById(prefix + '-alertas-status');
+  const wrap = document.getElementById(prefix + '-alertas-wrap');
   try {
-    const tardTh = Math.max(1, parseInt(document.getElementById('rep-alert-tard')?.value || '3', 10) || 3);
-    const ausTh  = Math.max(1, parseInt(document.getElementById('rep-alert-aus')?.value  || '3', 10) || 3);
-    const mesSel = document.getElementById('rep-mes-select')?.value || mesActual();
-    const diaRef = document.getElementById('rep-dia-select')?.value || hoy();
+    const tardTh = Math.max(1, parseInt(document.getElementById(prefix + '-alert-tard')?.value || '3', 10) || 3);
+    const ausTh  = Math.max(1, parseInt(document.getElementById(prefix + '-alert-aus')?.value  || '3', 10) || 3);
+    const mesSel = (prefix === 'al' ? (document.getElementById('al-mes-select')?.value || mesActual()) : (document.getElementById('rep-mes-select')?.value || mesActual()));
+    const diaRef = (prefix === 'al' ? (document.getElementById('al-dia-ref')?.value || hoy()) : (document.getElementById('rep-dia-select')?.value || hoy()));
     const { weekStart, weekEnd } = _repWeekMonFri(diaRef);
 
     if(status) status.textContent = 'Calculando alertas...';
     if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
 
-    const alumnos = await _repGetAlumnosActuales();
+    const alumnos = await _repGetAlumnosActuales(prefix);
     const alumnosIds = new Set(alumnos.map(a=>a.id));
     if(!alumnos.length) throw new Error('No hay alumnos con los filtros actuales');
 
@@ -16974,7 +17119,7 @@ function msbSetActive(sectionId) {
   // Actualizar el topbar con la sección activa
   const sectionLabels = {
     inicio: '🏠 Inicio', scan: '📷 Escanear QR', registro: '📋 Registro del día',
-    reportes: '📊 Reportes', alumnos: '👥 Alumnos', usuarios: '👤 Usuarios',
+    reportes: '📊 Reportes', alertas: '🚨 Alertas automáticas', alumnos: '👥 Alumnos', usuarios: '👤 Usuarios',
     incidentes: '🚨 Incidentes', mensajes: '💬 Mensajes',
     comunicado: '📢 Comunicado', agenda: '📅 Agenda', 'ia-horarios': '🧩 Horarios',
     config: '⚙️ Configuración',
@@ -16984,7 +17129,7 @@ function msbSetActive(sectionId) {
 
   // Mapeo sección → menú padre
   const parentMap = {
-    scan:'asistencia',registro:'asistencia',reportes:'asistencia',
+    scan:'asistencia',registro:'asistencia',reportes:'asistencia',alertas:'asistencia',
     alumnos:'aula',usuarios:'aula',incidentes:'aula',
     mensajes:'comunicacion', comunicado:'comunicacion', agenda:'comunicacion', 'ia-horarios':'comunicacion',
   };
