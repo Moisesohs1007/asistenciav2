@@ -136,13 +136,18 @@ const DB = {
   _CACHE_TTL: 5 * 60 * 1000,
 
   _cacheKey(filtros) {
-    if (filtros.fecha && filtros.alumnoId) return 'fecha_alumno:' + filtros.fecha + '_' + filtros.alumnoId;
-    if (filtros.fecha)    return 'fecha:' + filtros.fecha;
-    if (filtros.alumnoId) return 'alumno:' + filtros.alumnoId;
-    if (filtros.mes)      return 'mes:' + filtros.mes;
-    if (filtros.anio)     return 'anio:' + filtros.anio;
-    if (filtros.desde && filtros.hasta) return 'rango:' + filtros.desde + '_' + filtros.hasta;
-    return 'todos';
+    let base = 'todos';
+    if (filtros.fecha && filtros.alumnoId) base = 'fecha_alumno:' + filtros.fecha + '_' + filtros.alumnoId;
+    else if (filtros.fecha)    base = 'fecha:' + filtros.fecha;
+    else if (filtros.alumnoId) base = 'alumno:' + filtros.alumnoId;
+    else if (filtros.mes)      base = 'mes:' + filtros.mes;
+    else if (filtros.anio)     base = 'anio:' + filtros.anio;
+    else if (filtros.desde && filtros.hasta) base = 'rango:' + filtros.desde + '_' + filtros.hasta;
+
+    const extra = [];
+    if (filtros.tipo)   extra.push('t=' + filtros.tipo);
+    if (filtros.estado) extra.push('e=' + filtros.estado);
+    return extra.length ? (base + '|' + extra.join('&')) : base;
   },
 
   _cacheValido(key) {
@@ -179,6 +184,8 @@ const DB = {
 
       if (filtros.fecha)    q = q.eq('fecha', filtros.fecha);
       if (filtros.alumnoId) q = q.eq('alumno_id', filtros.alumnoId);
+      if (filtros.tipo)     q = q.eq('tipo', filtros.tipo);
+      if (filtros.estado)   q = q.eq('estado', filtros.estado);
       if (filtros.mes) {
         const [y, m] = filtros.mes.split('-').map(Number);
         const desde  = filtros.mes + '-01';

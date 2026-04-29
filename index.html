@@ -2919,7 +2919,7 @@
 
         <button class="btn btn-ghost" onclick="exportXLSX()">📊 Exportar Excel</button>
         <button class="btn btn-ghost" onclick="exportPDFRegistro()">📄 Exportar PDF</button>
-        <button class="btn btn-danger" onclick="clearToday()">🗑 Limpiar hoy</button>
+        <button class="btn btn-danger" onclick="clearToday()">🗑 Borrar registros de hoy</button>
       </div>
     </div>
 
@@ -4494,8 +4494,8 @@
           <label>Ausencias por mes (≥)</label>
           <input id="al-alert-aus" type="number" min="1" max="31" step="1" value="3" oninput="onAlUmbralChangeAlertas()">
         </div>
-        <button class="btn btn-primary" onclick="generarAlertasAsistencia()" style="justify-content:center;min-width:220px;">Generar alertas</button>
-        <button class="btn btn-ghost" onclick="exportarAlertasAsistenciaXLSX()" style="justify-content:center;border-color:var(--accent2);color:var(--accent2);">⬇ Excel</button>
+        <button class="btn btn-primary" id="al-btn-gen-alertas" onclick="generarAlertasAsistencia()" style="justify-content:center;min-width:220px;">Generar alertas</button>
+        <button class="btn btn-ghost" id="al-btn-excel-alertas" onclick="exportarAlertasAsistenciaXLSX()" style="justify-content:center;border-color:var(--accent2);color:var(--accent2);">⬇ Excel</button>
       </div>
       <div id="al-alertas-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
       <div id="al-alertas-wrap" style="margin-top:10px;display:none;"></div>
@@ -7248,7 +7248,20 @@ async function renderRegistro() {
     } else {
       filtroDb = { mes: mesSel };
     }
-    let regs = await DB.getRegistros(filtroDb);
+    const _run = (++window._renderRegistroRun || (window._renderRegistroRun = 1));
+    let tick = 0;
+    const itv = setInterval(() => {
+      if(window._renderRegistroRun !== _run) { clearInterval(itv); return; }
+      const dots = '.'.repeat((tick++ % 3) + 1);
+      count.textContent = 'Cargando' + dots;
+    }, 350);
+    let regs;
+    try {
+      regs = await DB.getRegistros(filtroDb);
+    } finally {
+      clearInterval(itv);
+    }
+    if(window._renderRegistroRun !== _run) return;
 
     // Filtrar por rango de fechas y excluir siempre sábado y domingo
     regs = regs.filter(r => {
@@ -7264,6 +7277,7 @@ async function renderRegistro() {
     if(grado   && grado   !== 'TODOS') regs = regs.filter(r => r.grado === grado);
     if(seccion && seccion !== 'TODOS') regs = regs.filter(r => r.seccion === seccion);
     if(q) regs = regs.filter(r => r.nombre.toLowerCase().includes(q.trim()) || r.alumnoId.trim().toLowerCase().includes(q.trim()));
+    if(window._renderRegistroRun !== _run) return;
 
     // 2. Agrupar por alumnoId + fecha → una fila por alumno por día
     // Mapa de alumnos para normalizar nombre — profesores restringidos usan scoped cache
@@ -7298,6 +7312,7 @@ async function renderRegistro() {
 
     // 3. Si hay filtro de alumno, agregar filas "Sin registro" para días hábiles sin datos
     let filas = Object.values(grupos);
+    if(window._renderRegistroRun !== _run) return;
 
     if(q) {
       // Rango: si selecciona solo 1 día (solo Desde o solo Hasta), se considera 1 día.
@@ -7427,21 +7442,35 @@ async function renderRegistro() {
     }
     empty.style.display = 'none';
 
-    tbody.innerHTML = filas.map(f => {
-      const sinIngreso = !f.ingreso;
-      const badgeColor = f.estadoIngreso === 'Sin registro' ? 'red' : (f.estadoIngreso === 'Tardanza' ? 'yellow' : (f.estadoIngreso === 'A tiempo' ? 'green' : 'blue'));
-      const cls = f.estadoIngreso === 'Sin registro' ? 'row-salida' : (f.estadoIngreso === 'Tardanza' ? 'row-tarde' : 'row-ingreso');
-      return `<tr class="${cls}">
-        <td class="ts">${f.fecha}</td>
-        <td class="td-id">${f.alumnoId}</td>
-        <td class="td-name">${f.nombre}</td>
-        <td>${f.grado} ${f.seccion}</td>
-        <td>${f.turno}</td>
-        <td class="ts">${f.ingreso || '<span style="color:var(--muted);">—</span>'}</td>
-        <td><span class="badge ${badgeColor}">${f.estadoIngreso}</span></td>
-        <td class="ts">${f.salida || '<span style="color:var(--muted);">—</span>'}</td>
-      </tr>`;
-    }).join('');
+    tbody.innerHTML = '';
+    const total = filas.length;
+    const CHUNK = 250;
+    let done = 0;
+    while(done < total) {
+      if(window._renderRegistroRun !== _run) return;
+      const slice = filas.slice(done, done + CHUNK);
+      const html = slice.map(f => {
+        const badgeColor = f.estadoIngreso === 'Sin registro' ? 'red' : (f.estadoIngreso === 'Tardanza' ? 'yellow' : (f.estadoIngreso === 'A tiempo' ? 'green' : 'blue'));
+        const cls = f.estadoIngreso === 'Sin registro' ? 'row-salida' : (f.estadoIngreso === 'Tardanza' ? 'row-tarde' : 'row-ingreso');
+        return `<tr class="${cls}">
+          <td class="ts">${f.fecha}</td>
+          <td class="td-id">${f.alumnoId}</td>
+          <td class="td-name">${f.nombre}</td>
+          <td>${f.grado} ${f.seccion}</td>
+          <td>${f.turno}</td>
+          <td class="ts">${f.ingreso || '<span style="color:var(--muted);">—</span>'}</td>
+          <td><span class="badge ${badgeColor}">${f.estadoIngreso}</span></td>
+          <td class="ts">${f.salida || '<span style="color:var(--muted);">—</span>'}</td>
+        </tr>`;
+      }).join('');
+      tbody.insertAdjacentHTML('beforeend', html);
+      done += slice.length;
+      if(done < total) {
+        count.textContent = `Mostrando ${done}/${total} registro${total!==1?'s':''}${rangoTexto}...`;
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+    count.textContent = 'Mostrando ' + total + ' registro' + (total!==1?'s':'') + rangoTexto;
   } catch(e) { console.error('renderRegistro:', e); toast('Error al cargar registros','error'); }
 }
 
@@ -7862,7 +7891,7 @@ async function exportPDFRegistro() {
     const ancho=PW-20-COL_DNI-COL_NOMBRE-(COL_TOT*3);
     const COL_DIA=Math.max(5,Math.min(10,ancho/(diasHabiles.length||1)));
     const TABLE_X=10,TABLE_W=COL_DNI+COL_NOMBRE+(COL_DIA*diasHabiles.length)+(COL_TOT*3);
-    const ROW_H=6.5,HEAD_H=8;
+    const ROW_H=5.4,HEAD_H=7.2;
     let pageNum=1,curY=0;
     const nivel=alumnosAula[0]?.turno||'';
 
@@ -7874,7 +7903,7 @@ async function exportPDFRegistro() {
     }
     function drawTH(){
       doc.setFillColor(...NAVY);doc.rect(TABLE_X,curY,TABLE_W,HEAD_H,'F');
-      doc.setTextColor(...GOLD);doc.setFontSize(6.5);doc.setFont('helvetica','bold');
+      doc.setTextColor(...GOLD);doc.setFontSize(6.0);doc.setFont('helvetica','bold');
       let cx=TABLE_X;
       doc.text('DNI',cx+COL_DNI/2,curY+HEAD_H/2+2,{align:'center'});cx+=COL_DNI;
       doc.text('Alumno',cx+4,curY+HEAD_H/2+2);cx+=COL_NOMBRE;
@@ -7892,16 +7921,16 @@ async function exportPDFRegistro() {
       if(ai%2===0){doc.setFillColor(...GRAY);doc.rect(TABLE_X,curY,TABLE_W,ROW_H,'F');}
       doc.setDrawColor(220,226,238);doc.setLineWidth(0.15);doc.line(TABLE_X,curY+ROW_H,TABLE_X+TABLE_W,curY+ROW_H);
       let cx=TABLE_X;
-      doc.setTextColor(...MUTED);doc.setFontSize(6);doc.setFont('helvetica','normal');
+      doc.setTextColor(...MUTED);doc.setFontSize(5.6);doc.setFont('helvetica','normal');
       doc.text(a.id||'-',cx+COL_DNI/2,curY+ROW_H/2+2,{align:'center'});cx+=COL_DNI;
       const nom=((a.apellidos||'')+' '+(a.nombres||'')).trim();
-      doc.setTextColor(...TEXT);doc.setFontSize(6.5);
+      doc.setTextColor(...TEXT);doc.setFontSize(5.9);
       doc.text(nom.length>26?nom.substring(0,24)+'..':nom,cx+2,curY+ROW_H/2+2);cx+=COL_NOMBRE;
       let pC=0,tC=0,aC=0;
       diasHabiles.forEach(d=>{
         const cod=(mapa[a.id]&&mapa[a.id][d.fecha])||'A';
         if(cod==='P'){doc.setTextColor(...GREEN);pC++;}else if(cod==='T'){doc.setTextColor(...AMBER);tC++;}else{doc.setTextColor(...RED);aC++;}
-        doc.setFontSize(6.5);doc.setFont('helvetica','bold');
+        doc.setFontSize(5.9);doc.setFont('helvetica','bold');
         doc.text(cod,cx+COL_DIA/2,curY+ROW_H/2+2,{align:'center'});cx+=COL_DIA;
       });
       doc.setFontSize(7);doc.setFont('helvetica','bold');
@@ -14178,6 +14207,10 @@ async function generarAlertasAsistencia() {
   const status = document.getElementById(prefix + '-alertas-status');
   const wrap = document.getElementById(prefix + '-alertas-wrap');
   try {
+    const btnGen = (prefix === 'al') ? document.getElementById('al-btn-gen-alertas') : null;
+    const btnXls = (prefix === 'al') ? document.getElementById('al-btn-excel-alertas') : null;
+    if(btnGen) btnGen.disabled = true;
+    if(btnXls) btnXls.disabled = true;
     const tardTh = Math.max(1, parseInt(document.getElementById(prefix + '-alert-tard')?.value || '3', 10) || 3);
     const ausTh  = Math.max(1, parseInt(document.getElementById(prefix + '-alert-aus')?.value  || '3', 10) || 3);
     const mesSel = (prefix === 'al'
@@ -14190,12 +14223,15 @@ async function generarAlertasAsistencia() {
     const rangoDesde = usarRango ? d1 : '';
     const rangoHasta = usarRango ? (d2 || d1) : '';
 
-    if(status) status.textContent = 'Calculando alertas...';
+    if(status) status.textContent = 'Cargando alumnos...';
     if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
+    await new Promise(r => setTimeout(r, 0));
 
     const alumnos = await _repGetAlumnosActuales(prefix);
     const alumnosIds = new Set(alumnos.map(a=>a.id));
     if(!alumnos.length) throw new Error('No hay alumnos con los filtros actuales');
+    if(status) status.textContent = 'Cargando registros del período...';
+    await new Promise(r => setTimeout(r, 0));
 
     const _diaLabel = (iso) => {
       const s = String(iso||'');
@@ -14230,7 +14266,9 @@ async function generarAlertasAsistencia() {
       const diasHabiles = _buildBusinessDays(periodoInicio, periodoFin);
       diasHab = diasHabiles.length;
 
-      const regs = await DB.getRegistros({ desde: periodoInicio, hasta: periodoFin });
+      const regs = await DB.getRegistros({ desde: periodoInicio, hasta: periodoFin, tipo: 'INGRESO' });
+      if(status) status.textContent = 'Calculando tardanzas y ausencias...';
+      await new Promise(r => setTimeout(r, 0));
 
       const tardMap = {};
       const tardDiasMap = {};
@@ -14291,7 +14329,9 @@ async function generarAlertasAsistencia() {
       const diasHabiles = _buildBusinessDays(periodoInicio, periodoFin);
       diasHab = diasHabiles.length;
 
-      const regsMes = await DB.getRegistros({ desde: periodoInicio, hasta: periodoFin });
+      const regsMes = await DB.getRegistros({ desde: periodoInicio, hasta: periodoFin, tipo: 'INGRESO' });
+      if(status) status.textContent = 'Calculando tardanzas y ausencias...';
+      await new Promise(r => setTimeout(r, 0));
 
       const tardSemanaMap = {};
       const tardSemanaDias = {};
@@ -14392,8 +14432,18 @@ async function generarAlertasAsistencia() {
     if(prefix === 'al') {
       const mesEl = document.getElementById('al-mes-select');
       if(mesEl) { mesEl.disabled = false; mesEl.style.opacity = '1'; }
+      const btnGen2 = document.getElementById('al-btn-gen-alertas');
+      const btnXls2 = document.getElementById('al-btn-excel-alertas');
+      if(btnGen2) btnGen2.disabled = false;
+      if(btnXls2) btnXls2.disabled = false;
     }
   } catch(e) {
+    if(prefix === 'al') {
+      const btnGen2 = document.getElementById('al-btn-gen-alertas');
+      const btnXls2 = document.getElementById('al-btn-excel-alertas');
+      if(btnGen2) btnGen2.disabled = false;
+      if(btnXls2) btnXls2.disabled = false;
+    }
     if(status) status.textContent = '❌ ' + e.message;
     if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
     toast('❌ ' + e.message, 'error');
