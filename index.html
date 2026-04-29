@@ -3543,6 +3543,8 @@
             <div style="color:var(--muted);font-size:0.85rem;" id="mat-template-name">—</div>
             <div style="display:flex;gap:8px;align-items:center;">
               <span class="chip" id="mat-template-locked" style="background:rgba(34,197,94,0.12);color:#22c55e;border:1px solid rgba(34,197,94,0.28);">Bloqueada</span>
+              <button class="btn btn-ghost" id="mat-template-edit-btn" type="button" onclick="matEditTemplate()" style="padding:6px 10px;font-size:0.78rem;display:none;">Editar</button>
+              <button class="btn btn-ghost" id="mat-template-cancel-edit-btn" type="button" onclick="matCancelEditTemplate()" style="padding:6px 10px;font-size:0.78rem;display:none;">Cancelar</button>
             </div>
           </div>
           <div class="table-wrap" style="margin-top:10px;">
@@ -3620,7 +3622,8 @@
             </table>
           </div>
           <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn btn-primary" type="button" onclick="matCreateTemplateLocked()" style="justify-content:center;">Guardar lista (bloqueada)</button>
+            <button class="btn btn-primary" id="mat-template-save-btn" type="button" onclick="matCreateTemplateLocked()" style="justify-content:center;">Guardar lista (bloqueada)</button>
+            <button class="btn btn-ghost" id="mat-template-cancel-btn" type="button" onclick="matCancelEditTemplate()" style="justify-content:center;display:none;">Cancelar</button>
           </div>
           <div id="mat-template-create-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
         </div>
@@ -8420,6 +8423,7 @@ let _matAlumnos = [];
 let _matReceipts = new Map();
 let _matSelected = new Set();
 let _matDraftItems = [];
+let _matEditingExisting = false;
 let _matReceipt = null;
 let _matReceiptItems = new Map();
 let _matHandoffDraft = [];
@@ -8451,6 +8455,30 @@ function matOnUnitChange() {
 function matClearDraft() {
   _matDraftItems = [];
   matRenderDraft();
+}
+
+function matEditTemplate() {
+  if(!_isAdminDirector()) return;
+  if(!_matTemplate) return;
+  _matEditingExisting = true;
+  const inp = document.getElementById('mat-template-input-name');
+  if(inp) inp.value = String(_matTemplate.nombre || '').trim();
+  _matDraftItems = (_matItems || []).map(it => ({
+    categoria: String(it.categoria || 'Materiales'),
+    nombreItem: String(it.nombreItem || ''),
+    nombreKey: matNormKey(it.nombreItem || ''),
+    unidad: String(it.unidad || 'UND'),
+    unidadOtro: String(it.unidadOtro || ''),
+    cantidadRequerida: Number(it.cantidadRequerida || 1),
+  }));
+  matRenderTemplate();
+  matRenderDraft();
+}
+
+function matCancelEditTemplate() {
+  _matEditingExisting = false;
+  _matDraftItems = [];
+  matRenderTemplate();
 }
 
 function matAddDraftItem() {
@@ -8496,6 +8524,47 @@ async function matCreateTemplateLocked() {
   if(!_matDraftItems.length) { toast('Agrega al menos 1 material','warning'); return; }
   try {
     if(status) status.textContent = 'Guardando lista...';
+    if(_matEditingExisting && _isAdminDirector() && _matTemplate?.id) {
+      const tplId = _matTemplate.id;
+      const { error: updErr } = await _sb
+        .from('material_templates')
+        .update({ nombre: name })
+        .eq('colegio_id', COLEGIO_ID)
+        .eq('id', tplId);
+      if(updErr) throw new Error(updErr.message);
+
+      const { error: delErr } = await _sb
+        .from('material_template_items')
+        .delete()
+        .eq('colegio_id', COLEGIO_ID)
+        .eq('template_id', tplId);
+      if(delErr) throw new Error(delErr.message);
+
+      const rows = _matDraftItems.map(it => ({
+        colegio_id: COLEGIO_ID,
+        template_id: tplId,
+        categoria: String(it.categoria || 'Materiales'),
+        nombre_item: String(it.nombreItem || '').trim(),
+        nombre_key: String(it.nombreKey || matNormKey(it.nombreItem || '')),
+        unidad: String(it.unidad || 'UND'),
+        unidad_otro: String(it.unidad === 'OTROS' ? (it.unidadOtro || '') : ''),
+        cantidad_requerida: Number(it.cantidadRequerida || 1),
+      }));
+
+      const { error: insErr } = await _sb
+        .from('material_template_items')
+        .insert(rows);
+      if(insErr) throw new Error(insErr.message);
+
+      _matEditingExisting = false;
+      _matDraftItems = [];
+      if(status) status.textContent = '✅ Lista actualizada';
+      toast('✅ Lista base actualizada','success');
+      await matLoadTemplate();
+      await matLoadReceiptsIndex();
+      matRenderStudentList();
+      return;
+    }
     const tplRef = await db.collection('material_templates').add({
       anio: String(COLEGIO_ANIO||''),
       grado: _matScope.grado,
@@ -8542,17 +8611,29 @@ function matClearHandoff() {
 function matRenderTemplate() {
   const view = document.getElementById('mat-template-view');
   const create = document.getElementById('mat-template-create');
-  if(!_matTemplate) {
+  const btnEdit = document.getElementById('mat-template-edit-btn');
+  const btnCancelTop = document.getElementById('mat-template-cancel-edit-btn');
+  const btnSave = document.getElementById('mat-template-save-btn');
+  const btnCancel = document.getElementById('mat-template-cancel-btn');
+
+  if(!_matTemplate || _matEditingExisting) {
     if(view) view.style.display = 'none';
     if(create) create.style.display = matCanAccess() ? 'block' : 'none';
     const defName = `Útiles ${_matScope.grado||''} ${_matScope.seccion||''} ${String(COLEGIO_ANIO||'')}`.trim();
     const inp = document.getElementById('mat-template-input-name');
     if(inp && !inp.value) inp.value = defName;
+    if(btnEdit) btnEdit.style.display = 'none';
+    if(btnCancelTop) btnCancelTop.style.display = 'none';
+    if(btnSave) btnSave.textContent = _matEditingExisting ? 'Guardar cambios' : 'Guardar lista (bloqueada)';
+    if(btnCancel) btnCancel.style.display = _matEditingExisting ? '' : 'none';
     matRenderDraft();
     return;
   }
   if(create) create.style.display = 'none';
   if(view) view.style.display = 'block';
+  if(btnEdit) btnEdit.style.display = _isAdminDirector() ? '' : 'none';
+  if(btnCancelTop) btnCancelTop.style.display = 'none';
+  if(btnCancel) btnCancel.style.display = 'none';
   const nm = document.getElementById('mat-template-name');
   if(nm) nm.textContent = `${_matTemplate.nombre || 'Lista base'} · ${_matScope.grado} ${_matScope.seccion} · ${_matTemplate.anio || ''}`;
   const tb = document.getElementById('mat-template-items');
