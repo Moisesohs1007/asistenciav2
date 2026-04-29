@@ -12,6 +12,7 @@ DECLARE
   v_uP_expr    TEXT := '';
   v_uT_expr    TEXT := '';
   v_uM_expr    TEXT := '';
+  v_uS_expr    TEXT := '';
   v_isT_expr   TEXT := '';
   v_sql TEXT := '';
 BEGIN
@@ -46,6 +47,10 @@ BEGIN
     '(((''x''||substr(md5('
     || quote_literal(v_colegio_id)
     || '||''|''||a.id||''|''||to_char(d::date,''YYYY-MM-DD'')||''|M''),1,16))::bit(64)::bigint & 9223372036854775807)::double precision / 9223372036854775807.0)';
+  v_uS_expr :=
+    '(((''x''||substr(md5('
+    || quote_literal(v_colegio_id)
+    || '||''|''||a.id||''|''||to_char(d::date,''YYYY-MM-DD'')||''|S''),1,16))::bit(64)::bigint & 9223372036854775807)::double precision / 9223372036854775807.0)';
   v_isT_expr := '(' || v_uT_expr || ' < ' || v_p_tardanza::TEXT || ')';
 
   IF COALESCE(v_hora_is_time, FALSE) THEN
@@ -101,6 +106,48 @@ BEGIN
       v_fecha_expr || ', ' ||
       v_hora_expr || ', ' ||
       'CASE WHEN ' || v_isT_expr || ' THEN ''Tardanza'' ELSE ''Puntual'' END, ' ||
+      'trim(coalesce(a.apellidos, '''') || '' '' || coalesce(a.nombres, '''')), ' ||
+      'coalesce(a.grado, ''''), ' ||
+      'coalesce(a.seccion, ''''), ' ||
+      'coalesce(a.turno, ''''), ' ||
+      quote_literal('seed@system') || ' ' ||
+    'FROM public.alumnos a ' ||
+    'CROSS JOIN generate_series(' || quote_literal(v_start) || '::date, ' || quote_literal(v_end) || '::date, interval ''1 day'') d ' ||
+    'WHERE a.colegio_id = ' || quote_literal(v_colegio_id) || ' ' ||
+      'AND extract(isodow from d) BETWEEN 1 AND 5 ' ||
+      'AND (' || v_uP_expr || ' < ' || v_p_present::TEXT || ')';
+
+  EXECUTE v_sql;
+
+  -- Generar SALIDA para los mismos días presentes (1 por alumno/día)
+  IF COALESCE(v_hora_is_time, FALSE) THEN
+    v_hora_expr := '('
+      || 'CASE '
+      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%TARDE%'' THEN (time ''18:00'' + (floor((' || v_uS_expr || ')*40)::int) * interval ''1 minute'') '
+      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%NOCHE%'' THEN (time ''22:00'' + (floor((' || v_uS_expr || ')*40)::int) * interval ''1 minute'') '
+      || 'ELSE (time ''13:00'' + (floor((' || v_uS_expr || ')*40)::int) * interval ''1 minute'') '
+      || 'END'
+      || ')::time';
+  ELSE
+    v_hora_expr := 'to_char(('
+      || 'CASE '
+      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%TARDE%'' THEN (time ''18:00'' + (floor((' || v_uS_expr || ')*40)::int) * interval ''1 minute'') '
+      || 'WHEN upper(coalesce(a.turno, '''')) LIKE ''%NOCHE%'' THEN (time ''22:00'' + (floor((' || v_uS_expr || ')*40)::int) * interval ''1 minute'') '
+      || 'ELSE (time ''13:00'' + (floor((' || v_uS_expr || ')*40)::int) * interval ''1 minute'') '
+      || 'END'
+      || ')::time, ''HH24:MI'')';
+  END IF;
+
+  v_sql :=
+    'INSERT INTO public.registros ' ||
+    '(colegio_id, alumno_id, tipo, fecha, hora, estado, nombre, grado, seccion, turno, registrado_por) ' ||
+    'SELECT ' ||
+      quote_literal(v_colegio_id) || ', ' ||
+      'a.id, ' ||
+      quote_literal('SALIDA') || ', ' ||
+      v_fecha_expr || ', ' ||
+      v_hora_expr || ', ' ||
+      quote_literal('Puntual') || ', ' ||
       'trim(coalesce(a.apellidos, '''') || '' '' || coalesce(a.nombres, '''')), ' ||
       'coalesce(a.grado, ''''), ' ||
       'coalesce(a.seccion, ''''), ' ||
