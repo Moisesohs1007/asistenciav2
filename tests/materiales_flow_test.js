@@ -6,56 +6,21 @@ function readUtf8(p) {
   return fs.readFileSync(p, 'utf8');
 }
 
-function testMaterialesNoAutoRefreshWhileEditing() {
+function testMaterialesNoAutoRefreshOnFocus() {
   let _matInited = true;
-  let _matEditingExisting = true;
-  let _matLastAutoRefresh = 0;
   let refreshCalls = 0;
 
   async function matRefreshAll() {
-    if (_matEditingExisting) return;
     refreshCalls++;
   }
 
-  async function initMateriales(now) {
-    if (_matInited) {
-      if (_matEditingExisting) return;
-      if (now - _matLastAutoRefresh < 1200) return;
-      _matLastAutoRefresh = now;
-      await matRefreshAll();
-      return;
-    }
+  async function initMateriales() {
+    if (_matInited) return;
+    await matRefreshAll();
   }
 
-  return initMateriales(10_000).then(() => {
-    assert.equal(refreshCalls, 0, 'No debe refrescar mientras se edita');
-    assert.equal(_matEditingExisting, true, 'No debe salir del modo edición');
-  });
-}
-
-function testMaterialesDebounce() {
-  let _matInited = true;
-  let _matEditingExisting = false;
-  let _matLastAutoRefresh = 10_000;
-  let refreshCalls = 0;
-
-  async function matRefreshAll() {
-    if (_matEditingExisting) return;
-    refreshCalls++;
-  }
-
-  async function initMateriales(now) {
-    if (_matInited) {
-      if (_matEditingExisting) return;
-      if (now - _matLastAutoRefresh < 1200) return;
-      _matLastAutoRefresh = now;
-      await matRefreshAll();
-      return;
-    }
-  }
-
-  return initMateriales(10_500).then(() => {
-    assert.equal(refreshCalls, 0, 'Debounce debe evitar refrescos seguidos');
+  return initMateriales().then(() => {
+    assert.equal(refreshCalls, 0, 'No debe refrescar en focusin si ya inicializó');
   });
 }
 
@@ -65,16 +30,20 @@ function testCodeGuardsPresent() {
   const schemaSql = readUtf8(path.join(root, 'supabase', 'materiales_schema.sql'));
 
   assert.ok(
-    indexHtml.includes('let _matLastAutoRefresh'),
-    'Debe existir _matLastAutoRefresh para evitar el bucle de edición'
-  );
-  assert.ok(
-    indexHtml.includes('if(_matEditingExisting) return;'),
-    'initMateriales debe cortar si está editando'
+    indexHtml.includes('if(_matInited) return;'),
+    'initMateriales debe ser idempotente (sin auto-refresh en focusin)'
   );
   assert.ok(
     indexHtml.includes('if(_matEditingExisting) { matRenderTemplate(); return; }'),
     'matLoadTemplate no debe cancelar edición'
+  );
+  assert.ok(
+    indexHtml.includes('let _matReceiptLoading'),
+    'Debe existir _matReceiptLoading para evitar guardar antes que cargue la recepción'
+  );
+  assert.ok(
+    indexHtml.includes('if(_matReceiptLoading)'),
+    'matSaveReceiptAll debe bloquear guardado mientras carga la recepción'
   );
 
   const uniqNames = [
@@ -93,8 +62,7 @@ function testCodeGuardsPresent() {
 }
 
 async function main() {
-  await testMaterialesNoAutoRefreshWhileEditing();
-  await testMaterialesDebounce();
+  await testMaterialesNoAutoRefreshOnFocus();
   testCodeGuardsPresent();
   console.log('OK materiales_flow_test');
 }
@@ -103,4 +71,3 @@ main().catch((e) => {
   console.error(e);
   process.exit(1);
 });
-

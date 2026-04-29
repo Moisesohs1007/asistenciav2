@@ -3669,7 +3669,7 @@
         </div>
         <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
           <div style="color:var(--muted);font-size:0.85rem;" id="mat-receipt-status">—</div>
-          <button class="btn btn-primary" type="button" onclick="matSaveReceiptAll()" style="justify-content:center;">Guardar</button>
+          <button class="btn btn-primary" id="mat-receipt-save-btn" type="button" onclick="matSaveReceiptAll()" style="justify-content:center;">Guardar</button>
         </div>
       </div>
     </div>
@@ -8424,7 +8424,7 @@ let _matReceipts = new Map();
 let _matSelected = new Set();
 let _matDraftItems = [];
 let _matEditingExisting = false;
-let _matLastAutoRefresh = 0;
+let _matReceiptLoading = false;
 let _matReceipt = null;
 let _matReceiptItems = new Map();
 let _matHandoffDraft = [];
@@ -8715,7 +8715,9 @@ async function matLoadAlumnos() {
     .sort((a,b)=>String(a.apellidos||'').localeCompare(String(b.apellidos||'')) || String(a.nombres||'').localeCompare(String(b.nombres||'')));
   const sel = document.getElementById('mat-student');
   if(sel) {
+    const prev = String(sel.value || '');
     sel.innerHTML = `<option value="" disabled selected>-- Seleccionar --</option>` + _matAlumnos.map(a => `<option value="${a.id}">${_escHtml((a.apellidos||'') + ' ' + (a.nombres||''))}</option>`).join('');
+    if(prev) sel.value = prev;
   }
 }
 
@@ -8805,17 +8807,24 @@ async function matEnsureReceipt(alumno) {
 
 async function matOnStudentChange() {
   const id = String(document.getElementById('mat-student')?.value || '');
+  const btnSave = document.getElementById('mat-receipt-save-btn');
+  _matReceiptLoading = false;
+  if(btnSave) btnSave.disabled = true;
   _matReceipt = null;
   _matReceiptItems = new Map();
   const tb = document.getElementById('mat-receipt-items');
   if(tb) tb.innerHTML = `<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:14px;">Selecciona un estudiante</td></tr>`;
   const phoneWrap = document.getElementById('mat-student-phone');
   if(phoneWrap) phoneWrap.style.display = 'none';
-  if(!id) return;
+  if(!id) { if(btnSave) btnSave.disabled = true; return; }
   const alumno = _matAlumnos.find(a => String(a.id) === id);
-  if(!alumno) return;
+  if(!alumno) { if(btnSave) btnSave.disabled = true; return; }
   if(!_matTemplate) { toast('Primero crea la lista base','warning'); return; }
   try {
+    _matReceiptLoading = true;
+    if(btnSave) btnSave.disabled = true;
+    const st = document.getElementById('mat-receipt-status');
+    if(st) st.textContent = 'Cargando...';
     const rid = await matEnsureReceipt(alumno);
     _matReceipt = { id: rid, alumnoId: alumno.id };
     const { data, error } = await _sb
@@ -8828,6 +8837,9 @@ async function matOnStudentChange() {
     matRenderReceipt(alumno);
   } catch(e) {
     toast('Error cargando recepción: ' + e.message, 'error');
+  } finally {
+    _matReceiptLoading = false;
+    if(btnSave) btnSave.disabled = !_matReceipt;
   }
 }
 
@@ -8921,6 +8933,7 @@ async function matSavePhones() {
 }
 
 async function matSaveReceiptAll() {
+  if(_matReceiptLoading) { toast('Espera que cargue la recepción del estudiante','warning'); return; }
   if(!_matTemplate || !_matReceipt) { toast('Selecciona un estudiante','warning'); return; }
   try {
     const rows = _matItems.map(it => {
@@ -9555,17 +9568,8 @@ async function matRefreshAll() {
 }
 
 async function initMateriales() {
-  const now = Date.now();
-  if(_matInited) {
-    if(_matEditingExisting) return;
-    if(now - _matLastAutoRefresh < 1200) return;
-    _matLastAutoRefresh = now;
-    await matRefreshAll();
-    return;
-  }
-
+  if(_matInited) return;
   _matInited = true;
-  _matLastAutoRefresh = now;
   await cargarTutorActual();
   if(_isAdminDirector()) await matLoadTutors();
   if(_isAdminDirector()) {
