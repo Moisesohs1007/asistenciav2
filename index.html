@@ -8424,6 +8424,7 @@ let _matReceipts = new Map();
 let _matSelected = new Set();
 let _matDraftItems = [];
 let _matEditingExisting = false;
+let _matLastAutoRefresh = 0;
 let _matReceipt = null;
 let _matReceiptItems = new Map();
 let _matHandoffDraft = [];
@@ -8661,7 +8662,7 @@ function matRenderTemplate() {
 async function matLoadTemplate() {
   _matTemplate = null;
   _matItems = [];
-  _matEditingExisting = false;
+  if(_matEditingExisting) { matRenderTemplate(); return; }
   _matDraftItems = [];
   if(!_matScope.grado || !_matScope.seccion) { matRenderTemplate(); return; }
   const anioSel = String(COLEGIO_ANIO||'').trim();
@@ -9517,6 +9518,11 @@ async function matRefreshAll() {
     const who = _isAdminDirector() ? (_matScope.tutorNombre ? `Tutor: ${_matScope.tutorNombre}` : 'Admin') : 'Tutor';
     label.textContent = `${who} · ${_matScope.grado||'—'} ${_matScope.seccion||''}`;
   }
+  if(_matEditingExisting) {
+    matRenderTemplate();
+    matRenderDraft();
+    return;
+  }
   try {
     await matLoadAlumnos();
     matRenderStudentList();
@@ -9544,22 +9550,30 @@ async function matRefreshAll() {
 }
 
 async function initMateriales() {
-  if(!_matInited) {
-    _matInited = true;
-    await cargarTutorActual();
-    if(_isAdminDirector()) await matLoadTutors();
-    if(_isAdminDirector()) {
-      const norm = (v) => String(v ?? '').trim().replace(/\s+/g,' ');
-      const sel = document.getElementById('mat-admin-tutor');
-      const first = _matTutors[0];
-      if(first && sel) { sel.value = first.id; _matScope = { tutorId:first.id, tutorNombre:first.nombre, grado:norm(first.tutorGrado), seccion:norm(first.tutorSeccion).toUpperCase() }; }
-      else _matScope = { tutorId:'', tutorNombre:'', grado:'', seccion:'' };
-    } else {
-      _matScope = { tutorId: currentUser?.uid || '', tutorNombre: currentTutorInfo.nombre || '', grado: currentTutorInfo.tutorGrado || '', seccion: String(currentTutorInfo.tutorSeccion || '').toUpperCase() };
-    }
-    _matEditingExisting = false;
-    _matDraftItems = [];
+  const now = Date.now();
+  if(_matInited) {
+    if(_matEditingExisting) return;
+    if(now - _matLastAutoRefresh < 1200) return;
+    _matLastAutoRefresh = now;
+    await matRefreshAll();
+    return;
   }
+
+  _matInited = true;
+  _matLastAutoRefresh = now;
+  await cargarTutorActual();
+  if(_isAdminDirector()) await matLoadTutors();
+  if(_isAdminDirector()) {
+    const norm = (v) => String(v ?? '').trim().replace(/\s+/g,' ');
+    const sel = document.getElementById('mat-admin-tutor');
+    const first = _matTutors[0];
+    if(first && sel) { sel.value = first.id; _matScope = { tutorId:first.id, tutorNombre:first.nombre, grado:norm(first.tutorGrado), seccion:norm(first.tutorSeccion).toUpperCase() }; }
+    else _matScope = { tutorId:'', tutorNombre:'', grado:'', seccion:'' };
+  } else {
+    _matScope = { tutorId: currentUser?.uid || '', tutorNombre: currentTutorInfo.nombre || '', grado: currentTutorInfo.tutorGrado || '', seccion: String(currentTutorInfo.tutorSeccion || '').toUpperCase() };
+  }
+  _matEditingExisting = false;
+  _matDraftItems = [];
   await matRefreshAll();
 }
 
