@@ -8592,6 +8592,7 @@ async function matCreateTemplateLocked() {
       });
     });
     await batch.commit();
+    _matEditingExisting = false;
     _matDraftItems = [];
     if(status) status.textContent = '✅ Lista guardada';
     toast('✅ Lista base guardada (bloqueada)','success');
@@ -8660,17 +8661,35 @@ function matRenderTemplate() {
 async function matLoadTemplate() {
   _matTemplate = null;
   _matItems = [];
+  _matEditingExisting = false;
+  _matDraftItems = [];
   if(!_matScope.grado || !_matScope.seccion) { matRenderTemplate(); return; }
-  const snap = await db.collection('material_templates')
-    .where('anio','==', String(COLEGIO_ANIO||''))
+  const anioSel = String(COLEGIO_ANIO||'').trim();
+  const qBase = db.collection('material_templates')
     .where('grado','==', _matScope.grado)
-    .where('seccion','==', _matScope.seccion)
-    .get();
+    .where('seccion','==', _matScope.seccion);
+
+  let snap = anioSel ? await qBase.where('anio','==', anioSel).get() : await qBase.get();
+  if(snap.empty && anioSel) snap = await qBase.get();
+
   if(!snap.empty) {
-    const d = snap.docs[0].data();
-    _matTemplate = { id: snap.docs[0].id, ...d };
+    const candidates = snap.docs.map(doc => {
+      const d = doc.data() || {};
+      const createdAt = d.createdAt || d.created_at || d.createdAtTs || '';
+      const ts = Date.parse(String(createdAt)) || 0;
+      return { id: doc.id, d, ts };
+    });
+    let chosen = null;
+    if(anioSel) {
+      chosen = candidates.find(x => String(x.d.anio||'').trim() === anioSel) || null;
+    }
+    if(!chosen) chosen = candidates.sort((a,b)=>b.ts - a.ts)[0];
+
+    _matTemplate = { id: chosen.id, ...(chosen.d || {}) };
     const its = await db.collection('material_template_items').where('template_id','==', _matTemplate.id).get();
-    _matItems = its.docs.map(x => ({ id: x.id, ...x.data() })).sort((a,b)=>String(a.categoria||'').localeCompare(String(b.categoria||'')) || String(a.nombreItem||'').localeCompare(String(b.nombreItem||'')));
+    _matItems = its.docs
+      .map(x => ({ id: x.id, ...x.data() }))
+      .sort((a,b)=>String(a.categoria||'').localeCompare(String(b.categoria||'')) || String(a.nombreItem||'').localeCompare(String(b.nombreItem||'')));
   }
   matRenderTemplate();
   try {
@@ -9462,6 +9481,8 @@ function matOnAdminTutorChange() {
   const g = String(t.tutorGrado || '').trim().replace(/\s+/g,' ');
   const s = String(t.tutorSeccion || '').trim().replace(/\s+/g,' ').toUpperCase();
   _matScope = { tutorId: t.id, tutorNombre: t.nombre, grado: g, seccion: s };
+  _matEditingExisting = false;
+  _matDraftItems = [];
   matRefreshAll();
 }
 
@@ -9536,6 +9557,8 @@ async function initMateriales() {
     } else {
       _matScope = { tutorId: currentUser?.uid || '', tutorNombre: currentTutorInfo.nombre || '', grado: currentTutorInfo.tutorGrado || '', seccion: String(currentTutorInfo.tutorSeccion || '').toUpperCase() };
     }
+    _matEditingExisting = false;
+    _matDraftItems = [];
   }
   await matRefreshAll();
 }
