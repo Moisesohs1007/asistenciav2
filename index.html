@@ -8563,6 +8563,10 @@ async function matCreateTemplateLocked() {
       await matLoadTemplate();
       await matLoadReceiptsIndex();
       matRenderStudentList();
+      try {
+        const sel = document.getElementById('mat-student');
+        if(sel && sel.value) await matOnStudentChange();
+      } catch(e) {}
       return;
     }
     const tplRef = await db.collection('material_templates').add({
@@ -8594,6 +8598,10 @@ async function matCreateTemplateLocked() {
     await matLoadTemplate();
     await matLoadReceiptsIndex();
     matRenderStudentList();
+    try {
+      const sel = document.getElementById('mat-student');
+      if(sel && sel.value) await matOnStudentChange();
+    } catch(e) {}
   } catch(e) {
     const msg = String(e?.message || e || '');
     if(status) status.textContent = '';
@@ -8665,6 +8673,10 @@ async function matLoadTemplate() {
     _matItems = its.docs.map(x => ({ id: x.id, ...x.data() })).sort((a,b)=>String(a.categoria||'').localeCompare(String(b.categoria||'')) || String(a.nombreItem||'').localeCompare(String(b.nombreItem||'')));
   }
   matRenderTemplate();
+  try {
+    const sel = document.getElementById('mat-student');
+    if(sel && sel.value) await matOnStudentChange();
+  } catch(e) {}
 }
 
 async function matLoadAlumnos() {
