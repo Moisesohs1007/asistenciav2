@@ -3212,6 +3212,9 @@
           <option value="director">🏫 Alumnos, Registro, Reportes, Incidentes, Usuarios</option>
           <option value="admin">⚙️ Acceso Total</option>
         </select>
+        <div id="u-rol-hint" style="font-size:0.75rem;color:var(--muted);margin-top:6px;">
+          Para configurar <b>es_tutor</b>, <b>tutor_grado</b>, <b>tutor_seccion</b>, <b>restringir</b> y <b>asignaciones</b>, selecciona el rol <b>Profesor</b>.
+        </div>
       </div>
       <div class="form-group">
         <label>Cargo</label>
@@ -3229,8 +3232,11 @@
         <input type="hidden" id="u-cargo">
       </div>
       <!-- Solo visible si rol = profesor -->
-      <div id="u-privilegios-group" style="display:none;">
+      <div id="u-privilegios-group" style="display:block;">
         <hr class="divider">
+        <div id="u-privilegios-note" style="font-size:0.78rem;color:var(--muted);margin:-4px 0 12px 0;display:none;">
+          Estos campos solo aplican al rol <b>Profesor</b>.
+        </div>
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
           <div>
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;">
@@ -3240,6 +3246,13 @@
             <div id="u-privilegios-resumen" style="font-size:0.75rem;color:var(--muted);margin-top:4px;padding-left:24px;"></div>
           </div>
           <button class="btn btn-ghost" id="btn-configurar-privilegios" onclick="abrirModalPrivilegios()" style="padding:6px 12px;font-size:0.8rem;" disabled>⚙ Configurar</button>
+        </div>
+        <div class="form-group" style="margin:12px 0 0 0;">
+          <label>Asignaciones (formato Excel)</label>
+          <textarea id="u-asignaciones-text" rows="2" placeholder="Ej: 3:A,B;4:todas" oninput="onUsuarioAsignacionesInput()" style="resize:none;"></textarea>
+          <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;">
+            Solo se usa si <b>Restringir</b> está activado (rol Profesor).
+          </div>
         </div>
         <div style="margin-top:14px;">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;">
@@ -14902,6 +14915,7 @@ async function openModalUsuario(uid, nombre, rol, email) {
 
   // Cargar checkboxes de privilegios
   await cargarCheckboxesPrivilegios(uid);
+  actualizarResumenPrivilegios();
   togglePrivilegios();
   toggleBtnConfigurar();
   const mUsr = document.getElementById('modal-usuario');
@@ -15517,7 +15531,18 @@ function toggleBtnConfigurar() {
 
 function togglePrivilegios() {
   const rol = document.getElementById('u-rol').value;
-  document.getElementById('u-privilegios-group').style.display = rol === 'profesor' ? 'block' : 'none';
+  const grp = document.getElementById('u-privilegios-group');
+  const note = document.getElementById('u-privilegios-note');
+  if(!grp) return;
+  const isProf = rol === 'profesor';
+  if(note) note.style.display = isProf ? 'none' : 'block';
+  grp.style.opacity = isProf ? '1' : '0.55';
+  grp.querySelectorAll('input,select,textarea,button').forEach(el => {
+    if(el.id === 'u-rol') return;
+    el.disabled = !isProf;
+  });
+  const btnCfg = document.getElementById('btn-configurar-privilegios');
+  if(btnCfg) btnCfg.disabled = !isProf || !document.getElementById('u-restringir').checked;
 }
 
 function actualizarResumenPrivilegios() {
@@ -15526,12 +15551,44 @@ function actualizarResumenPrivilegios() {
   const grados = Object.keys(tempAsignaciones);
   if(!grados.length) {
     resumen.textContent = 'Sin restricciones configuradas';
+    _setUsuarioAsignacionesText('');
     return;
   }
   resumen.textContent = grados.map(g => {
     const s = (tempAsignaciones[g]||[]);
     return g + (s.length ? ' ('+s.join(',')+')' : ' (todas)');
   }).join(' · ');
+  _setUsuarioAsignacionesText(_usuarioAsignacionesToText(tempAsignaciones));
+}
+
+function _usuarioAsignacionesToText(asig) {
+  const obj = asig || {};
+  const grados = Object.keys(obj).filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b)));
+  return grados.map(g => {
+    const ss = (obj[g] || []).map(x => String(x||'').trim()).filter(Boolean);
+    if(!ss.length) return `${g}:todas`;
+    return `${g}:${ss.join(',')}`;
+  }).join(';');
+}
+
+function _setUsuarioAsignacionesText(v) {
+  const el = document.getElementById('u-asignaciones-text');
+  if(!el) return;
+  const next = String(v || '');
+  if(el.value === next) return;
+  el.value = next;
+}
+
+function onUsuarioAsignacionesInput() {
+  const rol = document.getElementById('u-rol')?.value || '';
+  if(rol !== 'profesor') return;
+  const chk = document.getElementById('u-restringir');
+  if(chk && !chk.checked) return;
+  const el = document.getElementById('u-asignaciones-text');
+  if(!el) return;
+  const parsed = _parseAsignaciones(el.value);
+  tempAsignaciones = parsed || {};
+  actualizarResumenPrivilegios();
 }
 
 async function abrirModalPrivilegios() {
