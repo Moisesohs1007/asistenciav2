@@ -15,7 +15,7 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-const STAFF_ROLES = new Set(['admin', 'director', 'coordinador', 'profesor', 'portero']);
+const STAFF_ROLES = new Set(['admin', 'director', 'coordinador', 'profesor', 'auxiliar', 'portero']);
 
 function normalizeDays(days: unknown): string[] {
   if (!Array.isArray(days)) return [];

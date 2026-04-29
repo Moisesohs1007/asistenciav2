@@ -20,7 +20,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION is_staff()
 RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
-  SELECT auth_rol() IN ('admin','director','profesor','portero')
+  SELECT auth_rol() IN ('admin','director','coordinador','profesor','auxiliar','portero')
 $$;
 
 CREATE OR REPLACE FUNCTION is_admin()

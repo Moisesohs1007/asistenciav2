@@ -14,7 +14,7 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-const STAFF_ROLES = new Set(['admin', 'director', 'coordinador', 'profesor', 'portero']);
+const STAFF_ROLES = new Set(['admin', 'director', 'coordinador', 'profesor', 'auxiliar', 'portero']);
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -67,7 +67,7 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     const password = typeof body.password === 'string' ? body.password : '';
-    const rol = typeof body.rol === 'string' ? body.rol.trim() : '';
+    let rol = typeof body.rol === 'string' ? body.rol.trim() : '';
     const nombre = typeof body.nombre === 'string' ? body.nombre.trim() : '';
     const cargo = typeof body.cargo === 'string' ? body.cargo.trim() : '';
     const telefono = typeof body.telefono === 'string' ? body.telefono.trim() : '';
@@ -76,6 +76,10 @@ serve(async (req) => {
     const esTutor = !!body.esTutor;
     const tutorGrado = typeof body.tutorGrado === 'string' ? body.tutorGrado.trim() : null;
     const tutorSeccion = typeof body.tutorSeccion === 'string' ? body.tutorSeccion.trim() : null;
+    const incidentesDiaLectura = !!body.incidentesDiaLectura;
+
+    rol = rol.toLowerCase();
+    if (rol === 'portero') rol = 'auxiliar';
 
     if (!email || !password || !rol || !nombre) {
       return jsonResponse({ error: 'Faltan parámetros requeridos (email, password, rol, nombre)' }, 400);
@@ -112,6 +116,7 @@ serve(async (req) => {
       es_tutor: esTutor && rol === 'profesor',
       tutor_grado: esTutor && rol === 'profesor' ? tutorGrado : null,
       tutor_seccion: esTutor && rol === 'profesor' ? tutorSeccion : null,
+      incidentes_dia_lectura: incidentesDiaLectura,
     };
 
     const { error: upsertError } = await supabaseAdmin

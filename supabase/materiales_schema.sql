@@ -1,6 +1,6 @@
 CREATE OR REPLACE FUNCTION is_admin_or_director()
 RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
-  SELECT auth_rol() IN ('admin','director')
+  SELECT auth_rol() IN ('admin','director','coordinador')
 $$;
 
 CREATE OR REPLACE FUNCTION is_tutor()

@@ -98,7 +98,7 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-    } else if (!['admin', 'director', 'profesor', 'portero'].includes(String(rol || ''))) {
+    } else if (!['admin', 'director', 'coordinador', 'profesor', 'auxiliar', 'portero'].includes(String(rol || ''))) {
       return new Response(JSON.stringify({ error: 'No permitido' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

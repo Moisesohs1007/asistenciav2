@@ -906,9 +906,11 @@
   .modal-bg {
     position: fixed; inset:0;
     background: rgba(0,0,0,0.7);
-    z-index: 10005;
+    z-index: 100050;
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     backdrop-filter: blur(4px);
     display: none;
   }
@@ -921,8 +923,14 @@
     padding: 28px;
     width: 100%;
     max-width: 500px;
-    max-height: 90vh;
+    max-height: calc(100vh - 40px);
+    max-height: calc(100dvh - 40px);
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  @media (max-width: 520px) {
+    .modal-bg { padding: 12px; align-items: flex-start; }
+    .modal { padding: 18px; border-radius: 16px; max-height: calc(100dvh - 24px); }
   }
   .modal-title {
     font-family: var(--font-display);
@@ -2136,16 +2144,16 @@
       <span class="msb-arrow">›</span>
     </button>
     <div class="msb-sub" id="msb-sub-asistencia">
-      <button class="msb-subitem" onclick="msbPickSub(this,'scan','asistencia','📷 Escanear QR')">
+      <button class="msb-subitem" id="msb-sub-scan" onclick="msbPickSub(this,'scan','asistencia','📷 Escanear QR')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Escanear QR</span>
       </button>
-      <button class="msb-subitem" onclick="msbPickSub(this,'registro','asistencia','📋 Registro del día')">
+      <button class="msb-subitem" id="msb-sub-registro" onclick="msbPickSub(this,'registro','asistencia','📋 Registro del día')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Registro del día</span>
       </button>
-      <button class="msb-subitem" onclick="msbPickSub(this,'reportes','asistencia','📊 Reportes')">
+      <button class="msb-subitem" id="msb-sub-reportes" onclick="msbPickSub(this,'reportes','asistencia','📊 Reportes')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Reportes</span>
       </button>
-      <button class="msb-subitem" onclick="msbPickSub(this,'alertas','asistencia','🚨 Alertas automáticas')">
+      <button class="msb-subitem" id="msb-sub-alertas" onclick="msbPickSub(this,'alertas','asistencia','🚨 Alertas automáticas')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Alertas automáticas</span>
       </button>
     </div>
@@ -2164,10 +2172,10 @@
       <span class="msb-arrow">›</span>
     </button>
     <div class="msb-sub" id="msb-sub-aula">
-      <button class="msb-subitem" onclick="msbPickSub(this,'alumnos','aula','👥 Alumnos')">
+      <button class="msb-subitem" id="msb-sub-alumnos" onclick="msbPickSub(this,'alumnos','aula','👥 Alumnos')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Alumnos</span>
       </button>
-      <button class="msb-subitem" onclick="msbPickSub(this,'incidentes','aula','🚨 Incidentes')">
+      <button class="msb-subitem" id="msb-sub-incidentes" onclick="msbPickSub(this,'incidentes','aula','🚨 Incidentes')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Incidentes</span>
       </button>
       <button class="msb-subitem" id="msb-sub-materiales" style="display:none;" onclick="msbPickSub(this,'materiales','aula','📦 Materiales')">
@@ -2186,7 +2194,7 @@
       <span class="msb-arrow">›</span>
     </button>
     <div class="msb-sub" id="msb-sub-comunicacion">
-      <button class="msb-subitem" onclick="msbPickSub(this,'comunicado','comunicacion','📢 Comunicado')">
+      <button class="msb-subitem" id="msb-sub-comunicado" onclick="msbPickSub(this,'comunicado','comunicacion','📢 Comunicado')">
         <div class="msb-dot msb-dot-ico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
@@ -2196,7 +2204,7 @@
           <span></span>
         </div><span class="msb-sublabel">Comunicado</span>
       </button>
-      <button class="msb-subitem" onclick="msbPickSub(this,'agenda','comunicacion','📅 Agenda')">
+      <button class="msb-subitem" id="msb-sub-agenda" onclick="msbPickSub(this,'agenda','comunicacion','📅 Agenda')">
         <div class="msb-dot msb-dot-ico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -2223,7 +2231,7 @@
           <span></span>
         </div><span class="msb-sublabel">Generadores IA</span>
       </button>
-      <button class="msb-subitem" onclick="msbPickSub(this,'ia-horarios','comunicacion','🧩 Horarios')">
+      <button class="msb-subitem" id="msb-sub-ia-horarios" onclick="msbPickSub(this,'ia-horarios','comunicacion','🧩 Horarios')">
         <div class="msb-dot msb-dot-ico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 3h18v18H3z"/>
@@ -2234,7 +2242,7 @@
           <span></span>
         </div><span class="msb-sublabel">Horarios</span>
       </button>
-      <button class="msb-subitem" onclick="msbPickSub(this,'horarios-grado','comunicacion','🗂️ Horarios por grado')">
+      <button class="msb-subitem" id="msb-sub-horarios-grado" onclick="msbPickSub(this,'horarios-grado','comunicacion','🗂️ Horarios por grado')">
         <div class="msb-dot msb-dot-ico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 7h6l2 2h10v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/>
@@ -2244,7 +2252,7 @@
           <span></span>
         </div><span class="msb-sublabel">Horarios por grado</span>
       </button>
-      <button class="msb-subitem" onclick="msbPickSub(this,'rol-examenes','comunicacion','📝 Rol de Exámenes')">
+      <button class="msb-subitem" id="msb-sub-rol-examenes" onclick="msbPickSub(this,'rol-examenes','comunicacion','📝 Rol de Exámenes')">
         <div class="msb-dot msb-dot-ico">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 11h6"/>
@@ -2268,7 +2276,7 @@
       <span class="msb-arrow">›</span>
     </button>
     <div class="msb-sub" id="msb-sub-config">
-      <button class="msb-subitem" onclick="msbPickSub(this,'config','config','⚙️ General')">
+      <button class="msb-subitem" id="msb-sub-config-general" onclick="msbPickSub(this,'config','config','⚙️ General')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">General</span>
       </button>
       <button class="msb-subitem" id="msb-sub-usuarios" onclick="msbPickSub(this,'usuarios','config','👤 Usuarios')">
@@ -2536,10 +2544,10 @@
       Asistencia
       <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       <div class="nav-dropdown" id="drop-asistencia">
-        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('scan');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Escanear QR</div>
-        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('registro');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Registro del día</div>
-        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('reportes');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Reportes</div>
-        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('alertas');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Alertas automáticas</div>
+        <div class="nav-drop-item" id="nav-scan" onclick="event.stopPropagation();showSection('scan');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Escanear QR</div>
+        <div class="nav-drop-item" id="nav-registro" onclick="event.stopPropagation();showSection('registro');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Registro del día</div>
+        <div class="nav-drop-item" id="nav-reportes" onclick="event.stopPropagation();showSection('reportes');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Reportes</div>
+        <div class="nav-drop-item" id="nav-alertas" onclick="event.stopPropagation();showSection('alertas');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Alertas automáticas</div>
       </div>
     </button>
     <!-- Aula -->
@@ -2550,7 +2558,7 @@
       <div class="nav-dropdown" id="drop-aula">
         <div class="nav-drop-item" id="tab-alumnos" onclick="event.stopPropagation();showSection('alumnos');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Alumnos</div>
         <div class="nav-drop-sep"></div>
-        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('incidentes');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Incidentes</div>
+        <div class="nav-drop-item" id="nav-incidentes" onclick="event.stopPropagation();showSection('incidentes');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Incidentes</div>
         <div class="nav-drop-item" id="nav-materiales" style="display:none;" onclick="event.stopPropagation();showSection('materiales');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73z"/><path d="M3.3 7.3 12 12l8.7-4.7"/><path d="M12 22V12"/></svg>📦 Materiales</div>
       </div>
     </button>
@@ -2560,14 +2568,14 @@
       Comunicación
       <svg class="drop-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       <div class="nav-dropdown" id="drop-comunicacion">
-        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('comunicado');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>📢 Comunicado</div>
-        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('agenda');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>📅 Agenda</div>
+        <div class="nav-drop-item" id="nav-comunicado" onclick="event.stopPropagation();showSection('comunicado');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>📢 Comunicado</div>
+        <div class="nav-drop-item" id="nav-agenda" onclick="event.stopPropagation();showSection('agenda');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>📅 Agenda</div>
         <div class="nav-drop-sep"></div>
         <div class="nav-drop-item" style="display:none;" onclick="event.stopPropagation();showSection('generadores-ia');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M4.93 19.07l1.41-1.41"/><path d="M17.66 6.34l1.41-1.41"/><path d="M8 12a4 4 0 0 1 8 0v3H8v-3z"/><path d="M9 15v2"/><path d="M15 15v2"/></svg>🤖 Generadores IA</div>
-        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('ia-horarios');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h7"/></svg>🧩 Horarios</div>
-        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('horarios-grado');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/><path d="M7 13h10"/><path d="M7 17h7"/></svg>🗂️ Horarios por grado</div>
+        <div class="nav-drop-item" id="nav-ia-horarios" onclick="event.stopPropagation();showSection('ia-horarios');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M7 7h10"/><path d="M7 12h10"/><path d="M7 17h7"/></svg>🧩 Horarios</div>
+        <div class="nav-drop-item" id="nav-horarios-grado" onclick="event.stopPropagation();showSection('horarios-grado');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h6l2 2h10v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/><path d="M7 13h10"/><path d="M7 17h7"/></svg>🗂️ Horarios por grado</div>
         <div class="nav-drop-sep"></div>
-        <div class="nav-drop-item" onclick="event.stopPropagation();showSection('rol-examenes');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11h6"/><path d="M9 15h6"/><path d="M7 3h10a2 2 0 0 1 2 2v16l-3-2-3 2-3-2-3 2V5a2 2 0 0 1 2-2z"/></svg>📝 Rol de Exámenes</div>
+        <div class="nav-drop-item" id="nav-rol-examenes" onclick="event.stopPropagation();showSection('rol-examenes');setActiveTab('tab-comunicacion');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11h6"/><path d="M9 15h6"/><path d="M7 3h10a2 2 0 0 1 2 2v16l-3-2-3 2-3-2-3 2V5a2 2 0 0 1 2-2z"/></svg>📝 Rol de Exámenes</div>
       </div>
     </button>
     <!-- Configuración -->
@@ -3206,10 +3214,10 @@
       <div class="form-group">
         <label>Rol / Permisos</label>
         <select id="u-rol" onchange="togglePrivilegios()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:var(--font-body);font-size:0.88rem;width:100%;display:block;-webkit-appearance:menulist;appearance:menulist;cursor:pointer;">
-          <option value="portero">🚪 Solo Escanear</option>
-          <option value="profesor">📋 Alumnos, Registro</option>
-          <option value="coordinador">📊 Alumnos, Registro, Reportes, Incidentes</option>
-          <option value="director">🏫 Alumnos, Registro, Reportes, Incidentes, Usuarios</option>
+          <option value="auxiliar">🧑‍🏫 Auxiliar (Escáner / Incidentes)</option>
+          <option value="profesor">👨‍🏫 Profesor</option>
+          <option value="coordinador">🧩 Coordinador</option>
+          <option value="director">🏫 Director</option>
           <option value="admin">⚙️ Acceso Total</option>
         </select>
         <div id="u-rol-hint" style="font-size:0.75rem;color:var(--muted);margin-top:6px;">
@@ -3230,6 +3238,17 @@
         </select>
         <input type="text" id="u-cargo-custom" placeholder="Escribe el cargo..." style="display:none;margin-top:6px;">
         <input type="hidden" id="u-cargo">
+      </div>
+      <div id="u-permisos-extra" style="display:none;">
+        <hr class="divider">
+        <div style="font-size:0.9rem;font-weight:800;color:var(--text);margin-bottom:8px;">Permisos especiales</div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;">
+          <input type="checkbox" id="u-incidentes-dia-lectura" style="accent-color:var(--accent);width:16px;height:16px;">
+          Puede ver incidentes del día (solo lectura)
+        </label>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;line-height:1.35;">
+          Permite ver los incidentes del día sin acceso al historial completo. Solo lo asigna Admin/Director.
+        </div>
       </div>
       <!-- Solo visible si rol = profesor -->
       <div id="u-privilegios-group" style="display:block;">
@@ -3547,7 +3566,7 @@
     </div>
 
     <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-      <div class="card" style="padding:14px 18px;">
+      <div class="card" id="mat-admin-card" style="padding:14px 18px;">
         <div class="card-title"><span class="dot"></span>Lista base (grado/sección)</div>
         <div class="page-sub" style="margin-top:8px;">Se crea una sola vez por año y queda bloqueada.</div>
 
@@ -5046,6 +5065,50 @@ let currentRol = null; // admin | director | profesor | portero
 let _repContextoPDF = {}; // contexto guardado para exportar PDF de reportes
 let _repAnioCompletoActivo = false;
 
+let currentPerms = { incidentesDiaLectura: false };
+
+function _normRol(r) {
+  const v = String(r || '').trim().toLowerCase();
+  if(v === 'portero') return 'auxiliar';
+  return v;
+}
+function _rolLabel(r) {
+  const v = _normRol(r);
+  const map = { admin:'ADMIN', director:'DIRECTOR', coordinador:'COORDINADOR', profesor:'PROFESOR', auxiliar:'AUXILIAR' };
+  return map[v] || String(v || '').toUpperCase();
+}
+function _isTutorUser() {
+  return !!(currentTutorInfo && currentTutorInfo.esTutor);
+}
+function _isAdminDirector() {
+  const r = _normRol(currentRol);
+  return r === 'admin' || r === 'director';
+}
+function _isCoord() { return _normRol(currentRol) === 'coordinador'; }
+function _isAdminDirectorOrCoord() { return _isAdminDirector() || _isCoord(); }
+
+function canAccessSection(secId) {
+  const r = _normRol(currentRol);
+  const id = String(secId || '');
+  const isTutor = _isTutorUser();
+
+  if(id === 'inicio') return true;
+  if(id === 'scan') return (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'profesor' || r === 'auxiliar');
+  if(id === 'registro') return (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'profesor');
+  if(id === 'alumnos') return (r === 'admin' || r === 'coordinador' || r === 'profesor');
+  if(id === 'reportes') return (r === 'admin' || r === 'director' || r === 'coordinador' || (r === 'profesor' && isTutor));
+  if(id === 'alertas') return (r === 'admin' || r === 'director' || r === 'coordinador');
+  if(id === 'incidentes') return (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'profesor' || r === 'auxiliar');
+  if(id === 'materiales') return (_isAdminDirectorOrCoord() || (r === 'profesor' && isTutor));
+  if(id === 'comunicado') return (r === 'admin' || r === 'director' || r === 'coordinador' || (r === 'profesor' && isTutor));
+  if(id === 'agenda') return (r === 'admin' || r === 'director' || r === 'coordinador');
+  if(id === 'rol-examenes') return (_isAdminDirectorOrCoord() || (r === 'profesor' && isTutor));
+  if(id === 'ia-horarios' || id === 'horarios-grado') return (r === 'admin' || r === 'director' || r === 'coordinador');
+  if(id === 'usuarios' || id === 'config') return _isAdminDirector();
+  if(id === 'generadores-ia') return false;
+  return false;
+}
+
 // ── Auto-logout por inactividad (desactivado) ────────────────
 const ENABLE_AUTO_LOGOUT = false;
 const INACTIVIDAD_MS = 20 * 60 * 1000; // (no se usa si ENABLE_AUTO_LOGOUT=false)
@@ -5507,9 +5570,11 @@ auth.onAuthStateChanged(async user => {
       document.getElementById('btn-login').disabled = false;
       return;
     }
+    const uData = doc.data() || {};
     currentUser = user;
-    currentRol = doc.data().rol;
-    const nombre = doc.data().nombre || user.email;
+    currentRol = _normRol(uData.rol);
+    currentPerms = { incidentesDiaLectura: !!uData.incidentesDiaLectura };
+    const nombre = uData.nombre || user.email;
 
     // Marcar sesión activa para evitar splash al refrescar
     try { sessionStorage.setItem('asmqr_haySession', '1'); } catch(e) {}
@@ -5523,7 +5588,7 @@ auth.onAuthStateChanged(async user => {
     if(bnav) bnav.style.display = '';
     resetInactTimer(); // Iniciar contador de inactividad
     document.getElementById('user-name-display').textContent = nombre;
-    document.getElementById('user-rol-badge').textContent = currentRol.toUpperCase();
+    document.getElementById('user-rol-badge').textContent = _rolLabel(currentRol);
     // Mostrar avatar con iniciales
     const partes = nombre.trim().split(' ');
     const iniciales = partes.length >= 2
@@ -5532,7 +5597,7 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('avatar-initials').textContent = iniciales;
     document.getElementById('avatar-initials-menu').textContent = iniciales;
     document.getElementById('menu-user-name').textContent = nombre;
-    document.getElementById('menu-user-rol').textContent = currentRol.toUpperCase();
+    document.getElementById('menu-user-rol').textContent = _rolLabel(currentRol);
     document.getElementById('avatar-btn').style.display = 'inline-flex';
     setTimeout(() => msbUpdateUser && msbUpdateUser(), 200);
 
@@ -5608,41 +5673,57 @@ auth.onAuthStateChanged(async user => {
 
 function aplicarPermisos(rol) {
   setTimeout(renderBottomNav, 100);
-  // Pestañas visibles según rol
-  const permisos = {
-    admin:    ['inicio','scan','alumnos','registro','reportes','alertas','incidentes','comunicacion','comunicado','agenda','usuarios','config'],
-    director: ['inicio','registro','reportes','alertas','incidentes','comunicacion','comunicado','agenda'],
-    profesor: ['inicio','alumnos','registro','incidentes','comunicacion','comunicado','agenda'],
-    portero:  ['inicio','scan'],
+  currentRol = _normRol(rol);
+
+  const ids = {
+    scan: ['nav-scan', 'tab-scan'],
+    registro: ['nav-registro', 'tab-registro'],
+    reportes: ['nav-reportes', 'tab-reportes'],
+    alertas: ['nav-alertas', 'tab-alertas'],
+    alumnos: ['tab-alumnos', 'tab-alumnos'],
+    incidentes: ['nav-incidentes', 'tab-incidentes'],
+    materiales: ['nav-materiales'],
+    comunicado: ['nav-comunicado'],
+    agenda: ['nav-agenda'],
+    'rol-examenes': ['nav-rol-examenes'],
+    'ia-horarios': ['nav-ia-horarios'],
+    'horarios-grado': ['nav-horarios-grado'],
+    usuarios: ['tab-usuarios'],
+    config: [],
   };
-  const tabs = permisos[rol] || ['scan'];
 
-  const _commSubs = ['comunicado','agenda','rol-examenes','ia-horarios','horarios-grado'];
-  const _aulaSubs = ['materiales'];
-  function _isAllowedSection(secId) {
-    if(!secId) return false;
-    if(tabs.includes(secId)) return true;
-    if(tabs.includes('comunicacion') && _commSubs.includes(secId)) return true;
-    if(_aulaSubs.includes(secId)) return matCanAccess();
-    return false;
-  }
-
-  // Mostrar/ocultar tabs
-  ['scan','alumnos','registro','reportes','alertas','incidentes','comunicacion','agenda','usuarios','config'].forEach(t => {
-    const el = document.getElementById('tab-'+t);
-    if(el) el.style.display = tabs.includes(t) ? '' : 'none';
+  Object.keys(ids).forEach(sec => {
+    const show = canAccessSection(sec);
+    (ids[sec] || []).forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.style.display = show ? '' : 'none';
+    });
   });
+
+  const hasAsistencia = ['scan','registro','reportes','alertas'].some(canAccessSection);
+  const hasAula = ['alumnos','incidentes','materiales'].some(canAccessSection);
+  const hasCom = ['comunicado','agenda','rol-examenes','ia-horarios','horarios-grado'].some(canAccessSection);
+  const hasCfg = ['config','usuarios'].some(canAccessSection);
+
+  const tabAs = document.getElementById('tab-asistencia');
+  if(tabAs) tabAs.style.display = hasAsistencia ? '' : 'none';
+  const tabAu = document.getElementById('tab-aula');
+  if(tabAu) tabAu.style.display = hasAula ? '' : 'none';
+  const tabCo = document.getElementById('tab-comunicacion');
+  if(tabCo) tabCo.style.display = hasCom ? '' : 'none';
+  const tabCfg = document.getElementById('tab-config');
+  if(tabCfg) tabCfg.style.display = hasCfg ? '' : 'none';
 
   // Restaurar última sección activa si existe y está permitida
   var lastSection = null;
   var hashSection = '';
   try { hashSection = String(window.location.hash || '').replace(/^#/, ''); } catch(e) { hashSection = ''; }
-  if(hashSection && _isAllowedSection(hashSection) && document.getElementById('sec-'+hashSection)) {
+  if(hashSection && canAccessSection(hashSection) && document.getElementById('sec-'+hashSection)) {
     lastSection = hashSection;
   } else {
     try { lastSection = sessionStorage.getItem('asmqr_lastSection') || localStorage.getItem('asmqr_lastSection'); } catch(e) {}
   }
-  if(lastSection && _isAllowedSection(lastSection) && document.getElementById('sec-'+lastSection)) {
+  if(lastSection && canAccessSection(lastSection) && document.getElementById('sec-'+lastSection)) {
     showSectionDirect(lastSection);
     try { if(window.history && window.history.replaceState) window.history.replaceState(null, '', '#' + lastSection); } catch(e) {}
     if(lastSection === 'inicio') cargarDashboardInicio();
@@ -6025,6 +6106,7 @@ document.addEventListener('click', function(e) {
 });
 
 function showSection(id) {
+  if(!canAccessSection(id)) { toast('Sin acceso a esta sección', 'warning'); return; }
   try { sessionStorage.setItem('asmqr_lastSection', id); } catch(e) {}
   try { localStorage.setItem('asmqr_lastSection', id); } catch(e) {}
   try { if(window.history && window.history.replaceState) window.history.replaceState(null, '', '#' + id); } catch(e) {}
@@ -8411,12 +8493,12 @@ async function cargarTutorActual() {
   matUpdateAccessUi();
 }
 
-function _isAdminDirector() {
-  return currentRol === 'admin' || currentRol === 'director';
+function _matIsAdminMode() {
+  return _isAdminDirectorOrCoord();
 }
 
 function matCanAccess() {
-  return _isAdminDirector() || !!currentTutorInfo.esTutor;
+  return _matIsAdminMode() || (_normRol(currentRol) === 'profesor' && !!currentTutorInfo.esTutor);
 }
 
 function matUpdateAccessUi() {
@@ -8472,7 +8554,7 @@ function matClearDraft() {
 }
 
 function matEditTemplate() {
-  if(!_isAdminDirector()) { toast('Solo Admin/Director puede editar la lista base','warning'); return; }
+  if(!_matIsAdminMode()) { toast('Solo Admin/Director/Coordinador puede editar la lista base','warning'); return; }
   if(!_matTemplate) { toast('No hay lista base para editar','warning'); return; }
   _matEditingExisting = true;
   const inp = document.getElementById('mat-template-input-name');
@@ -8538,7 +8620,7 @@ async function matCreateTemplateLocked() {
   if(!_matDraftItems.length) { toast('Agrega al menos 1 material','warning'); return; }
   try {
     if(status) status.textContent = 'Guardando lista...';
-    if(_matEditingExisting && _isAdminDirector() && _matTemplate?.id) {
+    if(_matEditingExisting && _matIsAdminMode() && _matTemplate?.id) {
       const tplId = _matTemplate.id;
       const { error: updErr } = await _sb
         .from('material_templates')
@@ -8659,7 +8741,7 @@ function matRenderTemplate() {
   }
   if(create) create.style.display = 'none';
   if(view) view.style.display = 'block';
-  if(btnEdit) btnEdit.style.display = _isAdminDirector() ? '' : 'none';
+  if(btnEdit) btnEdit.style.display = _matIsAdminMode() ? '' : 'none';
   if(btnCancelTop) btnCancelTop.style.display = 'none';
   if(btnCancel) btnCancel.style.display = 'none';
   const nm = document.getElementById('mat-template-name');
@@ -8810,7 +8892,7 @@ async function matEnsureReceipt(alumno) {
     alumnoId: alumno.id,
     grado: _matScope.grado,
     seccion: _matScope.seccion,
-    tutorUserId: _isAdminDirector() ? (_matScope.tutorId || currentUser?.uid) : (currentUser?.uid || ''),
+    tutorUserId: _matIsAdminMode() ? (_matScope.tutorId || currentUser?.uid) : (currentUser?.uid || ''),
     estado: 'incompleto',
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
   });
@@ -9309,7 +9391,7 @@ async function matShowRequest(reqId) {
 }
 
 async function matLoadAdminHandoffs() {
-  if(!_isAdminDirector()) return;
+  if(!_matIsAdminMode()) return;
   try {
     const { data, error } = await _sb
       .from('material_handoffs')
@@ -9357,7 +9439,7 @@ async function matViewHandoff(hid) {
 }
 
 async function matConfirmHandoff(hid) {
-  if(!_isAdminDirector()) return;
+  if(!_matIsAdminMode()) return;
   if(!confirm('¿Confirmar recepción? Esto actualizará el inventario.')) return;
   try {
     const { error } = await _sb.rpc('confirm_material_handoff', { p_handoff_id: hid });
@@ -9396,7 +9478,7 @@ async function matSendHandoffConfirmWhatsApp(hid) {
 }
 
 async function matLoadAdminRequests() {
-  if(!_isAdminDirector()) return;
+  if(!_matIsAdminMode()) return;
   try {
     const { data, error } = await _sb
       .from('material_requests')
@@ -9427,7 +9509,7 @@ async function matLoadAdminRequests() {
 }
 
 async function matApproveRequest(rid) {
-  if(!_isAdminDirector()) return;
+  if(!_matIsAdminMode()) return;
   if(!confirm('¿Aprobar solicitud y descontar del stock?')) return;
   try {
     const { error } = await _sb.rpc('approve_material_request', { p_request_id: rid });
@@ -9440,7 +9522,7 @@ async function matApproveRequest(rid) {
 }
 
 async function matLoadAdminInventory() {
-  if(!_isAdminDirector()) return;
+  if(!_matIsAdminMode()) return;
   try {
     const { data, error } = await _sb
       .from('inventory_tutor_stock')
@@ -9481,7 +9563,7 @@ async function matLoadAdminInventory() {
 
 async function matLoadTutors() {
   _matTutors = [];
-  if(!_isAdminDirector()) return;
+  if(!_matIsAdminMode()) return;
   try {
     const norm = (v) => String(v ?? '').trim().replace(/\s+/g,' ');
     const snap = await db.collection('usuarios').get();
@@ -9533,20 +9615,23 @@ async function matRefreshAll() {
   const adminTutorGroup = document.getElementById('mat-admin-tutor-group');
   const tutorWrap = document.getElementById('mat-handoff-tutor');
   const adminWrap = document.getElementById('mat-admin-panel');
+  const adminCard = document.getElementById('mat-admin-card');
   if(!matCanAccess()) {
     if(no) no.style.display = 'block';
     if(scopeCard) scopeCard.style.display = 'none';
     if(tutorWrap) tutorWrap.style.display = 'none';
     if(adminWrap) adminWrap.style.display = 'none';
+    if(adminCard) adminCard.style.display = 'none';
     return;
   }
   if(no) no.style.display = 'none';
   if(scopeCard) scopeCard.style.display = 'block';
-  if(adminTutorGroup) adminTutorGroup.style.display = _isAdminDirector() ? 'block' : 'none';
-  if(tutorWrap) tutorWrap.style.display = currentTutorInfo.esTutor && !_isAdminDirector() ? 'block' : (currentTutorInfo.esTutor && _matScope.tutorId === currentUser?.uid ? 'block' : (currentTutorInfo.esTutor && !_matScope.tutorId ? 'block' : 'none'));
-  if(adminWrap) adminWrap.style.display = _isAdminDirector() ? 'block' : 'none';
+  if(adminTutorGroup) adminTutorGroup.style.display = _matIsAdminMode() ? 'block' : 'none';
+  if(tutorWrap) tutorWrap.style.display = 'none';
+  if(adminWrap) adminWrap.style.display = _matIsAdminMode() ? 'block' : 'none';
+  if(adminCard) adminCard.style.display = _matIsAdminMode() ? '' : 'none';
   if(label) {
-    const who = _isAdminDirector() ? (_matScope.tutorNombre ? `Tutor: ${_matScope.tutorNombre}` : 'Admin') : 'Tutor';
+    const who = _matIsAdminMode() ? (_matScope.tutorNombre ? `Tutor: ${_matScope.tutorNombre}` : 'Administración') : 'Tutor';
     label.textContent = `${who} · ${_matScope.grado||'—'} ${_matScope.seccion||''}`;
   }
   if(_matEditingExisting) {
@@ -9565,8 +9650,7 @@ async function matRefreshAll() {
     await matLoadTemplate();
     await matLoadReceiptsIndex();
     matRenderStudentList();
-    await matLoadMyStockAndRequests();
-    if(_isAdminDirector()) await matLoadAdminHandoffs();
+    if(_matIsAdminMode()) await matLoadAdminHandoffs();
   } catch(e) {
     const msg = String(e?.message || e || '');
     if(_matIsSchemaMissingError(msg)) {
@@ -9584,8 +9668,8 @@ async function initMateriales() {
   if(_matInited) return;
   _matInited = true;
   await cargarTutorActual();
-  if(_isAdminDirector()) await matLoadTutors();
-  if(_isAdminDirector()) {
+  if(_matIsAdminMode()) await matLoadTutors();
+  if(_matIsAdminMode()) {
     const norm = (v) => String(v ?? '').trim().replace(/\s+/g,' ');
     const sel = document.getElementById('mat-admin-tutor');
     const first = _matTutors[0];
@@ -9610,7 +9694,14 @@ let _comMediaName = '';
 
 async function initComunicado() {
   if(!_comAlumnos) {
-    _comAlumnos = await DB.getAlumnos();
+    if(_normRol(currentRol) === 'profesor') {
+      const g = String(currentTutorInfo?.tutorGrado || '').trim();
+      const s = String(currentTutorInfo?.tutorSeccion || '').trim().toUpperCase();
+      if(g && s) _comAlumnos = await DB.getAlumnosScoped({ [g]: [s] });
+      else _comAlumnos = [];
+    } else {
+      _comAlumnos = await DB.getAlumnos();
+    }
   }
   if(!_comInit) {
     const cfg = await getConfig();
@@ -9622,6 +9713,17 @@ async function initComunicado() {
     document.getElementById('com-enviar-a').value = 'tel1';
     onComEnviarAChange();
     _comInit = true;
+  }
+  if(_normRol(currentRol) === 'profesor') {
+    const a0 = (_comAlumnos || [])[0] || null;
+    const nivelEl = document.getElementById('com-nivel');
+    const gradoEl = document.getElementById('com-grado');
+    const seccEl = document.getElementById('com-seccion');
+    const g = String(currentTutorInfo?.tutorGrado || '').trim();
+    const s = String(currentTutorInfo?.tutorSeccion || '').trim().toUpperCase();
+    if(nivelEl) { nivelEl.value = a0?.turno || ''; nivelEl.disabled = true; nivelEl.style.opacity = '0.55'; }
+    if(gradoEl) { gradoEl.innerHTML = g ? `<option value="${g}">${g}</option>` : '<option value="">—</option>'; gradoEl.value = g; gradoEl.disabled = true; gradoEl.style.opacity = '0.55'; }
+    if(seccEl) { seccEl.innerHTML = s ? `<option value="${s}">${s}</option>` : '<option value="">—</option>'; seccEl.value = s; seccEl.disabled = true; seccEl.style.opacity = '0.55'; }
   }
   renderComLista();
 }
@@ -14854,6 +14956,9 @@ async function openModalUsuario(uid, nombre, rol, email) {
   document.getElementById('u-pass').value = '';
   document.getElementById('btn-toggle-upass').textContent = '👁';
   document.getElementById('u-pass').type = 'password';
+  const extraWrap = document.getElementById('u-permisos-extra');
+  const canSetExtras = _isAdminDirector();
+  if(extraWrap) extraWrap.style.display = canSetExtras ? '' : 'none';
 
   if(uid) {
     document.getElementById('u-pass-group').style.display = 'block';
@@ -14863,14 +14968,14 @@ async function openModalUsuario(uid, nombre, rol, email) {
     document.getElementById('u-email').style.opacity = '0.6';
     if(nombre) document.getElementById('u-nombre').value = nombre;
     if(email)  document.getElementById('u-email').value  = email;
-    if(rol) {
-      document.getElementById('u-rol').value = rol;
-    }
+    if(rol) document.getElementById('u-rol').value = _normRol(rol);
     // Cargar cargo desde Firestore
     try {
       const uDoc = await db.collection('usuarios').doc(uid).get();
       const uData = uDoc.exists ? uDoc.data() : {};
       const cargo = uData.cargo || '';
+      const permInc = document.getElementById('u-incidentes-dia-lectura');
+      if(permInc) permInc.checked = canSetExtras ? !!uData.incidentesDiaLectura : false;
       // Cargar teléfono
       document.getElementById('u-telefono').value = uData.telefono || '';
       await poblarTutorAulaSelects({ grado: uData.tutorGrado || null, seccion: uData.tutorSeccion || null });
@@ -14901,11 +15006,13 @@ async function openModalUsuario(uid, nombre, rol, email) {
     document.getElementById('u-email').readOnly = false;
     document.getElementById('u-email').style.opacity = '1';
     ['u-nombre','u-email','u-telefono'].forEach(x => document.getElementById(x).value = '');
-    document.getElementById('u-rol').value = 'portero';
+    document.getElementById('u-rol').value = 'auxiliar';
     document.getElementById('u-cargo-select').value = '';
     document.getElementById('u-cargo-custom').value = '';
     document.getElementById('u-cargo-custom').style.display = 'none';
     document.getElementById('u-cargo').value = '';
+    const permInc = document.getElementById('u-incidentes-dia-lectura');
+    if(permInc) permInc.checked = false;
     tempAsignaciones = {};
     document.getElementById('u-restringir').checked = false;
     await poblarTutorAulaSelects();
@@ -14935,7 +15042,7 @@ async function saveUsuario() {
   const nombre = document.getElementById('u-nombre').value.trim();
   const email  = _sanitizeEmail(document.getElementById('u-email').value);
   const pass   = document.getElementById('u-pass').value;
-  const rol    = document.getElementById('u-rol').value;
+  const rol    = _normRol(document.getElementById('u-rol').value);
   // Sync cargo hidden field
   toggleCargoCustum();
   const cargo  = document.getElementById('u-cargo').value.trim();
@@ -14945,6 +15052,9 @@ async function saveUsuario() {
   if(!editingUsuarioId && email && !_looksLikeEmail(email)) { toast('Correo inválido','warning'); return; }
 
   try {
+    const incidentesDiaLectura = _isAdminDirector()
+      ? !!document.getElementById('u-incidentes-dia-lectura')?.checked
+      : false;
     // Obtener asignaciones si es profesor
     const restringir = rol === 'profesor' ? document.getElementById('u-restringir').checked : false;
     const asignaciones = (rol === 'profesor' && restringir) ? tempAsignaciones : {};
@@ -14978,6 +15088,7 @@ async function saveUsuario() {
           nombre,
           cargo,
           telefono: telefonoVal,
+          incidentesDiaLectura,
           restringir,
           asignaciones,
           esTutor,
@@ -14995,7 +15106,7 @@ async function saveUsuario() {
       toast('Usuario creado correctamente','success');
     } else {
       // EDITAR usuario
-      await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol, cargo, telefono: telefonoVal, restringir, asignaciones, esTutor, tutorGrado: esTutor ? tutorGrado : null, tutorSeccion: esTutor ? tutorSeccion : null });
+      await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol, cargo, telefono: telefonoVal, incidentesDiaLectura, restringir, asignaciones, esTutor, tutorGrado: esTutor ? tutorGrado : null, tutorSeccion: esTutor ? tutorSeccion : null });
       _invalidarUsuarios();
       // Mostrar/ocultar botón recuperar según teléfono
       // Si se ingresó nueva contraseña, cambiarla
@@ -15064,16 +15175,17 @@ async function renderUsuarios() {
   if(!tbody) return;
   try {
     const usuarios = await _cargarUsuariosCache();
-    const rolLabels = { admin:'⚙️ Admin', director:'🏫 Director', coordinador:'📊 Coordinador', profesor:'📋 Profesor', portero:'🚪 Portero' };
-    const rolColors = { admin:'var(--accent)', director:'#a78bfa', coordinador:'#60a5fa', profesor:'#34d399', portero:'#fb923c' };
+    const rolLabels = { admin:'⚙️ Admin', director:'🏫 Director', coordinador:'📊 Coordinador', profesor:'👨‍🏫 Profesor', auxiliar:'🧑‍🏫 Auxiliar' };
+    const rolColors = { admin:'var(--accent)', director:'#a78bfa', coordinador:'#60a5fa', profesor:'#34d399', auxiliar:'#fb923c' };
     tbody.innerHTML = usuarios.map(u => {
+      const rol = _normRol(u.rol);
       const esYo = u.uid === currentUser.uid ? ' (tú)' : '';
       return `<tr>
         <td style="font-weight:500;">${u.nombre}${esYo}</td>
         <td style="color:var(--muted);font-size:0.85rem;">${u.email}</td>
-        <td><span style="color:${rolColors[u.rol]||'#fff'};font-weight:600;">${rolLabels[u.rol]||u.rol}</span>${u.cargo?`<br><span style="font-size:0.72rem;color:var(--muted);">${u.cargo}</span>`:''} ${u.rol==='profesor'&&u.restringir?`<br><span style="font-size:0.72rem;color:var(--accent);">Restringido: ${Object.keys(u.asignaciones||{}).join(', ')||'sin asignar'}</span>`:''}${u.esTutor&&u.tutorGrado&&u.tutorSeccion?`<br><span style="font-size:0.72rem;color:#60a5fa;">Tutor: ${u.tutorGrado} ${u.tutorSeccion}</span>`:''}</td>
+        <td><span style="color:${rolColors[rol]||'#fff'};font-weight:600;">${rolLabels[rol]||rol}</span>${u.cargo?`<br><span style="font-size:0.72rem;color:var(--muted);">${u.cargo}</span>`:''} ${rol==='profesor'&&u.restringir?`<br><span style="font-size:0.72rem;color:var(--accent);">Restringido: ${Object.keys(u.asignaciones||{}).join(', ')||'sin asignar'}</span>`:''}${u.esTutor&&u.tutorGrado&&u.tutorSeccion?`<br><span style="font-size:0.72rem;color:#60a5fa;">Tutor: ${u.tutorGrado} ${u.tutorSeccion}</span>`:''}</td>
         <td style="display:flex;gap:6px;">
-          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalUsuario('${u.uid}','${u.nombre}','${u.rol}','${u.email}')">✏</button>
+          <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalUsuario('${u.uid}','${u.nombre}','${rol}','${u.email}')">✏</button>
           ${u.uid !== currentUser.uid ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteUsuario('${u.uid}')">✕</button>` : ''}
         </td>
       </tr>`;
@@ -15250,7 +15362,7 @@ async function downloadUsuariosTemplate() {
     const cfg = await getConfig();
     const gradosAll = [...new Set(Object.values(cfg.grados || {}).flat().map(x => String(x || '').trim()).filter(Boolean))];
     const secciones = (cfg.secciones || []).map(x => String(x || '').trim()).filter(Boolean);
-    const roles = ['admin','director','coordinador','profesor','portero'];
+    const roles = ['admin','director','coordinador','profesor','auxiliar'];
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('usuarios');
@@ -15336,7 +15448,7 @@ async function handleImportUsuariosFile() {
     const gradeSet = new Set(Object.values(cfg.grados || {}).flat().map(x => String(x || '').trim()).filter(Boolean));
     const sectionSet = new Set((cfg.secciones || []).map(x => String(x || '').trim()).filter(Boolean));
     const seenEmails = new Set();
-    const allowedRoles = new Set(['admin','director','coordinador','profesor','portero']);
+    const allowedRoles = new Set(['admin','director','coordinador','profesor','auxiliar']);
 
     _importUsuariosRows = normalized.map((r, idx) => {
       const nombre = String(_getRowVal(r, ['nombre','nombres','nombre_completo'])).trim();
@@ -15520,6 +15632,13 @@ function toggleCargoCustum() {
   } else {
     custom.style.display = 'none';
     hidden.value = sel;
+  }
+  const cargoVal = String(hidden.value || '').trim();
+  const rolEl = document.getElementById('u-rol');
+  if(rolEl && /docente/i.test(cargoVal) && rolEl.value !== 'profesor') {
+    rolEl.value = 'profesor';
+    togglePrivilegios();
+    toggleBtnConfigurar();
   }
 }
 
@@ -15715,16 +15834,29 @@ async function cargarPrivilegiosActuales() {
 
 // Aplicar restricción a lista de alumnos
 function aplicarFiltroProfesor(alumnos) {
-  if(currentRol !== 'profesor') return alumnos;
-  if(!currentPrivilegios.restringir) return alumnos;
-  const asig = currentPrivilegios.asignaciones;
+  if(_normRol(currentRol) !== 'profesor') return alumnos;
+  const base = (currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {};
+  const asig = JSON.parse(JSON.stringify(base || {}));
+  if(_isTutorUser()) {
+    const g = String(currentTutorInfo.tutorGrado || '').trim();
+    const s = String(currentTutorInfo.tutorSeccion || '').trim().toUpperCase();
+    if(g) {
+      if(!asig[g]) asig[g] = [];
+      if(Array.isArray(asig[g])) {
+        if(asig[g].length === 0) {}
+        else if(s && !asig[g].includes(s)) asig[g].push(s);
+      } else asig[g] = s ? [s] : [];
+    }
+  }
+  const shouldRestrict = !!(currentPrivilegios && currentPrivilegios.restringir) || _isTutorUser();
+  if(!shouldRestrict) return alumnos;
   if(!Object.keys(asig).length) return alumnos;
   return alumnos.filter(a => {
     if(!asig[a.grado]) return false;
     const seccs = asig[a.grado];
     // Si no hay secciones marcadas para ese grado, ve todas las secciones de ese grado
     if(!seccs.length) return true;
-    return seccs.includes(a.seccion);
+    return seccs.includes(String(a.seccion || '').toUpperCase());
   });
 }
 
@@ -15738,9 +15870,22 @@ let _alumnosCacheTs = 0;
 function _invalidarCacheAlumnos() { _alumnosCacheFull = null; _alumnosCacheTs = 0; }
 
 async function getAlumnosFiltrados() {
-  if(currentRol === 'profesor' && currentPrivilegios?.restringir) {
-    const asig = currentPrivilegios.asignaciones || {};
-    if(Object.keys(asig).length) return DB.getAlumnosScoped(asig);
+  if(_normRol(currentRol) === 'profesor') {
+    const base = (currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {};
+    const asig = JSON.parse(JSON.stringify(base || {}));
+    if(_isTutorUser()) {
+      const g = String(currentTutorInfo.tutorGrado || '').trim();
+      const s = String(currentTutorInfo.tutorSeccion || '').trim().toUpperCase();
+      if(g) {
+        if(!asig[g]) asig[g] = [];
+        if(Array.isArray(asig[g])) {
+          if(asig[g].length === 0) {}
+          else if(s && !asig[g].includes(s)) asig[g].push(s);
+        } else asig[g] = s ? [s] : [];
+      }
+    }
+    const shouldRestrict = !!(currentPrivilegios && currentPrivilegios.restringir) || _isTutorUser();
+    if(shouldRestrict && Object.keys(asig).length) return DB.getAlumnosScoped(asig);
   }
   const now = Date.now();
   if(_alumnosCacheFull && now - _alumnosCacheTs < 90000) return _alumnosCacheFull;
@@ -17241,7 +17386,7 @@ function poblarSelectorMesInc() {
   // Admin/director pueden ver hasta 6 meses atrás
   const mesActualNum = new Date().getMonth() + 1;
   const mesesLectivosInc = Math.max(0, mesActualNum - 3 + 1);
-  const meses = (currentRol === 'admin' || currentRol === 'director')
+  const meses = (_isAdminDirectorOrCoord())
     ? mesesLectivosInc
     : Math.min(3, mesesLectivosInc);
   for(let i = 0; i < meses; i++) {
@@ -17262,11 +17407,40 @@ async function renderIncidentes() {
     let docs = await _cargarIncidentesCache();
 
     // Filtro por rol
-    if(currentRol === 'profesor' && currentPrivilegios.restringir) {
-      docs = docs.filter(d => aplicarFiltroProfesor([{ grado: d.grado, seccion: d.seccion }]).length > 0);
-    }
-    if(currentRol === 'profesor') {
-      docs = docs.filter(d => d.responsableId === currentUser.uid);
+    if(_normRol(currentRol) === 'profesor') {
+      const asig = (currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {};
+      const merged = JSON.parse(JSON.stringify(asig || {}));
+      if(_isTutorUser()) {
+        const g = String(currentTutorInfo.tutorGrado || '').trim();
+        const s = String(currentTutorInfo.tutorSeccion || '').trim().toUpperCase();
+        if(g) {
+          if(!merged[g]) merged[g] = [];
+          if(Array.isArray(merged[g])) {
+            if(merged[g].length === 0) {}
+            else if(s && !merged[g].includes(s)) merged[g].push(s);
+          } else merged[g] = s ? [s] : [];
+        }
+      }
+      const hasScope = Object.keys(merged).length > 0;
+      if((currentPrivilegios && currentPrivilegios.restringir) || _isTutorUser()) {
+        if(hasScope) {
+          docs = docs.filter(d => {
+            const g = String(d.grado || '').trim();
+            const s = String(d.seccion || '').trim().toUpperCase();
+            if(!merged[g]) return false;
+            const ss = merged[g] || [];
+            if(!Array.isArray(ss) || ss.length === 0) return true;
+            return ss.includes(s);
+          });
+        }
+      }
+    } else if(_normRol(currentRol) === 'auxiliar') {
+      const today = hoy();
+      if(currentPerms && currentPerms.incidentesDiaLectura) {
+        docs = docs.filter(d => d.responsableId === currentUser.uid || d.fecha === today);
+      } else {
+        docs = docs.filter(d => d.responsableId === currentUser.uid);
+      }
     }
 
     // Filtro por mes o últimos 2 días (por defecto)
@@ -17738,18 +17912,42 @@ function msbInit() {
   if(schoolEl) try { schoolEl.textContent = COLEGIO_NOMBRE || 'I.E.P.'; } catch(e){}
   // Nombre usuario
   msbUpdateUser();
-  // Visibilidad usuarios según rol
-  const usuariosBtn = document.getElementById('msb-sub-usuarios');
-  if(usuariosBtn) usuariosBtn.style.display = (currentRol==='profesor'||currentRol==='portero') ? 'none' : 'flex';
-  const comBtn = document.getElementById('msb-btn-comunicacion');
-  const comSub = document.getElementById('msb-sub-comunicacion');
-  if(currentRol==='portero') {
-    if(comBtn) comBtn.style.display = 'none';
-    if(comSub) comSub.style.display = 'none';
-  } else {
-    if(comBtn) comBtn.style.display = '';
-    if(comSub) comSub.style.display = '';
-  }
+  const map = {
+    scan: 'msb-sub-scan',
+    registro: 'msb-sub-registro',
+    reportes: 'msb-sub-reportes',
+    alertas: 'msb-sub-alertas',
+    alumnos: 'msb-sub-alumnos',
+    incidentes: 'msb-sub-incidentes',
+    materiales: 'msb-sub-materiales',
+    comunicado: 'msb-sub-comunicado',
+    agenda: 'msb-sub-agenda',
+    'ia-horarios': 'msb-sub-ia-horarios',
+    'horarios-grado': 'msb-sub-horarios-grado',
+    'rol-examenes': 'msb-sub-rol-examenes',
+    config: 'msb-sub-config-general',
+    usuarios: 'msb-sub-usuarios',
+  };
+  Object.keys(map).forEach(sec => {
+    const el = document.getElementById(map[sec]);
+    if(el) el.style.display = canAccessSection(sec) ? 'flex' : 'none';
+  });
+  const btnAs = document.getElementById('msb-btn-asistencia');
+  if(btnAs) btnAs.style.display = ['scan','registro','reportes','alertas'].some(canAccessSection) ? '' : 'none';
+  const subAs = document.getElementById('msb-sub-asistencia');
+  if(subAs) subAs.style.display = ['scan','registro','reportes','alertas'].some(canAccessSection) ? '' : 'none';
+  const btnAu = document.getElementById('msb-btn-aula');
+  if(btnAu) btnAu.style.display = ['alumnos','incidentes','materiales'].some(canAccessSection) ? '' : 'none';
+  const subAu = document.getElementById('msb-sub-aula');
+  if(subAu) subAu.style.display = ['alumnos','incidentes','materiales'].some(canAccessSection) ? '' : 'none';
+  const btnCo = document.getElementById('msb-btn-comunicacion');
+  if(btnCo) btnCo.style.display = ['comunicado','agenda','rol-examenes','ia-horarios','horarios-grado'].some(canAccessSection) ? '' : 'none';
+  const subCo = document.getElementById('msb-sub-comunicacion');
+  if(subCo) subCo.style.display = ['comunicado','agenda','rol-examenes','ia-horarios','horarios-grado'].some(canAccessSection) ? '' : 'none';
+  const btnCfg = document.getElementById('msb-btn-config');
+  if(btnCfg) btnCfg.style.display = ['config','usuarios'].some(canAccessSection) ? '' : 'none';
+  const subCfg = document.getElementById('msb-sub-config');
+  if(subCfg) subCfg.style.display = ['config','usuarios'].some(canAccessSection) ? '' : 'none';
   // Topbar right (iniciales)
   const tbRight = document.getElementById('mobile-topbar-right');
   if(tbRight) {
@@ -17797,11 +17995,12 @@ function renderBottomNav() {
   ];
   const permisos = {
     admin:    ['inicio','asistencia','aula','mas'],
-    director: ['inicio','asistencia','mas'],
-    profesor: ['inicio','aula'],
-    portero:  ['inicio','asistencia'],
+    director: ['inicio','asistencia','aula','mas'],
+    coordinador: ['inicio','asistencia','aula'],
+    profesor: ['inicio','asistencia','aula'],
+    auxiliar:  ['inicio','asistencia','aula'],
   };
-  const allowed = permisos[currentRol] || ['inicio','asistencia'];
+  const allowed = permisos[_normRol(currentRol)] || ['inicio','asistencia'];
   inner.innerHTML = menus
     .filter(m => allowed.includes(m.id))
     .map(m => `

@@ -1,0 +1,3 @@
+ALTER TABLE public.usuarios
+ADD COLUMN IF NOT EXISTS incidentes_dia_lectura BOOLEAN NOT NULL DEFAULT FALSE;
+
