@@ -8380,12 +8380,13 @@ async function cargarTutorActual() {
     const doc = await db.collection('usuarios').doc(currentUser.uid).get();
     if(doc.exists) {
       const d = doc.data() || {};
+      const norm = (v) => String(v ?? '').trim().replace(/\s+/g,' ');
       currentTutorInfo = {
         esTutor: !!d.esTutor,
-        tutorGrado: String(d.tutorGrado || ''),
-        tutorSeccion: String(d.tutorSeccion || ''),
-        nombre: String(d.nombre || ''),
-        telefono: String(d.telefono || ''),
+        tutorGrado: norm(d.tutorGrado || ''),
+        tutorSeccion: norm(d.tutorSeccion || '').toUpperCase(),
+        nombre: norm(d.nombre || ''),
+        telefono: norm(d.telefono || ''),
       };
     } else currentTutorInfo = def;
   } catch(e) {
@@ -8588,7 +8589,11 @@ async function matLoadTemplate() {
 async function matLoadAlumnos() {
   const all = await getAlumnosFiltrados();
   if(!_matScope.grado || !_matScope.seccion) { _matAlumnos = []; return; }
-  _matAlumnos = (all||[]).filter(a => String(a.grado||'') === _matScope.grado && String(a.seccion||'A') === _matScope.seccion)
+  const g = String(_matScope.grado || '').trim().replace(/\s+/g,' ');
+  const s = String(_matScope.seccion || '').trim().replace(/\s+/g,' ').toUpperCase();
+  const normG = (v) => String(v ?? '').trim().replace(/\s+/g,' ');
+  const normS = (v) => String(v ?? '').trim().replace(/\s+/g,' ').toUpperCase();
+  _matAlumnos = (all||[]).filter(a => normG(a.grado) === g && normS(a.seccion) === s)
     .sort((a,b)=>String(a.apellidos||'').localeCompare(String(b.apellidos||'')) || String(a.nombres||'').localeCompare(String(b.nombres||'')));
   const sel = document.getElementById('mat-student');
   if(sel) {
@@ -9334,11 +9339,22 @@ async function matLoadTutors() {
   _matTutors = [];
   if(!_isAdminDirector()) return;
   try {
-    const snap = await db.collection('usuarios').where('es_tutor','==', true).get();
+    const norm = (v) => String(v ?? '').trim().replace(/\s+/g,' ');
+    const snap = await db.collection('usuarios').get();
     _matTutors = snap.docs.map(d => {
       const x = d.data() || {};
-      return { id: d.id, nombre: String(x.nombre||''), tutorGrado: String(x.tutorGrado||''), tutorSeccion: String(x.tutorSeccion||''), telefono: String(x.telefono||'') };
-    }).filter(t => t.tutorGrado && t.tutorSeccion).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+      const esTutor = !!(x.esTutor ?? x.es_tutor);
+      return {
+        id: d.id,
+        nombre: norm(x.nombre||''),
+        tutorGrado: norm(x.tutorGrado ?? x.tutor_grado ?? ''),
+        tutorSeccion: norm(x.tutorSeccion ?? x.tutor_seccion ?? ''),
+        telefono: norm(x.telefono||''),
+        esTutor,
+      };
+    })
+      .filter(t => t.esTutor && t.tutorGrado && t.tutorSeccion)
+      .sort((a,b)=>a.nombre.localeCompare(b.nombre));
   } catch(e) { _matTutors = []; }
   const sel = document.getElementById('mat-admin-tutor');
   if(sel) {
@@ -9350,7 +9366,9 @@ function matOnAdminTutorChange() {
   const tid = String(document.getElementById('mat-admin-tutor')?.value || '');
   const t = _matTutors.find(x => String(x.id) === tid);
   if(!t) return;
-  _matScope = { tutorId: t.id, tutorNombre: t.nombre, grado: t.tutorGrado, seccion: t.tutorSeccion };
+  const g = String(t.tutorGrado || '').trim().replace(/\s+/g,' ');
+  const s = String(t.tutorSeccion || '').trim().replace(/\s+/g,' ').toUpperCase();
+  _matScope = { tutorId: t.id, tutorNombre: t.nombre, grado: g, seccion: s };
   matRefreshAll();
 }
 
@@ -9402,12 +9420,13 @@ async function initMateriales() {
     await cargarTutorActual();
     if(_isAdminDirector()) await matLoadTutors();
     if(_isAdminDirector()) {
+      const norm = (v) => String(v ?? '').trim().replace(/\s+/g,' ');
       const sel = document.getElementById('mat-admin-tutor');
       const first = _matTutors[0];
-      if(first && sel) { sel.value = first.id; _matScope = { tutorId:first.id, tutorNombre:first.nombre, grado:first.tutorGrado, seccion:first.tutorSeccion }; }
+      if(first && sel) { sel.value = first.id; _matScope = { tutorId:first.id, tutorNombre:first.nombre, grado:norm(first.tutorGrado), seccion:norm(first.tutorSeccion).toUpperCase() }; }
       else _matScope = { tutorId:'', tutorNombre:'', grado:'', seccion:'' };
     } else {
-      _matScope = { tutorId: currentUser?.uid || '', tutorNombre: currentTutorInfo.nombre || '', grado: currentTutorInfo.tutorGrado || '', seccion: currentTutorInfo.tutorSeccion || '' };
+      _matScope = { tutorId: currentUser?.uid || '', tutorNombre: currentTutorInfo.nombre || '', grado: currentTutorInfo.tutorGrado || '', seccion: String(currentTutorInfo.tutorSeccion || '').toUpperCase() };
     }
   }
   await matRefreshAll();
