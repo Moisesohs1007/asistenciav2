@@ -51,6 +51,10 @@ CREATE TABLE IF NOT EXISTS public.material_templates (
 CREATE INDEX IF NOT EXISTS material_templates_scope_idx
 ON public.material_templates (colegio_id, anio, grado, seccion);
 
+-- Para compat.js: db.collection(...).doc(id).set() usa upsert con onConflict 'colegio_id,id'
+CREATE UNIQUE INDEX IF NOT EXISTS material_templates_colegio_id_id_uniq
+ON public.material_templates (colegio_id, id);
+
 ALTER TABLE public.material_templates ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "material_templates_read" ON public.material_templates;
 DROP POLICY IF EXISTS "material_templates_write_admin" ON public.material_templates;
@@ -93,6 +97,10 @@ CREATE TABLE IF NOT EXISTS public.material_template_items (
 
 CREATE INDEX IF NOT EXISTS material_template_items_tpl_idx
 ON public.material_template_items (colegio_id, template_id);
+
+-- Para compat.js: db.collection(...).doc(id).set() usa upsert con onConflict 'colegio_id,id'
+CREATE UNIQUE INDEX IF NOT EXISTS material_template_items_colegio_id_id_uniq
+ON public.material_template_items (colegio_id, id);
 
 ALTER TABLE public.material_template_items ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "material_template_items_read" ON public.material_template_items;
@@ -151,6 +159,10 @@ CREATE TABLE IF NOT EXISTS public.material_receipts (
 CREATE UNIQUE INDEX IF NOT EXISTS material_receipts_uniq
 ON public.material_receipts (colegio_id, template_id, alumno_id);
 
+-- Para compat.js: db.collection(...).add() usa insert, pero otras operaciones pueden usar doc(id).set()
+CREATE UNIQUE INDEX IF NOT EXISTS material_receipts_colegio_id_id_uniq
+ON public.material_receipts (colegio_id, id);
+
 CREATE INDEX IF NOT EXISTS material_receipts_scope_idx
 ON public.material_receipts (colegio_id, tutor_user_id, updated_at DESC);
 
@@ -197,6 +209,10 @@ CREATE TABLE IF NOT EXISTS public.material_receipt_items (
 
 CREATE UNIQUE INDEX IF NOT EXISTS material_receipt_items_uniq
 ON public.material_receipt_items (colegio_id, receipt_id, template_item_id);
+
+-- Para compat.js: db.collection(...).doc(id).set() usa upsert con onConflict 'colegio_id,id'
+CREATE UNIQUE INDEX IF NOT EXISTS material_receipt_items_colegio_id_id_uniq
+ON public.material_receipt_items (colegio_id, id);
 
 ALTER TABLE public.material_receipt_items ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "material_receipt_items_read" ON public.material_receipt_items;
@@ -261,6 +277,10 @@ CREATE TABLE IF NOT EXISTS public.material_handoffs (
 CREATE INDEX IF NOT EXISTS material_handoffs_scope_idx
 ON public.material_handoffs (colegio_id, estado, created_at DESC);
 
+-- Para compat.js: db.collection(...).doc(id).set() usa upsert con onConflict 'colegio_id,id'
+CREATE UNIQUE INDEX IF NOT EXISTS material_handoffs_colegio_id_id_uniq
+ON public.material_handoffs (colegio_id, id);
+
 ALTER TABLE public.material_handoffs ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "material_handoffs_read" ON public.material_handoffs;
 DROP POLICY IF EXISTS "material_handoffs_write_admin" ON public.material_handoffs;
@@ -299,6 +319,10 @@ CREATE TABLE IF NOT EXISTS public.material_handoff_items (
 
 CREATE INDEX IF NOT EXISTS material_handoff_items_idx
 ON public.material_handoff_items (colegio_id, handoff_id);
+
+-- Para compat.js: db.collection(...).doc(id).set() usa upsert con onConflict 'colegio_id,id'
+CREATE UNIQUE INDEX IF NOT EXISTS material_handoff_items_colegio_id_id_uniq
+ON public.material_handoff_items (colegio_id, id);
 
 ALTER TABLE public.material_handoff_items ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "material_handoff_items_read" ON public.material_handoff_items;
@@ -417,6 +441,10 @@ CREATE TABLE IF NOT EXISTS public.material_requests (
 CREATE INDEX IF NOT EXISTS material_requests_idx
 ON public.material_requests (colegio_id, estado, created_at DESC);
 
+-- Para compat.js: db.collection(...).doc(id).set() usa upsert con onConflict 'colegio_id,id'
+CREATE UNIQUE INDEX IF NOT EXISTS material_requests_colegio_id_id_uniq
+ON public.material_requests (colegio_id, id);
+
 ALTER TABLE public.material_requests ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "material_requests_read" ON public.material_requests;
 DROP POLICY IF EXISTS "material_requests_write_admin" ON public.material_requests;
@@ -455,6 +483,10 @@ CREATE TABLE IF NOT EXISTS public.material_request_items (
 
 CREATE INDEX IF NOT EXISTS material_request_items_idx
 ON public.material_request_items (colegio_id, request_id);
+
+-- Para compat.js: db.collection(...).doc(id).set() usa upsert con onConflict 'colegio_id,id'
+CREATE UNIQUE INDEX IF NOT EXISTS material_request_items_colegio_id_id_uniq
+ON public.material_request_items (colegio_id, id);
 
 ALTER TABLE public.material_request_items ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "material_request_items_read" ON public.material_request_items;
