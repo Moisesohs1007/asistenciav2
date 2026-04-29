@@ -8589,10 +8589,10 @@ async function matLoadTemplate() {
 async function matLoadAlumnos() {
   const all = await getAlumnosFiltrados();
   if(!_matScope.grado || !_matScope.seccion) { _matAlumnos = []; return; }
-  const g = String(_matScope.grado || '').trim().replace(/\s+/g,' ');
-  const s = String(_matScope.seccion || '').trim().replace(/\s+/g,' ').toUpperCase();
-  const normG = (v) => String(v ?? '').trim().replace(/\s+/g,' ');
+  const normG = (v) => String(v ?? '').trim().replace(/\s+/g,' ').toLowerCase();
   const normS = (v) => String(v ?? '').trim().replace(/\s+/g,' ').toUpperCase();
+  const g = normG(_matScope.grado);
+  const s = normS(_matScope.seccion);
   _matAlumnos = (all||[]).filter(a => normG(a.grado) === g && normS(a.seccion) === s)
     .sort((a,b)=>String(a.apellidos||'').localeCompare(String(b.apellidos||'')) || String(a.nombres||'').localeCompare(String(b.nombres||'')));
   const sel = document.getElementById('mat-student');
@@ -9372,6 +9372,14 @@ function matOnAdminTutorChange() {
   matRefreshAll();
 }
 
+function _matIsSchemaMissingError(msg) {
+  const m = String(msg || '').toLowerCase();
+  if(!m) return false;
+  const mentionsMat = m.includes('material_') || m.includes('material ');
+  const schemaCache = m.includes('schema cache') || m.includes('could not find the table') || m.includes('does not exist');
+  return mentionsMat && schemaCache;
+}
+
 async function matRefreshAll() {
   const no = document.getElementById('mat-no-access');
   const scopeCard = document.getElementById('mat-scope-card');
@@ -9396,21 +9404,28 @@ async function matRefreshAll() {
     label.textContent = `${who} · ${_matScope.grado||'—'} ${_matScope.seccion||''}`;
   }
   try {
-    await matLoadTemplate();
     await matLoadAlumnos();
+    matRenderStudentList();
+  } catch(e) {
+    const msg = String(e?.message || e || '');
+    toast('Error cargando alumnos: ' + msg, 'error');
+  }
+  try {
+    await matLoadTemplate();
     await matLoadReceiptsIndex();
     matRenderStudentList();
     await matLoadMyStockAndRequests();
     if(_isAdminDirector()) await matLoadAdminHandoffs();
   } catch(e) {
     const msg = String(e?.message || e || '');
-    if(msg.toLowerCase().includes('material_templates') && msg.toLowerCase().includes('does not exist')) {
-      toast('Falta ejecutar supabase/materiales_schema.sql en Supabase SQL Editor', 'warning');
-    } else if(msg.toLowerCase().includes('material_') && msg.toLowerCase().includes('does not exist')) {
-      toast('Falta ejecutar supabase/materiales_schema.sql en Supabase SQL Editor', 'warning');
-    } else {
-      toast('Error cargando materiales: ' + msg, 'error');
+    if(_matIsSchemaMissingError(msg)) {
+      toast('Materiales: falta ejecutar supabase/materiales_schema.sql en Supabase (y recargar schema)', 'warning');
+      _matTemplate = null;
+      _matItems = [];
+      matRenderTemplate();
+      return;
     }
+    toast('Error cargando materiales: ' + msg, 'error');
   }
 }
 
