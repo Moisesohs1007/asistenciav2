@@ -6954,8 +6954,8 @@ function _filaAlumno(a) {
     <td style="display:flex;gap:6px;flex-wrap:wrap;">
       <button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="showQR('${a.id}')">QR</button>
       <button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalAlumno('${a.id}')">✏</button>
-      ${currentRol !== 'profesor' ? `<button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;color:#f59e0b;border-color:#f59e0b44;" title="Resetear contraseña apoderado" onclick="resetPassApoderado('${a.id}')">🔑</button>` : ''}
-      ${currentRol !== 'profesor' ? `<button class="btn btn-danger btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>` : ''}
+      ${_normRol(currentRol) !== 'profesor' ? `<button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;color:#f59e0b;border-color:#f59e0b44;" title="Resetear contraseña apoderado" onclick="resetPassApoderado('${a.id}')">🔑</button>` : ''}
+      ${_normRol(currentRol) !== 'profesor' ? `<button class="btn btn-danger btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>` : ''}
     </td>
     <td class="td-chk-alumno" style="display:none;text-align:center;"><input type="checkbox" class="chk-alumno" value="${a.id}" onchange="updateSeleccionados()"></td>
   </tr>`;
@@ -13554,8 +13554,15 @@ async function onRepNivelChange() {
   secEl.innerHTML   = '<option value="">Todas</option>';
   gradoEl.value = ''; secEl.value = '';
   if(nivel) {
+    const isProf = _normRol(currentRol) === 'profesor';
     const cfg = await getConfig();
-    const grados = (cfg.grados||{})[nivel] || [];
+    let grados = (cfg.grados||{})[nivel] || [];
+    if(isProf) {
+      const alumnos = await getAlumnosFiltrados();
+      const allowed = new Set(alumnos.filter(a => a.turno === nivel).map(a => a.grado).filter(Boolean));
+      grados = grados.filter(g => allowed.has(g));
+      gradoEl.innerHTML = '<option value="">Seleccionar...</option>';
+    }
     grados.forEach(g => { gradoEl.innerHTML += `<option value="${g}">${g}</option>`; });
     gradoEl.disabled = false; gradoEl.style.opacity = '1';
   } else {
@@ -13664,8 +13671,18 @@ async function iniciarFiltrosReportes() {
   const cfg = await getConfig();
   const nivEl = document.getElementById('rep-nivel');
   if(!nivEl) return;
-  nivEl.innerHTML = '<option value="">Todos</option>';
-  (cfg.niveles||[]).forEach(n => { nivEl.innerHTML += `<option value="${n.nombre}">${n.nombre}</option>`; });
+  const isProf = _normRol(currentRol) === 'profesor';
+  if(isProf) {
+    const alumnos = await getAlumnosFiltrados();
+    const turnos = new Set(alumnos.map(a => a.turno).filter(Boolean));
+    nivEl.innerHTML = '<option value="">Seleccionar...</option>';
+    (cfg.niveles||[]).map(n => n.nombre).filter(n => turnos.has(n)).forEach(n => {
+      nivEl.innerHTML += `<option value="${n}">${n}</option>`;
+    });
+  } else {
+    nivEl.innerHTML = '<option value="">Todos</option>';
+    (cfg.niveles||[]).forEach(n => { nivEl.innerHTML += `<option value="${n.nombre}">${n.nombre}</option>`; });
+  }
 }
 
 async function initAlertas() {
@@ -15817,7 +15834,7 @@ function getAsignaciones() {
 let currentPrivilegios = { restringir: false, asignaciones: {} };
 
 async function cargarPrivilegiosActuales() {
-  if(!currentUser || currentRol !== 'profesor') {
+  if(!currentUser || _normRol(currentRol) !== 'profesor') {
     currentPrivilegios = { restringir: false, asignaciones: {} };
     return;
   }
@@ -15843,16 +15860,15 @@ function aplicarFiltroProfesor(alumnos) {
     const g = String(currentTutorInfo.tutorGrado || '').trim();
     const s = String(currentTutorInfo.tutorSeccion || '').trim().toUpperCase();
     if(g) {
-      if(!asig[g]) asig[g] = [];
-      if(Array.isArray(asig[g])) {
+      if(!asig[g]) asig[g] = s ? [s] : [];
+      else if(Array.isArray(asig[g])) {
         if(asig[g].length === 0) {}
         else if(s && !asig[g].includes(s)) asig[g].push(s);
       } else asig[g] = s ? [s] : [];
     }
   }
-  const shouldRestrict = !!(currentPrivilegios && currentPrivilegios.restringir) || _isTutorUser();
-  if(!shouldRestrict) return alumnos;
-  if(!Object.keys(asig).length) return alumnos;
+  const shouldRestrict = true;
+  if(!Object.keys(asig).length) return [];
   return alumnos.filter(a => {
     if(!asig[a.grado]) return false;
     const seccs = asig[a.grado];
@@ -15879,15 +15895,15 @@ async function getAlumnosFiltrados() {
       const g = String(currentTutorInfo.tutorGrado || '').trim();
       const s = String(currentTutorInfo.tutorSeccion || '').trim().toUpperCase();
       if(g) {
-        if(!asig[g]) asig[g] = [];
-        if(Array.isArray(asig[g])) {
+        if(!asig[g]) asig[g] = s ? [s] : [];
+        else if(Array.isArray(asig[g])) {
           if(asig[g].length === 0) {}
           else if(s && !asig[g].includes(s)) asig[g].push(s);
         } else asig[g] = s ? [s] : [];
       }
     }
-    const shouldRestrict = !!(currentPrivilegios && currentPrivilegios.restringir) || _isTutorUser();
-    if(shouldRestrict && Object.keys(asig).length) return DB.getAlumnosScoped(asig);
+    if(Object.keys(asig).length) return DB.getAlumnosScoped(asig);
+    return [];
   }
   const now = Date.now();
   if(_alumnosCacheFull && now - _alumnosCacheTs < 90000) return _alumnosCacheFull;
@@ -15905,18 +15921,14 @@ async function poblarFiltroNivel(selectId, onchangeFn) {
   const el = document.getElementById(selectId);
   if(!el) return;
   const niveles = (cfg.niveles||[]).map(n => n.nombre);
-  // Si es profesor con restricciones, solo sus niveles
   let nivelesVisibles = niveles;
-  if(currentRol === 'profesor' && currentPrivilegios.restringir) {
-    const gradosAsig = Object.keys(currentPrivilegios.asignaciones || {});
-    const nivelesAsig = new Set();
-    niveles.forEach(nv => {
-      const grados = (cfg.grados||{})[nv] || [];
-      if(grados.some(g => gradosAsig.includes(g))) nivelesAsig.add(nv);
-    });
-    nivelesVisibles = niveles.filter(n => nivelesAsig.has(n));
+  const isProf = _normRol(currentRol) === 'profesor';
+  if(isProf) {
+    const alumnos = await getAlumnosFiltrados();
+    const turnos = new Set(alumnos.map(a => a.turno).filter(Boolean));
+    nivelesVisibles = niveles.filter(n => turnos.has(n));
   }
-  el.innerHTML = `<option value="" disabled selected>-- Nivel --</option><option value="TODOS">Todos</option>`;
+  el.innerHTML = `<option value="" disabled selected>-- Nivel --</option>${isProf ? '' : '<option value="TODOS">Todos</option>'}`;
   nivelesVisibles.forEach(n => { el.innerHTML += `<option value="${n}">${n}</option>`; });
 }
 
@@ -15925,8 +15937,8 @@ async function poblarFiltroGrado(selectId, nivel) {
   const el = document.getElementById(selectId);
   if(!el) return;
 
-  // Obtener alumnos (siempre cacheado)
-  const alumnos = await DB.getAlumnos();
+  const isProf = _normRol(currentRol) === 'profesor';
+  const alumnos = isProf ? await getAlumnosFiltrados() : await DB.getAlumnos();
   const alumnosFiltrados = alumnos.filter(a => !nivel || nivel === 'TODOS' || a.turno === nivel);
   const gradosConAlumnos = new Set(alumnosFiltrados.map(a => a.grado).filter(Boolean));
 
@@ -15940,12 +15952,7 @@ async function poblarFiltroGrado(selectId, nivel) {
     ? gradosCfg.filter(g => gradosConAlumnos.has(g))
     : [...gradosConAlumnos].sort();
 
-  // Si es profesor con restricciones, solo sus grados
-  if(currentRol === 'profesor' && currentPrivilegios.restringir) {
-    const gradosAsig = Object.keys(currentPrivilegios.asignaciones || {});
-    grados = grados.filter(g => gradosAsig.includes(g));
-  }
-  el.innerHTML = `<option value="" disabled selected>-- Grado --</option><option value="TODOS">Todos</option>`;
+  el.innerHTML = `<option value="" disabled selected>-- Grado --</option>${isProf ? '' : '<option value="TODOS">Todos</option>'}`;
   grados.forEach(g => { el.innerHTML += `<option value="${g}">${g}</option>`; });
 }
 
@@ -15955,7 +15962,8 @@ async function poblarFiltroSeccion(selectId, grado) {
   if(!el) return;
 
   // Obtener secciones reales de los alumnos (incluir vacíos como 'A' por defecto)
-  const alumnos = await DB.getAlumnos();
+  const isProf = _normRol(currentRol) === 'profesor';
+  const alumnos = isProf ? await getAlumnosFiltrados() : await DB.getAlumnos();
   const alumnosFiltrados = alumnos.filter(a => !grado || grado === 'TODOS' || a.grado === grado);
   const seccionesDeAlumnos = [...new Set(alumnosFiltrados.map(a => a.seccion || 'A').filter(Boolean))].sort();
 
@@ -15967,18 +15975,7 @@ async function poblarFiltroSeccion(selectId, grado) {
   // Si la config no cubrió ninguna sección real, mostrar las de alumnos
   if(secciones.length === 0) secciones = seccionesDeAlumnos.length > 0 ? seccionesDeAlumnos : seccCfg;
 
-  if(currentRol === 'profesor' && currentPrivilegios.restringir) {
-    const asig = currentPrivilegios.asignaciones || {};
-    if(grado && grado !== 'TODOS') {
-      const seccsAsig = asig[grado] || [];
-      if(seccsAsig.length) secciones = secciones.filter(s => seccsAsig.includes(s));
-    } else {
-      const todasPermitidas = new Set();
-      Object.values(asig).forEach(seccs => seccs.forEach(s => todasPermitidas.add(s)));
-      if(todasPermitidas.size) secciones = secciones.filter(s => todasPermitidas.has(s));
-    }
-  }
-  el.innerHTML = `<option value="" disabled selected>-- Sección --</option><option value="TODOS">Todas</option>`;
+  el.innerHTML = `<option value="" disabled selected>-- Sección --</option>${isProf ? '' : '<option value="TODOS">Todas</option>'}`;
   secciones.forEach(s => { el.innerHTML += `<option value="${s}">${s}</option>`; });
 }
 
