@@ -4552,7 +4552,7 @@
       <div id="rep-anio-btn-wrap" style="display:none;">
         <button class="btn btn-ghost" onclick="cargarReportesAnio()" style="font-size:0.8rem;padding:6px 14px;">📅 Año completo</button>
       </div>
-      <button class="btn btn-ghost" onclick="exportarReportePDF()" style="font-size:0.78rem;padding:5px 12px;border-color:var(--accent2);color:var(--accent2);">⬇ PDF</button>
+      <button class="btn btn-ghost" id="rep-btn-pdf" onclick="exportarReportePDF()" style="font-size:0.78rem;padding:5px 12px;border-color:var(--accent2);color:var(--accent2);">⬇ PDF</button>
       <button class="btn btn-ghost" onclick="repExportCostAudit()" style="font-size:0.78rem;padding:5px 12px;border-color:rgba(34,197,94,0.45);color:rgba(34,197,94,0.95);">📊 Uso</button>
     </div>
 
@@ -5028,6 +5028,7 @@ function mostrarAvisoCamara() {
 }
 let currentRol = null; // admin | director | profesor | portero
 let _repContextoPDF = {}; // contexto guardado para exportar PDF de reportes
+let _repAnioCompletoActivo = false;
 
 // ── Auto-logout por inactividad (desactivado) ────────────────
 const ENABLE_AUTO_LOGOUT = false;
@@ -12841,12 +12842,54 @@ function mostrarBtnAnio() {
   if(wrap) wrap.style.display = (currentRol === 'admin' || currentRol === 'director') ? 'block' : 'none';
 }
 
+function cargarReportesAnio() {
+  _repAnioCompletoActivo = true;
+  renderReportes(true);
+}
+
 async function exportarReportePDF() {
   if(!window.jspdf) { alert('La librería PDF aún está cargando, intenta en un momento.'); return; }
   const { jsPDF } = window.jspdf;
-  const logoB64 = await cargarLogoBase64();
-  const ctx = _repContextoPDF;
-  if(!ctx || !ctx.total && ctx.total !== 0) { alert('Primero carga el reporte.'); return; }
+  const btn = document.getElementById('rep-btn-pdf');
+  if(btn) btn.disabled = true;
+  try {
+    const logoB64 = await cargarLogoBase64();
+    const mesEl = document.getElementById('rep-mes-select');
+    const mesSelActual = mesEl?.value || mesActual();
+    const d1El = document.getElementById('rep-desde');
+    const d2El = document.getElementById('rep-hasta');
+    let desdeSel = d1El?.value || '';
+    let hastaRaw = d2El?.value || '';
+    if(hastaRaw && !desdeSel) { desdeSel = hastaRaw; try { if(d1El) d1El.value = desdeSel; } catch(e) {} }
+    const rangoActivo = !!desdeSel;
+    const today = hoy();
+    const hastaSel = rangoActivo ? (hastaRaw || desdeSel) : '';
+    const hastaEff = rangoActivo ? (hastaSel > today ? today : hastaSel) : '';
+    const nivel   = document.getElementById('rep-nivel')?.value   || '';
+    const grado   = document.getElementById('rep-grado')?.value   || '';
+    const seccion = document.getElementById('rep-seccion')?.value || '';
+    const q       = (document.getElementById('rep-search')?.value || '').toLowerCase().trim();
+    const anioCompleto = !!_repAnioCompletoActivo;
+
+    const ctx0 = _repContextoPDF || {};
+    const needsSync =
+      !ctx0 || (ctx0.total === undefined) ||
+      String(ctx0.mesSel||'') !== String(mesSelActual||'') ||
+      String(ctx0.desdeSel||'') !== String(desdeSel||'') ||
+      String(ctx0.hastaSel||'') !== String(hastaEff||'') ||
+      String(ctx0.nivel||'') !== String(nivel||'') ||
+      String(ctx0.grado||'') !== String(grado||'') ||
+      String(ctx0.seccion||'') !== String(seccion||'') ||
+      String(ctx0.q||'') !== String(q||'') ||
+      !!ctx0.anioCompleto !== anioCompleto;
+
+    if(needsSync) {
+      toast('Sincronizando reporte para PDF...','info');
+      await renderReportes(anioCompleto);
+    }
+
+    const ctx = _repContextoPDF;
+    if(!ctx || !ctx.total && ctx.total !== 0) { alert('Primero carga el reporte.'); return; }
 
   const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const mesStr = (ctx.desdeSel ? String(ctx.desdeSel).slice(0,7) : (ctx.mesSel || new Date().toISOString().slice(0,7)));
@@ -13182,6 +13225,9 @@ async function exportarReportePDF() {
   const diaSlug    = ctx.diaSel  ? '-' + ctx.diaSel                                  : '';
   const rangoSlug  = (!ctx.diaSel && ctx.desdeSel && ctx.hastaSel) ? ('-' + ctx.desdeSel + '_a_' + ctx.hastaSel) : '';
   doc.save(`reporte-asistencia-${mesStr}${nivelSlug}${gradoSlug}${secSlug}${rangoSlug}${diaSlug}.pdf`);
+  } finally {
+    if(btn) btn.disabled = false;
+  }
 }
 
 function onRepMesChange() {
@@ -13189,6 +13235,7 @@ function onRepMesChange() {
   const d2 = document.getElementById('rep-hasta');
   if(d1) d1.value = '';
   if(d2) d2.value = '';
+  _repAnioCompletoActivo = false;
   if(document.getElementById('rep-mes-select')) {
     const mesEl = document.getElementById('rep-mes-select');
     mesEl.disabled = false; mesEl.style.opacity = '1';
@@ -13205,6 +13252,7 @@ function onRepRangoChange() {
   if(hasta && !desde) { if(d1) d1.value = hasta; desde = hasta; }
   const hasRange = !!desde;
   if(mesEl) { mesEl.disabled = hasRange; mesEl.style.opacity = hasRange ? '0.45' : '1'; }
+  _repAnioCompletoActivo = false;
   repResetReportesUI();
 }
 
@@ -13258,6 +13306,7 @@ async function limpiarFiltrosReportes() {
   document.getElementById('rep-grado').value   = '';
   document.getElementById('rep-seccion').value = '';
   document.getElementById('rep-search').value  = '';
+  _repAnioCompletoActivo = false;
   const d1 = document.getElementById('rep-desde');
   const d2 = document.getElementById('rep-hasta');
   if(d1) d1.value = '';
@@ -13565,6 +13614,7 @@ function _repBustRegCacheFor(filtros) {
 
 async function renderReportes(anioCompleto=false) {
   try {
+  _repAnioCompletoActivo = !!anioCompleto;
   const today   = hoy();
   const anio    = today.slice(0,4);
   const mesEl   = document.getElementById('rep-mes-select');
@@ -13609,6 +13659,8 @@ async function renderReportes(anioCompleto=false) {
     _repBustRegCacheFor({ anio });
     registros = await DB.getRegistros({anio});
     if(label) label.textContent = 'Año ' + anio + ' (' + registros.length + ' registros)';
+  } else if(anioCompleto) {
+    _repAnioCompletoActivo = false;
   } else if(rangoActivo) {
     _repBustRegCacheFor({ desde: desdeSel, hasta: hastaEff });
     registros = await DB.getRegistros({desde: desdeSel, hasta: hastaEff});
