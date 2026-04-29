@@ -8459,8 +8459,8 @@ function matClearDraft() {
 }
 
 function matEditTemplate() {
-  if(!_isAdminDirector()) return;
-  if(!_matTemplate) return;
+  if(!_isAdminDirector()) { toast('Solo Admin/Director puede editar la lista base','warning'); return; }
+  if(!_matTemplate) { toast('No hay lista base para editar','warning'); return; }
   _matEditingExisting = true;
   const inp = document.getElementById('mat-template-input-name');
   if(inp) inp.value = String(_matTemplate.nombre || '').trim();
@@ -8607,7 +8607,12 @@ async function matCreateTemplateLocked() {
   } catch(e) {
     const msg = String(e?.message || e || '');
     if(status) status.textContent = '';
-    toast('Error al guardar: ' + msg, 'error');
+    const m = msg.toLowerCase();
+    if(m.includes('row-level security') || m.includes('rls') || m.includes('permission denied')) {
+      toast('Sin permisos para guardar la lista base (verifica rol Admin/Director)', 'error');
+    } else {
+      toast('Error al guardar: ' + msg, 'error');
+    }
   }
 }
 
