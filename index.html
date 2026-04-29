@@ -3184,11 +3184,12 @@
 
   <!-- Modal Usuario -->
   <div class="modal-bg" id="modal-usuario">
-    <div class="modal" onclick="event.stopPropagation()" style="max-width:440px;">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:440px;display:flex;flex-direction:column;overflow:hidden;">
       <div class="modal-header">
         <div class="modal-title" id="modal-usuario-title">Nuevo Usuario</div>
         <button class="modal-close" onclick="closeModal('modal-usuario')">✕</button>
       </div>
+      <div id="modal-usuario-body" style="overflow:auto;flex:1;min-height:0;padding-right:2px;">
       <div class="form-group">
         <label>Nombre completo</label>
         <input type="text" id="u-nombre" placeholder="Ej: Juan Pérez">
@@ -3296,6 +3297,7 @@
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       <div style="display:flex;gap:10px;margin-top:20px;">
@@ -18341,14 +18343,16 @@ async function resetearTodoElSistema() {
 
   <!-- ===== MODAL PRIVILEGIOS PROFESOR ===== -->
   <div class="modal-bg" id="modal-privilegios">
-    <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;display:flex;flex-direction:column;overflow:hidden;">
       <div class="modal-header">
         <div class="modal-title">📚 Grados y Secciones asignados</div>
         <button class="modal-close" onclick="closeModal('modal-privilegios')">✕</button>
       </div>
+      <div id="modal-privilegios-body" style="overflow:auto;flex:1;min-height:0;padding-right:2px;">
       <div style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;">
         Marca los grados que dicta y las secciones correspondientes a cada uno. Solo verá los alumnos de los grados y secciones que marques.
       </div>
-      <div id="u-niveles-checks" style="max-height:60vh;overflow-y:auto;"></div>
+      <div id="u-niveles-checks" style="overflow-y:auto;"></div>
+      </div>
       <div style="display:flex;gap:10px;margin-top:20px;">
         <button class="btn btn-primary" onclick="savePrivilegios()" style="flex:1;justify-content:c
