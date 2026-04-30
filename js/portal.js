@@ -25,6 +25,17 @@ function getConfigCache() {
   if(_configCache) return Promise.resolve(_configCache);
   return db.collection('config').doc('general').get().then(function(snap) {
     _configCache = snap.exists ? snap.data() : {};
+    try {
+      var nombre = String(_configCache.nombreColegio || window.COLEGIO_NOMBRE || '').trim();
+      var eslogan = String(_configCache.esloganColegio || window.COLEGIO_ESLOGAN || '').trim();
+      var logo = String(_configCache.logoColegio || _configCache.logoUrl || window.COLEGIO_LOGO || '').trim();
+      var anio = String(_configCache.anio || window.COLEGIO_ANIO || '').trim();
+      if(nombre) window.COLEGIO_NOMBRE = nombre;
+      window.COLEGIO_ESLOGAN = eslogan;
+      if(logo) window.COLEGIO_LOGO = logo;
+      if(anio) window.COLEGIO_ANIO = anio;
+      window.__branding = { nombre: window.COLEGIO_NOMBRE, eslogan: window.COLEGIO_ESLOGAN, logo: window.COLEGIO_LOGO, anio: window.COLEGIO_ANIO };
+    } catch(e) {}
     return _configCache;
   }).catch(function() {
     _configCache = {};

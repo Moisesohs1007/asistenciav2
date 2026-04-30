@@ -56,47 +56,62 @@ function _cmpAlumnoReporte(a, b) {
 
 async function _buildGradoIdx() { return {}; } // mantenido por compatibilidad
 
-// Aplica nombre, eslogan y logo del colegio en toda la app
-// COLEGIO_NOMBRE, COLEGIO_ESLOGAN y COLEGIO_LOGO vienen SOLO de compat.js — no se sobreescriben desde BD
+// Aplica nombre, eslogan, logo y año del colegio en toda la app (fuente: config/general)
 function _aplicarConfigColegio(cfg) {
   if (!cfg) return;
-  // NO sobreescribir COLEGIO_NOMBRE / COLEGIO_ESLOGAN / COLEGIO_LOGO desde BD
-  // Editar solo en compat.js
+  const nombre = String(cfg.nombreColegio || COLEGIO_NOMBRE || '').trim();
+  const eslogan = String(cfg.esloganColegio || COLEGIO_ESLOGAN || '').trim();
+  const logo = String(cfg.logoColegio || cfg.logoUrl || COLEGIO_LOGO || '').trim();
+  const anio = String(cfg.anio || COLEGIO_ANIO || '').trim();
+
+  const prevLogo = String(window.COLEGIO_LOGO || '').trim();
+  window.COLEGIO_NOMBRE = nombre || window.COLEGIO_NOMBRE;
+  window.COLEGIO_ESLOGAN = eslogan;
+  if(logo) window.COLEGIO_LOGO = logo;
+  if(anio) window.COLEGIO_ANIO = anio;
+  window.__branding = { nombre: window.COLEGIO_NOMBRE, eslogan: window.COLEGIO_ESLOGAN, logo: window.COLEGIO_LOGO, anio: window.COLEGIO_ANIO };
+  if(prevLogo && logo && prevLogo !== logo) {
+    try { _logoB64 = null; } catch(e) {}
+  }
 
   // Header: logo + nombre + eslogan
   const headerImg = document.getElementById('header-logo-img');
-  if (headerImg && cfg.logoUrl) headerImg.src = cfg.logoUrl;
+  if (headerImg && logo) headerImg.src = logo;
   const headerTxt = document.getElementById('header-nombre-txt');
   if (headerTxt) {
-    const partes = COLEGIO_NOMBRE.match(/^(Institución Educativa|I\.E\.P\.?|I\.E\.)\s+(.+)$/i);
+    const partes = nombre.match(/^(Institución Educativa|I\.E\.P\.?|I\.E\.)\s+(.+)$/i);
     headerTxt.innerHTML = partes
       ? `I.E.P.<span> "${partes[2].replace(/^["']+|["']+$/g,'')}"</span>`
-      : COLEGIO_NOMBRE;
+      : nombre;
   }
   const headerEslogan = document.getElementById('header-eslogan-txt');
-  if (headerEslogan) headerEslogan.textContent = COLEGIO_ESLOGAN || '';
+  if (headerEslogan) headerEslogan.textContent = eslogan || '';
   // Login
   const loginImg = document.getElementById('login-img-colegio');
-  if (loginImg && cfg.logoUrl) loginImg.src = cfg.logoUrl;
+  if (loginImg && logo) loginImg.src = logo;
   // Sidebar móvil
   const msbImg = document.getElementById('msb-logo-img');
-  if (msbImg && cfg.logoUrl) msbImg.src = cfg.logoUrl;
+  if (msbImg && logo) msbImg.src = logo;
   const msbName = document.getElementById('msb-school-name');
-  if (msbName) msbName.textContent = COLEGIO_NOMBRE;
+  if (msbName) msbName.textContent = nombre;
   // Login título y eslogan
   cargarInfoColegioLogin();
   // Campos de configuración visibles
   const cfgNombre = document.getElementById('cfg-nombre-colegio');
-  if (cfgNombre && cfgNombre.type !== 'hidden') cfgNombre.value = COLEGIO_NOMBRE;
+  if (cfgNombre && cfgNombre.type !== 'hidden') cfgNombre.value = nombre;
   const cfgEslogan = document.getElementById('cfg-eslogan-colegio');
-  if (cfgEslogan) cfgEslogan.value = COLEGIO_ESLOGAN;
+  if (cfgEslogan) cfgEslogan.value = eslogan;
   // Encabezado colegio en sección Configuración
   const schLogo2 = document.getElementById('cfg-school-logo');
-  if (schLogo2 && cfg.logoUrl) schLogo2.src = cfg.logoUrl;
+  if (schLogo2 && logo) schLogo2.src = logo;
   const schNom2 = document.getElementById('cfg-school-nombre');
-  if (schNom2) schNom2.textContent = COLEGIO_NOMBRE;
+  if (schNom2) schNom2.textContent = nombre;
   const schEsl2 = document.getElementById('cfg-school-eslogan');
-  if (schEsl2) schEsl2.textContent = COLEGIO_ESLOGAN || '';
+  if (schEsl2) schEsl2.textContent = eslogan || '';
+  const schAnio2 = document.getElementById('cfg-school-anio');
+  if (schAnio2) schAnio2.textContent = anio || '';
+  const yearTag = document.getElementById('banner-year-tag');
+  if (yearTag) yearTag.textContent = 'Año Escolar ' + (anio || '');
 }
 const firebaseConfig = {
   apiKey: "AIzaSyBLI0I41vWjMK2q1ZjH1c1BK4SAFno7sfY",
