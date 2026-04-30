@@ -4579,7 +4579,7 @@
         <input type="date" id="rep-hasta" onchange="onRepRangoChange()"
           style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:4px 8px;font-family:var(--font-body);font-size:0.82rem;">
       </div>
-      <button class="btn btn-primary" onclick="renderReportes()" style="justify-content:center;min-width:140px;">🔎 Buscar</button>
+      <button class="btn btn-primary" id="rep-btn-buscar" onclick="onBuscarReportes()" style="justify-content:center;min-width:140px;">🔎 Buscar</button>
       <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
       <div style="display:flex;align-items:center;gap:6px;">
         <label style="font-size:0.78rem;color:var(--muted);">Nivel:</label>
@@ -4610,6 +4610,7 @@
       </div>
       <button class="btn btn-ghost" id="rep-btn-pdf" onclick="exportarReportePDF()" style="font-size:0.78rem;padding:5px 12px;border-color:var(--accent2);color:var(--accent2);">⬇ PDF</button>
       <button class="btn btn-ghost" onclick="repExportCostAudit()" style="font-size:0.78rem;padding:5px 12px;border-color:rgba(34,197,94,0.45);color:rgba(34,197,94,0.95);">📊 Uso</button>
+      <div id="rep-periodo-label" style="flex-basis:100%;font-size:0.78rem;color:var(--muted);margin-top:2px;"></div>
     </div>
 
     <div id="rep-alumno-info" class="card" style="display:none;margin-bottom:14px;padding:10px 14px;">
@@ -6932,6 +6933,10 @@ async function renderAlumnos() {
   const count = document.getElementById('alumnos-count');
 
   try {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Cargando alumnos...</td></tr>`;
+    count.textContent = 'Buscando...';
+    empty.style.display = 'none';
+
     // getAlumnosFiltrados: profesores restringidos cargan solo sus aulas (28 lecturas vs 1,300)
     let alumnos = await getAlumnosFiltrados();
     const totalDB = alumnos.length;
@@ -7372,18 +7377,24 @@ async function renderRegistro() {
   }
 
   try {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:18px;">Cargando...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:18px;"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Cargando asistencias...</td></tr>`;
     empty.style.display = 'none';
-    count.textContent = 'Cargando...';
+    count.textContent = 'Buscando...';
 
     // 1. Obtener registros según rango (si aplica) o mes seleccionado
-    let filtroDb;
+    let filtroDb = {
+      grado: (grado && grado !== 'TODOS') ? grado : undefined,
+      seccion: (seccion && seccion !== 'TODOS') ? seccion : undefined,
+      turno: (nivel && nivel !== 'TODOS') ? nivel : undefined,
+      tipo: tipo || undefined
+    };
     if(desde || hasta) {
       const rangoDesde = desde || hasta;
       const rangoHasta = hasta || desde || hasta;
-      filtroDb = { desde: rangoDesde, hasta: rangoHasta };
+      filtroDb.desde = rangoDesde;
+      filtroDb.hasta = rangoHasta;
     } else {
-      filtroDb = { mes: mesSel };
+      filtroDb.mes = mesSel;
     }
     const _run = (++window._renderRegistroRun || (window._renderRegistroRun = 1));
     let tick = 0;
@@ -14026,6 +14037,7 @@ async function renderReportes(anioCompleto=false) {
   );
   const alumnosIds = new Set(alumnos.map(a=>a.id));
   document.getElementById('rep-total').textContent = alumnos.length;
+  const repAlumnoIds = (alumnos.length > 0 && alumnos.length <= 500) ? alumnos.map(a => a.id) : null;
 
   // Nota: Para evitar inconsistencias entre "Todos los niveles" y filtros por nivel/grado,
   // en Supabase se calcula el mes/rango usando registros reales (no resumen_mensual).
@@ -14036,23 +14048,34 @@ async function renderReportes(anioCompleto=false) {
   // Vista día/año → cargar registros reales del período específico
   let registros;
   let _soloResumen = false;
-  if(anioCompleto && (currentRol==='admin'||currentRol==='director')) {
+  const _isAD = _isAdminDirector();
+
+  // Optimización: pasar filtros de nivel/grado/sección a la DB para reducir transferencia
+  const filtrosDbBase = {
+    tipo: 'INGRESO',
+    columns: 'alumno_id,fecha,tipo,estado,hora',
+    grado: (grado && grado !== 'TODOS') ? grado : undefined,
+    seccion: (seccion && seccion !== 'TODOS') ? seccion : undefined,
+    turno: (nivel && nivel !== 'TODOS') ? nivel : undefined,
+    alumnoIds: repAlumnoIds || undefined
+  };
+  if(anioCompleto && _isAD) {
     _repBustRegCacheFor({ anio });
-    registros = await DB.getRegistros({anio});
+    registros = await DB.getRegistros({ ...filtrosDbBase, anio });
     if(label) label.textContent = 'Año ' + anio + ' (' + registros.length + ' registros)';
   } else if(anioCompleto) {
     _repAnioCompletoActivo = false;
   } else if(rangoActivo) {
     _repBustRegCacheFor({ desde: desdeSel, hasta: hastaEff });
-    registros = await DB.getRegistros({desde: desdeSel, hasta: hastaEff});
+    registros = await DB.getRegistros({ ...filtrosDbBase, desde: desdeSel, hasta: hastaEff });
     if(label) label.textContent = (diaSel ? ('Día ' + desdeSel) : ('Rango ' + desdeSel + ' a ' + hastaEff)) + ' (' + registros.length + ' registros)';
   } else if(diaSel) {
     _repBustRegCacheFor({ fecha: diaSel });
-    registros = await DB.getRegistros({fecha: diaSel});
+    registros = await DB.getRegistros({ ...filtrosDbBase, fecha: diaSel });
     if(label) label.textContent = registros.length + ' registros del ' + diaSel;
   } else {
     _repBustRegCacheFor({ mes: mesSel });
-    registros = await DB.getRegistros({ mes: mesSel });
+    registros = await DB.getRegistros({ ...filtrosDbBase, mes: mesSel });
     if(label) label.textContent = 'Mes ' + mesSel + ' (' + registros.length + ' registros)';
   }
 
@@ -16014,6 +16037,66 @@ async function poblarFiltroNivel(selectId, onchangeFn) {
   } catch(e) {}
 }
 
+let _repBusy = false;
+function _repSetBusy(on, msg) {
+  const btn = document.getElementById('rep-btn-buscar');
+  const pdf = document.getElementById('rep-btn-pdf');
+  const label = document.getElementById('rep-periodo-label');
+  const charts = document.getElementById('rep-charts-grid');
+  
+  if(on) {
+    if(btn) {
+      if(!btn.dataset.oldText) btn.dataset.oldText = btn.textContent;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Buscando...';
+    }
+    if(pdf) { pdf.disabled = true; pdf.style.opacity = '0.45'; pdf.style.pointerEvents = 'none'; }
+    if(label) label.textContent = msg || 'Buscando...';
+    if(charts) {
+      // Añadir overlay de carga si no existe
+      let overlay = document.getElementById('rep-loading-overlay');
+      if(!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'rep-loading-overlay';
+        overlay.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(2px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;border-radius:20px;color:white;font-weight:600;';
+        overlay.innerHTML = '<div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div><div id="rep-loading-text">Procesando reportes...</div>';
+        charts.style.position = 'relative';
+        charts.appendChild(overlay);
+      }
+      const textEl = document.getElementById('rep-loading-text');
+      if(textEl) textEl.textContent = msg || 'Procesando reportes...';
+    }
+  } else {
+    if(btn) {
+      btn.disabled = false;
+      const t = btn.dataset.oldText || '🔎 Buscar';
+      btn.textContent = t;
+    }
+    if(pdf) { pdf.disabled = false; pdf.style.opacity = ''; pdf.style.pointerEvents = ''; }
+    if(label && msg) label.textContent = msg;
+    const overlay = document.getElementById('rep-loading-overlay');
+    if(overlay) overlay.remove();
+  }
+}
+
+async function onBuscarReportes() {
+  if(_repBusy) return;
+  _repBusy = true;
+  _repSetBusy(true, 'Buscando...');
+  const t0 = performance.now();
+  try {
+    await renderReportes(_repAnioCompletoActivo);
+    const ms = Math.round(performance.now() - t0);
+    const label = document.getElementById('rep-periodo-label');
+    if(label && label.textContent) label.textContent = `${label.textContent} · ${ms} ms`;
+  } catch(e) {
+    toast('Error en reportes: ' + (e?.message || e), 'error');
+  } finally {
+    _repBusy = false;
+    _repSetBusy(false);
+  }
+}
+
 async function poblarFiltroGrado(selectId, nivel) {
   const cfg = await getConfig();
   const el = document.getElementById(selectId);
@@ -17492,6 +17575,9 @@ async function renderIncidentes() {
   const empty = document.getElementById('incidentes-empty');
   if(!tbody) return;
   try {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px;"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Cargando incidentes...</td></tr>`;
+    if(empty) empty.style.display = 'none';
+
     // Cargar desde cache — sin nueva consulta a Firestore
     let docs = await _cargarIncidentesCache();
 

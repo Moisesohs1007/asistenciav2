@@ -177,13 +177,20 @@ const DB = {
     }
 
     try {
+      const selectCols = filtros.columns || '*';
       let q = supabase
         .from('registros')
-        .select('*')
+        .select(selectCols)
         .eq('colegio_id', COLEGIO_ID);
 
       if (filtros.fecha)    q = q.eq('fecha', filtros.fecha);
       if (filtros.alumnoId) q = q.eq('alumno_id', filtros.alumnoId);
+      if (filtros.alumnoIds && Array.isArray(filtros.alumnoIds)) {
+        q = q.in('alumno_id', filtros.alumnoIds);
+      }
+      if (filtros.grado)   q = q.eq('grado', filtros.grado);
+      if (filtros.seccion) q = q.eq('seccion', filtros.seccion);
+      if (filtros.turno)   q = q.eq('turno', filtros.turno);
       if (filtros.tipo)     q = q.eq('tipo', filtros.tipo);
       if (filtros.estado)   q = q.eq('estado', filtros.estado);
       if (filtros.mes) {
