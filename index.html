@@ -3267,6 +3267,7 @@
           <button class="btn btn-ghost" onclick="openModalPermisosEspeciales()" style="padding:6px 12px;font-size:0.8rem;">⚙ Configurar</button>
         </div>
         <input type="checkbox" id="u-incidentes-dia-lectura" style="display:none;">
+        <input type="hidden" id="u-permisos-extra-json" value="{}">
       </div>
       <!-- Solo visible si rol = profesor -->
       <div id="u-privilegios-group" style="display:block;">
@@ -3332,15 +3333,116 @@
         <button class="modal-close" onclick="closeModal('modal-permisos-especiales')">✕</button>
       </div>
       <div style="overflow:auto;flex:1;min-height:0;padding-right:2px;">
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:10px;line-height:1.35;">
+          Marca los accesos especiales que tendrá este usuario (además de su rol).
+        </div>
+
+        <div style="font-size:0.9rem;font-weight:850;margin:10px 0 8px 0;">Aulas</div>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.88rem;font-weight:650;line-height:1.25;">
+          <input type="checkbox" id="pe-ver-todas-aulas" style="margin-top:2px;accent-color:var(--accent);width:16px;height:16px;">
+          <span>
+            Puede ver todas las aulas (sin restricción)
+            <div style="font-size:0.75rem;color:var(--muted);font-weight:500;margin-top:6px;line-height:1.35;">
+              Ignora la restricción por asignaciones y permite ver todo el colegio en Alumnos/Registro/Reportes.
+            </div>
+          </span>
+        </label>
+
+        <div style="font-size:0.9rem;font-weight:850;margin:14px 0 8px 0;">Incidentes</div>
         <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.88rem;font-weight:650;line-height:1.25;">
           <input type="checkbox" id="pe-incidentes-dia-lectura" style="margin-top:2px;accent-color:var(--accent);width:16px;height:16px;">
           <span>
             Puede ver incidentes del día (solo lectura)
             <div style="font-size:0.75rem;color:var(--muted);font-weight:500;margin-top:6px;line-height:1.35;">
-              Permite ver los incidentes del día sin acceso al historial completo. Solo lo asigna Admin/Director.
+              Permite ver los incidentes del día sin acceso al historial completo.
             </div>
           </span>
         </label>
+        <div style="height:10px;"></div>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.88rem;font-weight:650;line-height:1.25;">
+          <input type="checkbox" id="pe-incidentes-ver-todo" style="margin-top:2px;accent-color:var(--accent);width:16px;height:16px;">
+          <span>
+            Puede ver historial completo de incidentes
+            <div style="font-size:0.75rem;color:var(--muted);font-weight:500;margin-top:6px;line-height:1.35;">
+              Permite ver el historial completo (no solo sus incidentes o los del día).
+            </div>
+          </span>
+        </label>
+
+        <div style="font-size:0.9rem;font-weight:850;margin:14px 0 8px 0;">Fotochex</div>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.88rem;font-weight:650;line-height:1.25;">
+          <input type="checkbox" id="pe-modo-carnets" style="margin-top:2px;accent-color:var(--accent);width:16px;height:16px;">
+          <span>
+            Puede usar modo Carnets / Fotochex
+            <div style="font-size:0.75rem;color:var(--muted);font-weight:500;margin-top:6px;line-height:1.35;">
+              Habilita el modo de selección e impresión masiva de carnets en Alumnos.
+            </div>
+          </span>
+        </label>
+
+        <div style="font-size:0.9rem;font-weight:850;margin:14px 0 8px 0;">Acceso a módulos</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
+            <input type="checkbox" id="pe-sec-scan" style="accent-color:var(--accent);width:15px;height:15px;">
+            Escáner
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
+            <input type="checkbox" id="pe-sec-alumnos" style="accent-color:var(--accent);width:15px;height:15px;">
+            Alumnos
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
+            <input type="checkbox" id="pe-sec-registro" style="accent-color:var(--accent);width:15px;height:15px;">
+            Registro
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
+            <input type="checkbox" id="pe-sec-reportes" style="accent-color:var(--accent);width:15px;height:15px;">
+            Reportes
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
+            <input type="checkbox" id="pe-sec-incidentes" style="accent-color:var(--accent);width:15px;height:15px;">
+            Incidentes
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
+            <input type="checkbox" id="pe-sec-materiales" style="accent-color:var(--accent);width:15px;height:15px;">
+            Materiales
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
+            <input type="checkbox" id="pe-sec-materiales-entrega" style="accent-color:var(--accent);width:15px;height:15px;">
+            Entrega materiales
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
+            <input type="checkbox" id="pe-sec-comunicado" style="accent-color:var(--accent);width:15px;height:15px;">
+            Comunicado
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
+            <input type="checkbox" id="pe-sec-agenda" style="accent-color:var(--accent);width:15px;height:15px;">
+            Agenda
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
+            <input type="checkbox" id="pe-sec-rol-examenes" style="accent-color:var(--accent);width:15px;height:15px;">
+            Rol de exámenes
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
+            <input type="checkbox" id="pe-sec-alertas" style="accent-color:var(--accent);width:15px;height:15px;">
+            Alertas
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
+            <input type="checkbox" id="pe-sec-usuarios" style="accent-color:var(--accent);width:15px;height:15px;">
+            Usuarios
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
+            <input type="checkbox" id="pe-sec-config" style="accent-color:var(--accent);width:15px;height:15px;">
+            Configuración
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
+            <input type="checkbox" id="pe-sec-ia-horarios" style="accent-color:var(--accent);width:15px;height:15px;">
+            IA Horarios
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
+            <input type="checkbox" id="pe-sec-horarios-grado" style="accent-color:var(--accent);width:15px;height:15px;">
+            Horarios por grado
+          </label>
+        </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:18px;">
         <button class="btn btn-primary" onclick="savePermisosEspeciales()" style="flex:1;justify-content:center;">Guardar</button>
@@ -5126,7 +5228,7 @@ let currentCargo = '';
 let _repContextoPDF = {}; // contexto guardado para exportar PDF de reportes
 let _repAnioCompletoActivo = false;
 
-let currentPerms = { incidentesDiaLectura: false };
+let currentPerms = { incidentesDiaLectura: false, incidentesVerTodo: false, modoCarnets: false, verTodasAulas: false, sections: {} };
 
 function _normRol(r) {
   const v = String(r || '').trim().toLowerCase();
@@ -5148,7 +5250,7 @@ let _tutoriaLocked = false;
 async function _autoSelectTutoria(nivelId, gradoId, seccionId) {
   if (!_isDocenteAula()) return;
   const _asig = (currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {};
-  const _lockCampos = !(Object.keys(_asig || {}).length > 0);
+  const _lockCampos = !(Object.keys(_asig || {}).length > 0) && !currentPerms?.verTodasAulas;
   const g = String(currentTutorInfo?.tutorGrado || '').trim();
   const s = String(currentTutorInfo?.tutorSeccion || '').trim().toUpperCase();
   if (!g || !s) return;
@@ -5222,6 +5324,8 @@ function canAccessSection(secId) {
   const r = _normRol(currentRol);
   const id = String(secId || '');
   const isTutor = _isTutorUser();
+  const px = (currentPerms && currentPerms.sections && typeof currentPerms.sections === 'object') ? currentPerms.sections : {};
+  if(px[id]) return true;
 
   if(id === 'inicio') return true;
   if(id === 'scan') return (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'profesor' || r === 'psicologo' || r === 'auxiliar');
@@ -5705,7 +5809,14 @@ auth.onAuthStateChanged(async user => {
     const uData = doc.data() || {};
     currentUser = user;
     currentRol = _normRol(uData.rol);
-    currentPerms = { incidentesDiaLectura: !!uData.incidentesDiaLectura };
+    const px = (uData.permisosExtra && typeof uData.permisosExtra === 'object') ? uData.permisosExtra : {};
+    currentPerms = {
+      incidentesDiaLectura: !!((px.incidentesDiaLectura !== undefined) ? px.incidentesDiaLectura : uData.incidentesDiaLectura),
+      incidentesVerTodo:    !!px.incidentesVerTodo,
+      modoCarnets:          !!px.modoCarnets,
+      verTodasAulas:        !!px.verTodasAulas,
+      sections:             (px.sections && typeof px.sections === 'object') ? px.sections : {}
+    };
     currentCargo = String(uData.cargo || '').trim();
     const nombre = uData.nombre || user.email;
 
@@ -5907,7 +6018,7 @@ function showSectionDirect(id) {
     Promise.resolve().then(() => limpiarFiltrosAlumnos());
     const labelCarnets = document.getElementById('label-modo-carnets');
     if(labelCarnets) {
-      labelCarnets.style.display = _isAdminDirectorOrCoord() ? 'flex' : 'none';
+      labelCarnets.style.display = (_isAdminDirectorOrCoord() || !!currentPerms?.modoCarnets) ? 'flex' : 'none';
     }
   }
   if(id==='registro') {
@@ -5940,7 +6051,8 @@ function showSectionDirect(id) {
   updateBottomNavActive(id);
   if(id==='incidentes') {
     poblarSelectorMesInc();
-    setVistaIncidentesDefault();
+    if(!!currentPerms?.incidentesVerTodo) setVistaIncidentesMes();
+    else setVistaIncidentesDefault();
     renderIncidentes();
   }
 }
@@ -8920,12 +9032,14 @@ function _matIsAdminMode() {
 
 function matCanAccess() {
   const r = _normRol(currentRol);
-  return _matIsAdminMode() || (r === 'psicologo') || (r === 'profesor' && !!currentTutorInfo.esTutor);
+  const px = (currentPerms && currentPerms.sections && typeof currentPerms.sections === 'object') ? currentPerms.sections : {};
+  return _matIsAdminMode() || !!px['materiales'] || (r === 'psicologo') || (r === 'profesor' && !!currentTutorInfo.esTutor);
 }
 
 function matUpdateAccessUi() {
   const can = matCanAccess();
-  const canEntrega = _matIsAdminMode();
+  const px = (currentPerms && currentPerms.sections && typeof currentPerms.sections === 'object') ? currentPerms.sections : {};
+  const canEntrega = _matIsAdminMode() || !!px['materiales-entrega'];
   const nav = document.getElementById('nav-materiales');
   if(nav) nav.style.display = can ? '' : 'none';
   const nav2 = document.getElementById('nav-materiales-entrega');
@@ -13234,6 +13348,11 @@ async function deleteAgendaEvento(id, fecha) {
 // IMPRESIÓN MASIVA DE CARNETS
 // ============================================================
 function toggleModoCarnets(activo) {
+  if(activo && !(_isAdminDirectorOrCoord() || !!currentPerms?.modoCarnets)) {
+    const t = document.getElementById('toggle-modo-carnets');
+    if(t) t.checked = false;
+    return;
+  }
   // Mostrar/ocultar columna checkbox thead
   document.getElementById('th-chk-all').style.display = activo ? '' : 'none';
   // Mostrar/ocultar checkboxes de cada fila y DESMARCARLOS siempre
@@ -15434,14 +15553,33 @@ function toggleTutorFields() {
 }
 
 function _getPermisosEspecialesFromForm() {
+  let px = {};
+  try {
+    const raw = document.getElementById('u-permisos-extra-json')?.value || '{}';
+    px = JSON.parse(raw) || {};
+  } catch(e) { px = {}; }
+  const incLegacy = !!document.getElementById('u-incidentes-dia-lectura')?.checked;
   return {
-    incidentesDiaLectura: !!document.getElementById('u-incidentes-dia-lectura')?.checked
+    incidentesDiaLectura: (px.incidentesDiaLectura !== undefined) ? !!px.incidentesDiaLectura : incLegacy,
+    incidentesVerTodo:    !!px.incidentesVerTodo,
+    modoCarnets:          !!px.modoCarnets,
+    verTodasAulas:        !!px.verTodasAulas,
+    sections:             (px.sections && typeof px.sections === 'object') ? px.sections : {}
   };
 }
 
 function _applyPermisosEspecialesToForm(perms) {
+  const px = {
+    incidentesDiaLectura: !!perms?.incidentesDiaLectura,
+    incidentesVerTodo:    !!perms?.incidentesVerTodo,
+    modoCarnets:          !!perms?.modoCarnets,
+    verTodasAulas:        !!perms?.verTodasAulas,
+    sections:             (perms?.sections && typeof perms.sections === 'object') ? perms.sections : {}
+  };
+  const jsonEl = document.getElementById('u-permisos-extra-json');
+  if(jsonEl) jsonEl.value = JSON.stringify(px);
   const inc = document.getElementById('u-incidentes-dia-lectura');
-  if(inc) inc.checked = !!perms?.incidentesDiaLectura;
+  if(inc) inc.checked = !!px.incidentesDiaLectura;
 }
 
 function actualizarResumenPermisosEspeciales() {
@@ -15449,7 +15587,12 @@ function actualizarResumenPermisosEspeciales() {
   if(!resumen) return;
   const p = _getPermisosEspecialesFromForm();
   const labels = [];
-  if(p.incidentesDiaLectura) labels.push('Incidentes del día (lectura)');
+  if(p.verTodasAulas) labels.push('Todas las aulas');
+  if(p.incidentesVerTodo) labels.push('Incidentes: historial');
+  else if(p.incidentesDiaLectura) labels.push('Incidentes: día');
+  if(p.modoCarnets) labels.push('Fotochex');
+  const secKeys = Object.keys(p.sections || {}).filter(k => !!p.sections[k]);
+  if(secKeys.length) labels.push('Módulos: ' + secKeys.length);
   resumen.textContent = labels.length ? labels.join(' · ') : 'Sin permisos especiales';
 }
 
@@ -15458,6 +15601,21 @@ function openModalPermisosEspeciales() {
   _permisosEspecialesDraft = _getPermisosEspecialesFromForm();
   const chkInc = document.getElementById('pe-incidentes-dia-lectura');
   if(chkInc) chkInc.checked = !!_permisosEspecialesDraft?.incidentesDiaLectura;
+  const chkAllInc = document.getElementById('pe-incidentes-ver-todo');
+  if(chkAllInc) chkAllInc.checked = !!_permisosEspecialesDraft?.incidentesVerTodo;
+  const chkCarn = document.getElementById('pe-modo-carnets');
+  if(chkCarn) chkCarn.checked = !!_permisosEspecialesDraft?.modoCarnets;
+  const chkAllA = document.getElementById('pe-ver-todas-aulas');
+  if(chkAllA) chkAllA.checked = !!_permisosEspecialesDraft?.verTodasAulas;
+
+  const secs = _permisosEspecialesDraft?.sections || {};
+  [
+    'scan','alumnos','registro','reportes','incidentes','materiales','materiales-entrega',
+    'comunicado','agenda','rol-examenes','alertas','usuarios','config','ia-horarios','horarios-grado'
+  ].forEach(k => {
+    const el = document.getElementById('pe-sec-' + k);
+    if(el) el.checked = !!secs[k];
+  });
   const m = document.getElementById('modal-permisos-especiales');
   if(m) {
     m.style.display = '';
@@ -15468,7 +15626,24 @@ function openModalPermisosEspeciales() {
 
 function savePermisosEspeciales() {
   const chkInc = document.getElementById('pe-incidentes-dia-lectura');
-  _applyPermisosEspecialesToForm({ incidentesDiaLectura: !!chkInc?.checked });
+  const chkAllInc = document.getElementById('pe-incidentes-ver-todo');
+  const chkCarn = document.getElementById('pe-modo-carnets');
+  const chkAllA = document.getElementById('pe-ver-todas-aulas');
+  const sections = {};
+  [
+    'scan','alumnos','registro','reportes','incidentes','materiales','materiales-entrega',
+    'comunicado','agenda','rol-examenes','alertas','usuarios','config','ia-horarios','horarios-grado'
+  ].forEach(k => {
+    const el = document.getElementById('pe-sec-' + k);
+    if(el && el.checked) sections[k] = true;
+  });
+  _applyPermisosEspecialesToForm({
+    incidentesDiaLectura: !!chkInc?.checked,
+    incidentesVerTodo: !!chkAllInc?.checked,
+    modoCarnets: !!chkCarn?.checked,
+    verTodasAulas: !!chkAllA?.checked,
+    sections
+  });
   actualizarResumenPermisosEspeciales();
   closeModal('modal-permisos-especiales');
 }
@@ -15497,8 +15672,15 @@ async function openModalUsuario(uid, nombre, rol, email) {
       const uDoc = await db.collection('usuarios').doc(uid).get();
       const uData = uDoc.exists ? uDoc.data() : {};
       const cargo = uData.cargo || '';
-      const permInc = document.getElementById('u-incidentes-dia-lectura');
-      if(permInc) permInc.checked = canSetExtras ? !!uData.incidentesDiaLectura : false;
+      if(canSetExtras) {
+        const px = (uData.permisosExtra && typeof uData.permisosExtra === 'object') ? uData.permisosExtra : {};
+        _applyPermisosEspecialesToForm({
+          ...px,
+          incidentesDiaLectura: (px.incidentesDiaLectura !== undefined) ? !!px.incidentesDiaLectura : !!uData.incidentesDiaLectura
+        });
+      } else {
+        _applyPermisosEspecialesToForm({});
+      }
       actualizarResumenPermisosEspeciales();
       // Cargar teléfono
       document.getElementById('u-telefono').value = uData.telefono || '';
@@ -15535,8 +15717,7 @@ async function openModalUsuario(uid, nombre, rol, email) {
     document.getElementById('u-cargo-custom').value = '';
     document.getElementById('u-cargo-custom').style.display = 'none';
     document.getElementById('u-cargo').value = '';
-    const permInc = document.getElementById('u-incidentes-dia-lectura');
-    if(permInc) permInc.checked = false;
+    _applyPermisosEspecialesToForm({});
     actualizarResumenPermisosEspeciales();
     tempAsignaciones = {};
     document.getElementById('u-restringir').checked = false;
@@ -15577,9 +15758,8 @@ async function saveUsuario() {
   if(!editingUsuarioId && email && !_looksLikeEmail(email)) { toast('Correo inválido','warning'); return; }
 
   try {
-    const incidentesDiaLectura = _isAdminDirector()
-      ? !!document.getElementById('u-incidentes-dia-lectura')?.checked
-      : false;
+    const permisosExtra = _isAdminDirector() ? _getPermisosEspecialesFromForm() : {};
+    const incidentesDiaLectura = _isAdminDirector() ? !!permisosExtra?.incidentesDiaLectura : false;
     const rolScope = (rol === 'profesor' || rol === 'psicologo');
     const restringir = rolScope ? document.getElementById('u-restringir').checked : false;
     const asignaciones = (rolScope && restringir) ? tempAsignaciones : {};
@@ -15618,6 +15798,7 @@ async function saveUsuario() {
           cargo,
           telefono: telefonoVal,
           incidentesDiaLectura,
+          permisosExtra,
           restringir,
           asignaciones,
           esTutor,
@@ -15635,7 +15816,14 @@ async function saveUsuario() {
       toast('Usuario creado correctamente','success');
     } else {
       // EDITAR usuario
-      await db.collection('usuarios').doc(editingUsuarioId).update({ nombre, rol, cargo, telefono: telefonoVal, incidentesDiaLectura, restringir, asignaciones, esTutor, tutorGrado: esTutor ? tutorGrado : null, tutorSeccion: esTutor ? tutorSeccion : null });
+      const update1 = { nombre, rol, cargo, telefono: telefonoVal, incidentesDiaLectura, permisosExtra, restringir, asignaciones, esTutor, tutorGrado: esTutor ? tutorGrado : null, tutorSeccion: esTutor ? tutorSeccion : null };
+      try {
+        await db.collection('usuarios').doc(editingUsuarioId).update(update1);
+      } catch(e) {
+        const update2 = { ...update1 };
+        delete update2.permisosExtra;
+        await db.collection('usuarios').doc(editingUsuarioId).update(update2);
+      }
       _invalidarUsuarios();
       // Mostrar/ocultar botón recuperar según teléfono
       // Si se ingresó nueva contraseña, cambiarla
@@ -16388,6 +16576,7 @@ async function cargarPrivilegiosActuales() {
 function aplicarFiltroProfesor(alumnos) {
   const r = _normRol(currentRol);
   if(r !== 'profesor' && r !== 'psicologo') return alumnos;
+  if(!!currentPerms?.verTodasAulas) return alumnos;
   const base = ((currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {});
   const asig = JSON.parse(JSON.stringify(base || {}));
   if(_isTutorUser()) {
@@ -16424,6 +16613,7 @@ function _invalidarCacheAlumnos() { _alumnosCacheFull = null; _alumnosCacheTs = 
 async function getAlumnosFiltrados() {
   const r = _normRol(currentRol);
   if(r === 'profesor' || r === 'psicologo') {
+    if(!!currentPerms?.verTodasAulas) return DB.getAlumnos();
     const base = ((currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {});
     const asig = JSON.parse(JSON.stringify(base || {}));
     if(_isTutorUser()) {
@@ -17998,7 +18188,7 @@ function poblarSelectorMesInc() {
   // Admin/director pueden ver hasta 6 meses atrás
   const mesActualNum = new Date().getMonth() + 1;
   const mesesLectivosInc = Math.max(0, mesActualNum - 3 + 1);
-  const meses = (_isAdminDirectorOrCoord())
+  const meses = (_isAdminDirectorOrCoord() || !!currentPerms?.incidentesVerTodo)
     ? mesesLectivosInc
     : Math.min(3, mesesLectivosInc);
   for(let i = 0; i < meses; i++) {
@@ -18052,7 +18242,8 @@ async function renderIncidentes() {
       }
     } else if(_normRol(currentRol) === 'auxiliar') {
       const today = hoy();
-      if(currentPerms && currentPerms.incidentesDiaLectura) {
+      if(!!currentPerms?.incidentesVerTodo) {
+      } else if(currentPerms && currentPerms.incidentesDiaLectura) {
         docs = docs.filter(d => d.responsableId === currentUser.uid || d.fecha === today);
       } else {
         docs = docs.filter(d => d.responsableId === currentUser.uid);

@@ -72,17 +72,10 @@ serve(async (req) => {
     }
 
     const colegioId = user.app_metadata?.colegio_id;
-    const rol = String(user.app_metadata?.rol || '');
+    const rolMeta = String(user.app_metadata?.rol || '');
     if (!colegioId) {
       return new Response(JSON.stringify({ error: 'Usuario no asociado a un colegio' }), {
         status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (!['admin', 'director', 'profesor', 'psicologo'].includes(rol)) {
-      return new Response(JSON.stringify({ error: 'No permitido' }), {
-        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -91,6 +84,36 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+
+    const { data: usrRow, error: usrErr } = await supabaseAdmin
+      .from('usuarios')
+      .select('rol,permisos_extra')
+      .eq('colegio_id', colegioId)
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (usrErr) {
+      return new Response(JSON.stringify({ error: usrErr.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const rolDb = String((usrRow as any)?.rol || '');
+    const rol = rolDb || rolMeta;
+    const px = ((usrRow as any)?.permisos_extra && typeof (usrRow as any)?.permisos_extra === 'object')
+      ? (usrRow as any)?.permisos_extra
+      : {};
+    const extraSections = (px && typeof px.sections === 'object') ? px.sections : {};
+    const canByRole = ['admin', 'director', 'coordinador', 'profesor', 'psicologo'].includes(rol);
+    const canByExtra = !!(extraSections as any)?.comunicado;
+
+    if (!canByRole && !canByExtra) {
+      return new Response(JSON.stringify({ error: 'No permitido' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const { data: colegio, error: colegioError } = await supabaseAdmin
       .from('colegios')

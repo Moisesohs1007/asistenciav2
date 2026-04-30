@@ -76,7 +76,10 @@ serve(async (req) => {
     const esTutor = !!body.esTutor;
     const tutorGrado = typeof body.tutorGrado === 'string' ? body.tutorGrado.trim() : null;
     const tutorSeccion = typeof body.tutorSeccion === 'string' ? body.tutorSeccion.trim() : null;
-    const incidentesDiaLectura = !!body.incidentesDiaLectura;
+    const permisosExtra = typeof body.permisosExtra === 'object' && body.permisosExtra ? body.permisosExtra : {};
+    const incidentesDiaLectura = (permisosExtra as any)?.incidentesDiaLectura !== undefined
+      ? !!(permisosExtra as any)?.incidentesDiaLectura
+      : !!body.incidentesDiaLectura;
 
     rol = rol.toLowerCase();
     if (rol === 'portero') rol = 'auxiliar';
@@ -117,11 +120,20 @@ serve(async (req) => {
       tutor_grado: esTutor && rol === 'profesor' ? tutorGrado : null,
       tutor_seccion: esTutor && rol === 'profesor' ? tutorSeccion : null,
       incidentes_dia_lectura: incidentesDiaLectura,
+      permisos_extra: permisosExtra,
     };
 
-    const { error: upsertError } = await supabaseAdmin
+    let { error: upsertError } = await supabaseAdmin
       .from('usuarios')
       .upsert(row, { onConflict: 'colegio_id,id' });
+
+    if (upsertError && String(upsertError.message || '').toLowerCase().includes('permisos_extra')) {
+      delete row.permisos_extra;
+      const { error: retryError } = await supabaseAdmin
+        .from('usuarios')
+        .upsert(row, { onConflict: 'colegio_id,id' });
+      upsertError = retryError as any;
+    }
 
     if (upsertError) {
       await supabaseAdmin.auth.admin.deleteUser(uid).catch(() => {});
