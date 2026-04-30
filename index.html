@@ -6734,7 +6734,30 @@ async function openModalAlumno(id) {
     const fotoPh  = document.getElementById('foto-preview-placeholder');
     if(fotoData){ fotoImg.src=fotoData; fotoImg.style.display='block'; fotoPh.style.display='none'; }
     else        { fotoImg.style.display='none'; fotoPh.style.display='block'; }
+
+    // Restricción: Solo admin, director y coordinador pueden editar datos base del alumno
+    const canEditFull = _isAdminDirectorOrCoord();
+    const studentFields = ['f-id', 'f-nombres', 'f-apellidos', 'f-turno', 'f-grado', 'f-seccion'];
+    studentFields.forEach(fid => {
+      const el = document.getElementById(fid);
+      if (el) {
+        el.disabled = !canEditFull;
+        // Estilo visual para indicar deshabilitado si no es admin
+        if (!canEditFull) {
+          el.style.opacity = '0.7';
+          el.style.cursor = 'not-allowed';
+        } else {
+          el.style.opacity = '1';
+          el.style.cursor = '';
+        }
+      }
+    });
   } else {
+    // Para nuevos alumnos, habilitar todo (solo lo abren admins/coords)
+    ['f-id','f-nombres','f-apellidos','f-turno','f-grado','f-seccion'].forEach(fid => {
+      const el = document.getElementById(fid);
+      if(el) { el.disabled = false; el.style.opacity = '1'; el.style.cursor = ''; }
+    });
     document.getElementById('f-id').readOnly = false;
     document.getElementById('f-id').style.opacity = '1';
     document.getElementById('f-id').title = '';
