@@ -4816,7 +4816,7 @@ async function generarAlertasAsistencia() {
                 </tr>
               </thead>
               <tbody>
-                ${rows.map(r => `
+                ${rows.map((r, idx) => `
                   <tr>
                     <td>${_escHtml(r.alumnoId)}</td>
                     <td>${_escHtml(r.nombre)}</td>
@@ -4827,7 +4827,7 @@ async function generarAlertasAsistencia() {
                     <td style="font-weight:800;">${_escHtml(String(r.ausencias ?? '-'))}</td>
                     <td style="font-weight:800;">${_escHtml(String(r.tardanzas ?? '-'))}</td>
                     <td style="text-align:right;">
-                      <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.78rem;" onclick="enviarWhatsAppAlertaAsistencia('${_escHtml(r.alumnoId)}')">📲 WhatsApp</button>
+                      <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.78rem;" onclick="enviarWhatsAppAlertaAsistenciaIdx(${idx})">📲 WhatsApp</button>
                     </td>
                   </tr>
                 `).join('')}
@@ -4932,6 +4932,56 @@ async function enviarWhatsAppAlertaAsistencia(alumnoId) {
     if(tel1) tels.push(tel1);
     if(tel2) tels.push(tel2);
     const telTutor = a ? await _getTutorTelByAula(a.grado, a.seccion) : null;
+    if(telTutor) tels.push(telTutor);
+
+    const uniq = Array.from(new Set(tels.filter(Boolean)));
+    if(!uniq.length) throw new Error('El alumno no tiene teléfonos registrados (apoderado/tutor)');
+    for(const t of uniq) { await sendWhatsApp(t, msg); }
+    toast('✅ WhatsApp enviado','success');
+  } catch(e) {
+    toast('❌ ' + e.message, 'error');
+  }
+}
+
+async function enviarWhatsAppAlertaAsistenciaIdx(idx) {
+  try {
+    const cache = _repAlertasCache || {};
+    const rows = cache.rows || [];
+    const row = rows[idx];
+    if(!row) throw new Error('Alerta no encontrada. Vuelve a generar las alertas.');
+
+    const periodoInicio = cache.periodoInicio || '';
+    const periodoFin = cache.periodoFin || '';
+    const mes = cache.mes || '';
+    if(!periodoInicio || !periodoFin) throw new Error('Primero genera las alertas');
+
+    const id = String(row.alumnoId||'').trim();
+    const a = (cache.alumnosById && cache.alumnosById[id]) ? cache.alumnosById[id] : null;
+    const nombre = a ? ((a.apellidos||'')+' '+(a.nombres||'')).trim() : (row.nombre || id);
+    const aula = a ? `${a.grado||''} ${a.seccion||''}`.trim() : `${row.grado||''} ${row.seccion||''}`.trim();
+
+    const aus = (row.ausencias === '-' || row.ausencias === undefined || row.ausencias === null) ? 0 : parseInt(row.ausencias, 10) || 0;
+    const tar = (row.tardanzas === '-' || row.tardanzas === undefined || row.tardanzas === null) ? 0 : parseInt(row.tardanzas, 10) || 0;
+    const dias = String(row.dias||'-').trim();
+
+    const periodoTxt = (periodoInicio === periodoFin) ? periodoInicio : (periodoInicio + ' a ' + periodoFin);
+    let detalle = '';
+    if(row.tipo === 'TARDANZA') {
+      detalle = `⏰ Tardanzas: ${tar}${tar ? `\nDías: ${dias}` : ''}\n❌ Ausencias: 0`;
+    } else if(row.tipo === 'AUSENCIA') {
+      detalle = `❌ Ausencias: ${aus}${aus ? `\nDías: ${dias}` : ''}\n⏰ Tardanzas: 0`;
+    } else {
+      detalle = `❌ Ausencias: ${aus}${aus ? `\nDías: ${dias}` : ''}\n⏰ Tardanzas: ${tar}`;
+    }
+
+    const msg = `${_waEncabezado()}\n\n📌 *Alerta de asistencia*\nAlumno: ${nombre}${aula ? `\nAula: ${aula}` : ''}\nPeríodo: ${periodoTxt}${mes ? `\nMes: ${mes}` : ''}\n\n${detalle}\n\n${_waPie()}`.trim();
+
+    const tels = [];
+    const tel1 = a ? String(a.telefono||'').trim() : '';
+    const tel2 = a ? String(a.telefono2||'').trim() : '';
+    if(tel1) tels.push(tel1);
+    if(tel2) tels.push(tel2);
+    const telTutor = await _getTutorTelByAula(row.grado || a?.grado, row.seccion || a?.seccion);
     if(telTutor) tels.push(telTutor);
 
     const uniq = Array.from(new Set(tels.filter(Boolean)));
