@@ -5117,6 +5117,8 @@ let _tutoriaLocked = false;
  */
 async function _autoSelectTutoria(nivelId, gradoId, seccionId) {
   if (!_isDocenteAula()) return;
+  const _asig = (currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {};
+  const _lockCampos = !(Object.keys(_asig || {}).length > 0);
   const g = String(currentTutorInfo?.tutorGrado || '').trim();
   const s = String(currentTutorInfo?.tutorSeccion || '').trim().toUpperCase();
   if (!g || !s) return;
@@ -5139,7 +5141,7 @@ async function _autoSelectTutoria(nivelId, gradoId, seccionId) {
     if (nivel) {
       if (![...nEl.options].some(o => o.value === nivel)) await poblarFiltroNivel(nivelId);
       nEl.value = nivel;
-      nEl.disabled = true;
+      nEl.disabled = _lockCampos;
     }
   }
 
@@ -5150,7 +5152,7 @@ async function _autoSelectTutoria(nivelId, gradoId, seccionId) {
       gEl.innerHTML = `<option value="${g}">${g}</option>`;
     }
     gEl.value = g;
-    gEl.disabled = true;
+    gEl.disabled = _lockCampos;
   }
 
   // 3. Poblar y seleccionar sección
@@ -5160,7 +5162,7 @@ async function _autoSelectTutoria(nivelId, gradoId, seccionId) {
       sEl.innerHTML = `<option value="${s}">${s}</option>`;
     }
     sEl.value = s;
-    sEl.disabled = true;
+    sEl.disabled = _lockCampos;
   }
 
   // Asegurar que los valores quedan puestos tras un pequeño delay
@@ -7772,6 +7774,9 @@ async function getRegistrosFiltrados() {
   } else {
     filtroDb = { mes: mesSel };
   }
+  if(nivel   && nivel   !== 'TODOS') filtroDb.turno = nivel;
+  if(grado   && grado   !== 'TODOS') filtroDb.grado = grado;
+  if(seccion && seccion !== 'TODOS') filtroDb.seccion = seccion;
   let regs = await DB.getRegistros(filtroDb);
 
   // Aplicar filtros adicionales en cliente (nivel, grado, sección, búsqueda)
@@ -16287,9 +16292,7 @@ async function cargarPrivilegiosActuales() {
 // Aplicar restricción a lista de alumnos
 function aplicarFiltroProfesor(alumnos) {
   if(_normRol(currentRol) !== 'profesor') return alumnos;
-  const base = _isDocenteAula()
-    ? {}
-    : ((currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {});
+  const base = ((currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {});
   const asig = JSON.parse(JSON.stringify(base || {}));
   if(_isTutorUser()) {
     const g = String(currentTutorInfo.tutorGrado || '').trim();
@@ -16324,9 +16327,7 @@ function _invalidarCacheAlumnos() { _alumnosCacheFull = null; _alumnosCacheTs = 
 
 async function getAlumnosFiltrados() {
   if(_normRol(currentRol) === 'profesor') {
-    const base = _isDocenteAula()
-      ? {}
-      : ((currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {});
+    const base = ((currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {});
     const asig = JSON.parse(JSON.stringify(base || {}));
     if(_isTutorUser()) {
       const g = String(currentTutorInfo.tutorGrado || '').trim();
