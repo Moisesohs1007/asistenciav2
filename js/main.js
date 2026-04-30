@@ -4627,7 +4627,7 @@ async function renderReportes(anioCompleto=false) {
   } catch(e) { console.error('renderReportes:', e); }
 }
 
-let _repAlertasCache = { weekStart:'', weekEnd:'', mes:'', tardTh:3, ausTh:3, tardyRows:[], absentRows:[] };
+let _repAlertasCache = { periodoInicio:'', periodoFin:'', mes:'', tardTh:3, ausTh:3, rows:[], alumnosById:{} };
 
 function _repIsoToDate(iso) {
   const s = String(iso||'');
@@ -4672,46 +4672,134 @@ async function generarAlertasAsistencia() {
     const diaRef = document.getElementById('rep-dia-select')?.value || hoy();
     const { weekStart, weekEnd } = _repWeekMonFri(diaRef);
 
-    if(status) status.textContent = 'Calculando alertas...';
+    const mesStart = mesSel + '-01';
+    const mesEnd = (mesSel === hoy().slice(0,7)) ? hoy() : (function(m){ const [y,mm]=m.split('-').map(Number); const d=new Date(y,mm,0); return _repDateToIso(d); })(mesSel);
+    if(status) status.textContent = 'Cargando alumnos...';
     if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
 
     const alumnos = await _repGetAlumnosActuales();
     const alumnosIds = new Set(alumnos.map(a=>a.id));
+    const alumnosById = {};
+    alumnos.forEach(a => { alumnosById[a.id] = a; });
     if(!alumnos.length) throw new Error('No hay alumnos con los filtros actuales');
 
-    const regsSemana = await DB.getRegistros({ desde: weekStart, hasta: weekEnd });
-    const tardMap = {};
-    regsSemana
-      .filter(r => alumnosIds.has(r.alumnoId) && r.tipo === 'INGRESO' && r.estado === 'Tardanza')
-      .forEach(r => { tardMap[r.alumnoId] = (tardMap[r.alumnoId] || 0) + 1; });
-    const tardyRows = alumnos
-      .map(a => ({ alumnoId: a.id, nombre: (a.apellidos+' '+a.nombres).trim(), grado: a.grado, seccion: a.seccion, nivel: a.turno, tardanzas: tardMap[a.id] || 0 }))
-      .filter(x => x.tardanzas >= tardTh)
-      .sort((a,b) => b.tardanzas - a.tardanzas || a.nombre.localeCompare(b.nombre));
+    if(status) status.textContent = 'Cargando registros del período...';
 
-    const diasHab = _calcDiasHabilesHasta(mesSel);
+    const _diaLabel = (iso) => {
+      const s = String(iso||'');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+      return s.slice(8,10) + '/' + s.slice(5,7);
+    };
+    const _compact = (arr, max = 12) => arr.length <= max ? arr.join(', ') : (arr.slice(0, max).join(', ') + ` … (+${arr.length - max})`);
+    const _buildBusinessDays = (startIso, endIso) => {
+      const s = _repIsoToDate(startIso);
+      const e = _repIsoToDate(endIso);
+      if(!s || !e) return [];
+      const out = [];
+      for(let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+        const dow = d.getDay();
+        if(dow !== 0 && dow !== 6) out.push(_repDateToIso(d));
+      }
+      return out;
+    };
+    const _fetchRegistrosChunked = async (opts, ids) => {
+      const out = [];
+      const list = (ids || []).filter(Boolean);
+      const chunkSize = 200;
+      for(let i=0;i<list.length;i+=chunkSize) {
+        const chunk = list.slice(i, i+chunkSize);
+        const part = await DB.getRegistros({ ...opts, alumnoIds: chunk });
+        out.push(...(part||[]));
+      }
+      return out;
+    };
+
+    const regsTard = await DB.getRegistros({ desde: weekStart, hasta: weekEnd, tipo:'INGRESO', estado:'Tardanza', columns:'alumno_id,fecha,estado,tipo' });
+    const tardMap = {};
+    const tardDias = {};
+    (regsTard||[]).forEach(r => {
+      if(!r || !alumnosIds.has(r.alumnoId) || !r.fecha) return;
+      tardMap[r.alumnoId] = (tardMap[r.alumnoId] || 0) + 1;
+      if(!tardDias[r.alumnoId]) tardDias[r.alumnoId] = new Set();
+      tardDias[r.alumnoId].add(r.fecha);
+    });
+    const tardyRows = alumnos
+      .map(a => {
+        const dias = [...(tardDias[a.id] ? Array.from(tardDias[a.id]) : [])].sort();
+        return {
+          tipo: 'TARDANZA',
+          alumnoId: a.id,
+          nombre: (a.apellidos+' '+a.nombres).trim(),
+          grado: a.grado,
+          seccion: a.seccion,
+          nivel: a.turno,
+          dias: dias.map(_diaLabel).filter(Boolean).join(', ') || '-',
+          ausencias: '-',
+          tardanzas: (tardMap[a.id] || 0) || '-'
+        };
+      })
+      .filter(x => (x.tardanzas !== '-' && x.tardanzas >= tardTh))
+      .sort((a,b) => (b.tardanzas - a.tardanzas) || a.nombre.localeCompare(b.nombre));
+
+    const diasHabiles = _buildBusinessDays(mesStart, mesEnd);
+    const diasHab = diasHabiles.length;
     const resumen = await DB.getResumenMes(mesSel);
     const resMap = {};
-    resumen.forEach(r => { if(alumnosIds.has(r.alumnoId)) resMap[r.alumnoId] = { puntual: r.puntual||0, tardanza: r.tardanza||0 }; });
-    const absentRows = alumnos
+    (resumen||[]).forEach(r => { if(r && alumnosIds.has(r.alumnoId)) resMap[r.alumnoId] = { puntual: r.puntual||0, tardanza: r.tardanza||0 }; });
+    const absentCandidates = alumnos
       .map(a => {
         const r = resMap[a.id] || { puntual: 0, tardanza: 0 };
         const aus = Math.max(0, diasHab - (r.puntual + r.tardanza));
-        return { alumnoId: a.id, nombre: (a.apellidos+' '+a.nombres).trim(), grado: a.grado, seccion: a.seccion, nivel: a.turno, ausencias: aus };
+        return { alumnoId: a.id, ausencias: aus };
       })
       .filter(x => x.ausencias >= ausTh)
-      .sort((a,b) => b.ausencias - a.ausencias || a.nombre.localeCompare(b.nombre));
+      .map(x => x.alumnoId);
 
-    _repAlertasCache = { weekStart, weekEnd, mes: mesSel, tardTh, ausTh, tardyRows, absentRows };
+    const presCand = {};
+    if(absentCandidates.length) {
+      const regsCand = (absentCandidates.length <= 500)
+        ? await DB.getRegistros({ desde: mesStart, hasta: mesEnd, tipo:'INGRESO', alumnoIds: absentCandidates, columns:'alumno_id,fecha,tipo' })
+        : await _fetchRegistrosChunked({ desde: mesStart, hasta: mesEnd, tipo:'INGRESO', columns:'alumno_id,fecha,tipo' }, absentCandidates);
+      (regsCand||[]).forEach(r => {
+        if(!r || !r.alumnoId || !r.fecha) return;
+        if(!presCand[r.alumnoId]) presCand[r.alumnoId] = new Set();
+        presCand[r.alumnoId].add(r.fecha);
+      });
+    }
 
-    const mkTable = (title, cols, rows) => {
-      if(!rows.length) return `<div style="color:var(--muted);font-size:.85rem;margin-top:6px;">${title}: sin resultados.</div>`;
+    const absentRows = absentCandidates
+      .map(id => {
+        const a = alumnosById[id] || {};
+        const pres = presCand[id] || new Set();
+        const faltas = diasHabiles.filter(d => !pres.has(d));
+        return {
+          tipo: 'AUSENCIA',
+          alumnoId: id,
+          nombre: ((a.apellidos||'')+' '+(a.nombres||'')).trim() || id,
+          grado: a.grado,
+          seccion: a.seccion,
+          nivel: a.turno,
+          dias: _compact(faltas.map(_diaLabel).filter(Boolean), 12) || '-',
+          ausencias: faltas.length || '-',
+          tardanzas: '-'
+        };
+      })
+      .sort((a,b) => (b.ausencias - a.ausencias) || a.nombre.localeCompare(b.nombre));
+
+    const rows = [...tardyRows, ...absentRows];
+    _repAlertasCache = { periodoInicio: mesStart, periodoFin: mesEnd, mes: mesSel, tardTh, ausTh, rows, alumnosById };
+
+    const mkUnifiedTable = (rows) => {
+      if(!rows.length) return `<div style="color:var(--muted);font-size:.85rem;margin-top:6px;">Sin resultados con los filtros actuales.</div>`;
       return `
         <div style="margin-top:10px;">
-          <div style="font-weight:800;color:var(--text);margin-bottom:8px;">${title}</div>
           <div style="overflow:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface2);">
             <table class="table" style="width:100%;">
-              <thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+              <thead>
+                <tr>
+                  <th>DNI</th><th>Alumno</th><th>Grado</th><th>Sección</th><th>Nivel</th><th>Día</th><th>Ausencias</th><th>Tardanza</th><th style="text-align:right;">Acción</th>
+                </tr>
+              </thead>
               <tbody>
                 ${rows.map(r => `
                   <tr>
@@ -4720,7 +4808,12 @@ async function generarAlertasAsistencia() {
                     <td>${_escHtml(String(r.grado||''))}</td>
                     <td>${_escHtml(String(r.seccion||''))}</td>
                     <td>${_escHtml(String(r.nivel||''))}</td>
-                    <td style="font-weight:800;">${_escHtml(String(r.tardanzas ?? r.ausencias ?? ''))}</td>
+                    <td>${_escHtml(String(r.dias||'-'))}</td>
+                    <td style="font-weight:800;">${_escHtml(String(r.ausencias ?? '-'))}</td>
+                    <td style="font-weight:800;">${_escHtml(String(r.tardanzas ?? '-'))}</td>
+                    <td style="text-align:right;">
+                      <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.78rem;" onclick="enviarWhatsAppAlertaAsistencia('${_escHtml(r.alumnoId)}')">📲 WhatsApp</button>
+                    </td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -4730,13 +4823,13 @@ async function generarAlertasAsistencia() {
       `;
     };
 
-    const html = []
+    const cantT = rows.filter(r => r.tipo === 'TARDANZA').length;
+    const cantA = rows.filter(r => r.tipo === 'AUSENCIA').length;
+    const html = [];
     html.push(`<div style="font-size:0.82rem;color:var(--muted);">Semana: ${weekStart} a ${weekEnd} · Mes: ${mesSel} · Días hábiles (mes): ${diasHab}</div>`);
-    html.push(mkTable(`Tardanzas ≥ ${tardTh} (semana)`, ['DNI','Alumno','Grado','Sección','Nivel','Tardanzas'], tardyRows));
-    html.push(mkTable(`Ausencias ≥ ${ausTh} (mes)`, ['DNI','Alumno','Grado','Sección','Nivel','Ausencias'], absentRows));
-
+    html.push(mkUnifiedTable(rows));
     if(wrap) { wrap.innerHTML = html.join(''); wrap.style.display = ''; }
-    if(status) status.textContent = `✅ Alertas generadas: ${tardyRows.length} con tardanzas y ${absentRows.length} con ausencias.`;
+    if(status) status.textContent = `✅ Alertas generadas: ${cantT} tardanzas y ${cantA} ausencias.`;
   } catch(e) {
     if(status) status.textContent = '❌ ' + e.message;
     if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
@@ -4744,11 +4837,102 @@ async function generarAlertasAsistencia() {
   }
 }
 
+let _alertasTutorTelCache = {};
+async function _getTutorTelByAula(grado, seccion) {
+  const g = String(grado||'').trim();
+  const s = String(seccion||'').trim().toUpperCase();
+  if(!g || !s) return null;
+  const key = g + '|' + s;
+  if(Object.prototype.hasOwnProperty.call(_alertasTutorTelCache, key)) return _alertasTutorTelCache[key];
+  try {
+    const { data, error } = await _sb
+      .from('usuarios')
+      .select('telefono')
+      .eq('colegio_id', COLEGIO_ID)
+      .eq('rol', 'profesor')
+      .eq('es_tutor', true)
+      .eq('tutor_grado', g)
+      .eq('tutor_seccion', s)
+      .limit(1)
+      .maybeSingle();
+    if(error) throw new Error(error.message);
+    const tel = String(data?.telefono || '').trim();
+    _alertasTutorTelCache[key] = tel || null;
+    return _alertasTutorTelCache[key];
+  } catch(e) {
+    _alertasTutorTelCache[key] = null;
+    return null;
+  }
+}
+
+async function enviarWhatsAppAlertaAsistencia(alumnoId) {
+  try {
+    const id = String(alumnoId||'').trim();
+    const cache = _repAlertasCache || {};
+    const periodoInicio = cache.periodoInicio || '';
+    const periodoFin = cache.periodoFin || '';
+    const mes = cache.mes || '';
+    if(!periodoInicio || !periodoFin) throw new Error('Primero genera las alertas');
+
+    const a = (cache.alumnosById && cache.alumnosById[id]) ? cache.alumnosById[id] : null;
+    const nombre = a ? ((a.apellidos||'')+' '+(a.nombres||'')).trim() : id;
+    const aula = a ? `${a.grado||''} ${a.seccion||''}`.trim() : '';
+
+    const _diaLabel = (iso) => {
+      const s = String(iso||'');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+      return s.slice(8,10) + '/' + s.slice(5,7);
+    };
+    const _compact = (arr, max = 16) => arr.length <= max ? arr.join(', ') : (arr.slice(0, max).join(', ') + ` … (+${arr.length - max})`);
+    const _buildBusinessDays = (startIso, endIso) => {
+      const s = _repIsoToDate(startIso);
+      const e = _repIsoToDate(endIso);
+      if(!s || !e) return [];
+      const out = [];
+      for(let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+        const dow = d.getDay();
+        if(dow !== 0 && dow !== 6) out.push(_repDateToIso(d));
+      }
+      return out;
+    };
+
+    const diasHabiles = _buildBusinessDays(periodoInicio, periodoFin);
+    const regs = await DB.getRegistros({ desde: periodoInicio, hasta: periodoFin, tipo:'INGRESO', alumnoIds:[id], columns:'alumno_id,fecha,estado,tipo' });
+    const pres = new Set();
+    const tard = new Set();
+    (regs||[]).forEach(r => {
+      if(!r || !r.fecha) return;
+      pres.add(r.fecha);
+      if(r.estado === 'Tardanza') tard.add(r.fecha);
+    });
+    const faltas = diasHabiles.filter(d => !pres.has(d));
+    const tardDias = Array.from(tard).sort();
+
+    const periodoTxt = (periodoInicio === periodoFin) ? periodoInicio : (periodoInicio + ' a ' + periodoFin);
+    const msg = `${_waEncabezado()}\n\n📌 *Alerta de asistencia*\nAlumno: ${nombre}${aula ? `\nAula: ${aula}` : ''}\nPeríodo: ${periodoTxt}${mes ? `\nMes: ${mes}` : ''}\n\n❌ Ausencias: ${faltas.length}${faltas.length ? `\nDías: ${_compact(faltas.map(_diaLabel).filter(Boolean))}` : ''}\n⏰ Tardanzas: ${tardDias.length}${tardDias.length ? `\nDías: ${_compact(tardDias.map(_diaLabel).filter(Boolean))}` : ''}\n\n${_waPie()}`.trim();
+
+    const tels = [];
+    const tel1 = a ? String(a.telefono||'').trim() : '';
+    const tel2 = a ? String(a.telefono2||'').trim() : '';
+    if(tel1) tels.push(tel1);
+    if(tel2) tels.push(tel2);
+    const telTutor = a ? await _getTutorTelByAula(a.grado, a.seccion) : null;
+    if(telTutor) tels.push(telTutor);
+
+    const uniq = Array.from(new Set(tels.filter(Boolean)));
+    if(!uniq.length) throw new Error('El alumno no tiene teléfonos registrados (apoderado/tutor)');
+    for(const t of uniq) { await sendWhatsApp(t, msg); }
+    toast('✅ WhatsApp enviado','success');
+  } catch(e) {
+    toast('❌ ' + e.message, 'error');
+  }
+}
+
 async function exportarAlertasAsistenciaXLSX() {
   try {
-    if(!_repAlertasCache?.weekStart) {
+    if(!_repAlertasCache?.periodoInicio) {
       await generarAlertasAsistencia();
-      if(!_repAlertasCache?.weekStart) return;
+      if(!_repAlertasCache?.periodoInicio) return;
     }
     if(!window.XLSX) {
       toast('Cargando libreria Excel...','info');
@@ -4759,18 +4943,32 @@ async function exportarAlertasAsistenciaXLSX() {
         document.head.appendChild(s);
       });
     }
-    const { weekStart, weekEnd, mes, tardTh, ausTh, tardyRows, absentRows } = _repAlertasCache;
+    const { periodoInicio, periodoFin, mes, tardTh, ausTh, rows } = _repAlertasCache;
     const wb = XLSX.utils.book_new();
 
-    const aoa1 = [['DNI','Alumno','Grado','Sección','Nivel','Tardanzas','SemanaInicio','SemanaFin','Umbral'], ...tardyRows.map(r => [r.alumnoId,r.nombre,r.grado,r.seccion,r.nivel,r.tardanzas,weekStart,weekEnd,tardTh])];
-    const ws1 = XLSX.utils.aoa_to_sheet(aoa1);
-    XLSX.utils.book_append_sheet(wb, ws1, 'TardanzasSemana');
+    const aoa = [
+      ['Tipo','DNI','Alumno','Grado','Sección','Nivel','Días','Ausencias','Tardanza','PeriodoInicio','PeriodoFin','Mes','UmbralTard','UmbralAus'],
+      ...(rows||[]).map(r => [
+        r.tipo || '',
+        r.alumnoId,
+        r.nombre,
+        r.grado,
+        r.seccion,
+        r.nivel,
+        r.dias || '',
+        (r.ausencias === '-' ? '' : r.ausencias),
+        (r.tardanzas === '-' ? '' : r.tardanzas),
+        periodoInicio,
+        periodoFin,
+        mes,
+        tardTh,
+        ausTh
+      ])
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    XLSX.utils.book_append_sheet(wb, ws, 'Alertas');
 
-    const aoa2 = [['DNI','Alumno','Grado','Sección','Nivel','Ausencias','Mes','Umbral'], ...absentRows.map(r => [r.alumnoId,r.nombre,r.grado,r.seccion,r.nivel,r.ausencias,mes,ausTh])];
-    const ws2 = XLSX.utils.aoa_to_sheet(aoa2);
-    XLSX.utils.book_append_sheet(wb, ws2, 'AusenciasMes');
-
-    XLSX.writeFile(wb, `alertas_asistencia_${weekStart}_${mes}.xlsx`);
+    XLSX.writeFile(wb, `alertas_asistencia_${periodoInicio}_${periodoFin}_${mes}.xlsx`);
     toast('✅ Excel de alertas generado','success');
   } catch(e) {
     toast('❌ Error: ' + e.message, 'error');
