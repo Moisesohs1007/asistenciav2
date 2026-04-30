@@ -5136,17 +5136,13 @@ async function _autoSelectTutoria(nivelId, gradoId, seccionId) {
 
   // 2. Asegurar que el grado esté poblado y seleccionado
   if (gEl) {
-    if (![...gEl.options].some(o => o.value === g)) {
-      gEl.innerHTML = `<option value="${g}">${g}</option>`;
-    }
+    await poblarFiltroGrado(gradoId, nivel); // Forzar poblado real para que aparezca en el combo
     gEl.value = g; gEl.disabled = true;
   }
 
   // 3. Asegurar que la sección esté poblada y seleccionada
   if (sEl) {
-    if (![...sEl.options].some(o => o.value === s)) {
-      sEl.innerHTML = `<option value="${s}">${s}</option>`;
-    }
+    await poblarFiltroSeccion(seccionId, g); // Forzar poblado real para que aparezca en el combo
     sEl.value = s; sEl.disabled = true;
   }
 }
@@ -8381,6 +8377,7 @@ async function exportPDFAlumnos() {
 
   drawHeader(); drawTableHeader();
   let gradoActual = null;
+  let contadorGrupo = 0;
 
   alumnos.forEach((a, i) => {
     // Separador por grado+sección
@@ -8388,6 +8385,7 @@ async function exportPDFAlumnos() {
     if(grupoKey !== gradoActual) {
       const isFirstGroup = (gradoActual === null);
       gradoActual = grupoKey;
+      contadorGrupo = 0; // Reiniciar contador para la nueva aula (User instruction)
       
       // Si no es el primer grupo, saltar a una nueva página (User instruction)
       if(!isFirstGroup) {
@@ -8402,6 +8400,7 @@ async function exportPDFAlumnos() {
       doc.text(`${a.turno||''} — ${a.grado||''} Sección ${a.seccion||''}`, TABLE_X+4, curY+4.2);
       curY += 6;
     }
+    contadorGrupo++;
     checkNewPage();
     if(i % 2 === 0) { doc.setFillColor(...GRAY); doc.rect(TABLE_X,curY,TABLE_W,ROW_H,'F'); }
     doc.setDrawColor(220,226,238); doc.setLineWidth(0.2);
@@ -8409,7 +8408,7 @@ async function exportPDFAlumnos() {
     doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(...TEXT);
     let cx = TABLE_X;
     COLS.forEach(col => {
-      let val = col.key === 'num' ? String(i+1) : (a[col.key]||'-');
+      let val = col.key === 'num' ? String(contadorGrupo) : (a[col.key]||'-');
       if(col.key === 'apellidos' && val.length > 20) val = val.substring(0,18)+'...';
       if(col.key === 'nombres'   && val.length > 20) val = val.substring(0,18)+'...';
       doc.text(String(val), cx+col.w/2, curY+ROW_H/2+2, {align:'center'});

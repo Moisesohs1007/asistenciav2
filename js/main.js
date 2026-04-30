@@ -794,17 +794,13 @@ async function _autoSelectTutoria(nivelId, gradoId, seccionId) {
 
   // 2. Asegurar que el grado esté poblado y seleccionado
   if (gEl) {
-    if (![...gEl.options].some(o => o.value === g)) {
-      gEl.innerHTML = `<option value="${g}">${g}</option>`;
-    }
+    await poblarFiltroGrado(gradoId, nivel); // Forzar poblado real para que aparezca en el combo
     gEl.value = g; gEl.disabled = true;
   }
 
   // 3. Asegurar que la sección esté poblada y seleccionada
   if (sEl) {
-    if (![...sEl.options].some(o => o.value === s)) {
-      sEl.innerHTML = `<option value="${s}">${s}</option>`;
-    }
+    await poblarFiltroSeccion(seccionId, g); // Forzar poblado real para que aparezca en el combo
     sEl.value = s; sEl.disabled = true;
   }
 }
