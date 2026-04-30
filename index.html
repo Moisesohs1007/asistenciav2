@@ -2181,6 +2181,9 @@
       <button class="msb-subitem" id="msb-sub-materiales" style="display:none;" onclick="msbPickSub(this,'materiales','aula','📦 Materiales')">
         <div class="msb-dot"><span></span></div><span class="msb-sublabel">Materiales</span>
       </button>
+      <button class="msb-subitem" id="msb-sub-materiales-entrega" style="display:none;" onclick="msbPickSub(this,'materiales-entrega','aula','📤 Entrega a administración')">
+        <div class="msb-dot"><span></span></div><span class="msb-sublabel">Entrega a administración</span>
+      </button>
     </div>
 
     <!-- Comunicación -->
@@ -2560,6 +2563,7 @@
         <div class="nav-drop-sep"></div>
         <div class="nav-drop-item" id="nav-incidentes" onclick="event.stopPropagation();showSection('incidentes');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Incidentes</div>
         <div class="nav-drop-item" id="nav-materiales" style="display:none;" onclick="event.stopPropagation();showSection('materiales');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73z"/><path d="M3.3 7.3 12 12l8.7-4.7"/><path d="M12 22V12"/></svg>📦 Materiales</div>
+        <div class="nav-drop-item" id="nav-materiales-entrega" style="display:none;" onclick="event.stopPropagation();showSection('materiales-entrega');closeNavDrops()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12l-18 0"/><path d="M16 6l6 6-6 6"/><path d="M4 6v12"/></svg>📤 Entrega a administración</div>
       </div>
     </button>
     <!-- Comunicación -->
@@ -3542,7 +3546,7 @@
   <!-- ===== MATERIALES (TUTOR / ADMIN) ===== -->
   <div class="section" id="sec-materiales" onfocusin="initMateriales()">
     <div class="page-title">📦 Recepción de Materiales</div>
-    <div class="page-sub">Control por estudiante, recordatorios WhatsApp y entrega a administración</div>
+    <div class="page-sub">Control por estudiante, lista base y recordatorios WhatsApp</div>
 
     <div class="card" id="mat-no-access" style="display:none;padding:16px 18px;">
       <div style="font-weight:800;color:var(--text);">Sin acceso</div>
@@ -3708,7 +3712,7 @@
       </div>
     </div>
 
-    <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;">
+    <div class="grid-2" style="display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px;">
       <div class="card" style="padding:14px 18px;">
         <div class="card-title"><span class="dot"></span>Pendientes y recordatorio</div>
         <div class="page-sub" style="margin-top:8px;">Selecciona estudiantes incompletos y envía recordatorio por WhatsApp.</div>
@@ -3735,162 +3739,177 @@
           </table>
         </div>
       </div>
+    </div>
+  </div>
 
-      <div class="card" style="padding:14px 18px;">
-        <div class="card-title"><span class="dot"></span>Entrega a administración</div>
-        <div class="page-sub" style="margin-top:8px;">Registra lo entregado físicamente. El inventario se actualiza al confirmar.</div>
+  <!-- ===== MATERIALES: ENTREGA A ADMINISTRACIÓN ===== -->
+  <div class="section" id="sec-materiales-entrega" onfocusin="initMaterialesEntrega()">
+    <div class="page-title">📤 Entrega a administración</div>
+    <div class="page-sub">Envío de entregas, stock y solicitudes. Administración confirma y gestiona inventario.</div>
 
-        <div id="mat-handoff-tutor" style="display:none;margin-top:10px;">
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
-            <button class="btn btn-primary" type="button" onclick="matBuildHandoffDraft()" style="justify-content:center;">Crear entrega</button>
-            <div style="color:var(--muted);font-size:0.85rem;" id="mat-handoff-hint">—</div>
-          </div>
-          <div class="table-wrap" style="margin-top:12px;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Material</th>
-                  <th>Cant.</th>
-                  <th>Unidad</th>
-                </tr>
-              </thead>
-              <tbody id="mat-handoff-items"></tbody>
-            </table>
-          </div>
-          <div class="form-group" style="margin-top:10px;">
-            <label>Observaciones</label>
-            <input id="mat-handoff-obs" type="text" placeholder="opcional">
-          </div>
-          <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn btn-primary" type="button" onclick="matSubmitHandoff()" style="justify-content:center;">Enviar a administración</button>
-            <button class="btn btn-ghost" type="button" onclick="matClearHandoff()" style="justify-content:center;">Limpiar</button>
-          </div>
+    <div class="card" style="padding:14px 18px;margin-bottom:14px;">
+      <div style="font-weight:900;color:var(--text);">Ámbito</div>
+      <div style="margin-top:4px;color:var(--muted);" id="mat-entrega-scope-label">—</div>
+      <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-ghost" type="button" onclick="initMaterialesEntrega(true)" style="padding:7px 14px;">↻ Actualizar</button>
+        <button class="btn btn-ghost" type="button" onclick="showSection('materiales')" style="padding:7px 14px;">← Volver a recepción</button>
+      </div>
+    </div>
 
-          <div style="margin-top:16px;font-weight:900;color:var(--text);">Mi stock (administración)</div>
-          <div class="page-sub" style="margin-top:6px;">Se actualiza cuando administración confirma la recepción de tus entregas.</div>
-          <div class="table-wrap" style="margin-top:10px;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Material</th>
-                  <th>Unidad</th>
-                  <th>Stock</th>
-                </tr>
-              </thead>
-              <tbody id="mat-my-stock"></tbody>
-            </table>
-          </div>
+    <div class="card" style="padding:14px 18px;">
+      <div class="card-title"><span class="dot"></span>Entrega a administración</div>
+      <div class="page-sub" style="margin-top:8px;">Registra lo entregado físicamente. El inventario se actualiza al confirmar.</div>
 
-          <div style="margin-top:14px;font-weight:900;color:var(--text);">Solicitar materiales</div>
-          <div class="page-sub" style="margin-top:6px;">Crea una solicitud. Administración la aprueba y se descuenta del stock.</div>
-          <div class="form-grid" style="grid-template-columns:1.5fr 0.7fr;gap:10px;margin-top:10px;">
-            <div class="form-group">
-              <label>Material</label>
-              <select id="mat-req-item"></select>
-            </div>
-            <div class="form-group">
-              <label>Cantidad</label>
-              <input id="mat-req-qty" type="number" min="0" step="0.5" value="1">
-            </div>
-          </div>
-          <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn btn-primary" type="button" onclick="matAddRequestItem()" style="justify-content:center;">+ Agregar</button>
-            <button class="btn btn-ghost" type="button" onclick="matClearRequest()" style="justify-content:center;">Limpiar</button>
-          </div>
-          <div class="table-wrap" style="margin-top:10px;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Material</th>
-                  <th>Cant.</th>
-                  <th>Unidad</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="mat-req-items"></tbody>
-            </table>
-          </div>
-          <div class="form-group" style="margin-top:10px;">
-            <label>Observaciones</label>
-            <input id="mat-req-obs" type="text" placeholder="opcional">
-          </div>
-          <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn btn-primary" type="button" onclick="matSubmitRequest()" style="justify-content:center;">Enviar solicitud</button>
-          </div>
-          <div style="margin-top:12px;font-weight:900;color:var(--text);">Mis solicitudes</div>
-          <div class="table-wrap" style="margin-top:10px;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Estado</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="mat-my-requests"></tbody>
-            </table>
-          </div>
+      <div id="mat-handoff-tutor" style="display:none;margin-top:10px;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+          <button class="btn btn-primary" type="button" onclick="matBuildHandoffDraft()" style="justify-content:center;">Crear entrega</button>
+          <div style="color:var(--muted);font-size:0.85rem;" id="mat-handoff-hint">—</div>
+        </div>
+        <div class="table-wrap" style="margin-top:12px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>Cant.</th>
+                <th>Unidad</th>
+              </tr>
+            </thead>
+            <tbody id="mat-handoff-items"></tbody>
+          </table>
+        </div>
+        <div class="form-group" style="margin-top:10px;">
+          <label>Observaciones</label>
+          <input id="mat-handoff-obs" type="text" placeholder="opcional">
+        </div>
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" type="button" onclick="matSubmitHandoff()" style="justify-content:center;">Enviar a administración</button>
+          <button class="btn btn-ghost" type="button" onclick="matClearHandoff()" style="justify-content:center;">Limpiar</button>
         </div>
 
-        <div id="mat-admin-panel" style="display:none;margin-top:10px;">
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
-            <div style="font-weight:900;color:var(--text);">Pendientes de confirmación</div>
-            <button class="btn btn-ghost" type="button" onclick="matLoadAdminHandoffs()" style="padding:7px 14px;">↻ Actualizar</button>
+        <div style="margin-top:16px;font-weight:900;color:var(--text);">Mi stock (administración)</div>
+        <div class="page-sub" style="margin-top:6px;">Se actualiza cuando administración confirma la recepción de tus entregas.</div>
+        <div class="table-wrap" style="margin-top:10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>Unidad</th>
+                <th>Stock</th>
+              </tr>
+            </thead>
+            <tbody id="mat-my-stock"></tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:14px;font-weight:900;color:var(--text);">Solicitar materiales</div>
+        <div class="page-sub" style="margin-top:6px;">Crea una solicitud. Administración la aprueba y se descuenta del stock.</div>
+        <div class="form-grid" style="grid-template-columns:1.5fr 0.7fr;gap:10px;margin-top:10px;">
+          <div class="form-group">
+            <label>Material</label>
+            <select id="mat-req-item"></select>
           </div>
-          <div class="table-wrap" style="margin-top:12px;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Tutor</th>
-                  <th>Estado</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="mat-admin-handoffs"></tbody>
-            </table>
+          <div class="form-group">
+            <label>Cantidad</label>
+            <input id="mat-req-qty" type="number" min="0" step="0.5" value="1">
           </div>
-          <div style="margin-top:14px;font-weight:900;color:var(--text);">Solicitudes pendientes</div>
-          <div class="table-wrap" style="margin-top:10px;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Tutor</th>
-                  <th>Estado</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="mat-admin-requests"></tbody>
-            </table>
-          </div>
-          <div style="margin-top:14px;font-weight:900;color:var(--text);">Inventario</div>
-          <div class="table-wrap" style="margin-top:10px;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Material</th>
-                  <th>Unidad</th>
-                  <th>Stock (Tutor)</th>
-                  <th>Tutor</th>
-                </tr>
-              </thead>
-              <tbody id="mat-admin-stock"></tbody>
-            </table>
-          </div>
-          <div style="margin-top:12px;font-weight:900;color:var(--text);">Stock global (sumatoria)</div>
-          <div class="table-wrap" style="margin-top:10px;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Material</th>
-                  <th>Unidad</th>
-                  <th>Stock</th>
-                </tr>
-              </thead>
-              <tbody id="mat-admin-stock-global"></tbody>
-            </table>
-          </div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" type="button" onclick="matAddRequestItem()" style="justify-content:center;">+ Agregar</button>
+          <button class="btn btn-ghost" type="button" onclick="matClearRequest()" style="justify-content:center;">Limpiar</button>
+        </div>
+        <div class="table-wrap" style="margin-top:10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>Cant.</th>
+                <th>Unidad</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="mat-req-items"></tbody>
+          </table>
+        </div>
+        <div class="form-group" style="margin-top:10px;">
+          <label>Observaciones</label>
+          <input id="mat-req-obs" type="text" placeholder="opcional">
+        </div>
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary" type="button" onclick="matSubmitRequest()" style="justify-content:center;">Enviar solicitud</button>
+        </div>
+        <div style="margin-top:12px;font-weight:900;color:var(--text);">Mis solicitudes</div>
+        <div class="table-wrap" style="margin-top:10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="mat-my-requests"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="mat-admin-panel" style="display:none;margin-top:10px;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+          <div style="font-weight:900;color:var(--text);">Pendientes de confirmación</div>
+          <button class="btn btn-ghost" type="button" onclick="matLoadAdminHandoffs()" style="padding:7px 14px;">↻ Actualizar</button>
+        </div>
+        <div class="table-wrap" style="margin-top:12px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tutor</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="mat-admin-handoffs"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:14px;font-weight:900;color:var(--text);">Solicitudes pendientes</div>
+        <div class="table-wrap" style="margin-top:10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tutor</th>
+                <th>Estado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="mat-admin-requests"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:14px;font-weight:900;color:var(--text);">Inventario</div>
+        <div class="table-wrap" style="margin-top:10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>Unidad</th>
+                <th>Stock (Tutor)</th>
+                <th>Tutor</th>
+              </tr>
+            </thead>
+            <tbody id="mat-admin-stock"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:12px;font-weight:900;color:var(--text);">Stock global (sumatoria)</div>
+        <div class="table-wrap" style="margin-top:10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>Unidad</th>
+                <th>Stock</th>
+              </tr>
+            </thead>
+            <tbody id="mat-admin-stock-global"></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -5064,6 +5083,7 @@ function mostrarAvisoCamara() {
   modal.style.display = 'flex';
 }
 let currentRol = null; // admin | director | profesor | portero
+let currentCargo = '';
 let _repContextoPDF = {}; // contexto guardado para exportar PDF de reportes
 let _repAnioCompletoActivo = false;
 
@@ -5073,6 +5093,10 @@ function _normRol(r) {
   const v = String(r || '').trim().toLowerCase();
   if(v === 'portero') return 'auxiliar';
   return v;
+}
+function _isDocenteAula() {
+  const c = String(currentCargo || '').trim().toLowerCase();
+  return c.includes('docente de aula') || c.includes('docente aula');
 }
 function _rolLabel(r) {
   const v = _normRol(r);
@@ -5102,6 +5126,7 @@ function canAccessSection(secId) {
   if(id === 'alertas') return (r === 'admin' || r === 'director' || r === 'coordinador');
   if(id === 'incidentes') return (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'profesor' || r === 'auxiliar');
   if(id === 'materiales') return (_isAdminDirectorOrCoord() || (r === 'profesor' && isTutor));
+  if(id === 'materiales-entrega') return (_isAdminDirectorOrCoord() || (r === 'profesor' && isTutor));
   if(id === 'comunicado') return (r === 'admin' || r === 'director' || r === 'coordinador' || (r === 'profesor' && isTutor));
   if(id === 'agenda') return (r === 'admin' || r === 'director' || r === 'coordinador');
   if(id === 'rol-examenes') return (_isAdminDirectorOrCoord() || (r === 'profesor' && isTutor));
@@ -5576,6 +5601,7 @@ auth.onAuthStateChanged(async user => {
     currentUser = user;
     currentRol = _normRol(uData.rol);
     currentPerms = { incidentesDiaLectura: !!uData.incidentesDiaLectura };
+    currentCargo = String(uData.cargo || '').trim();
     const nombre = uData.nombre || user.email;
 
     // Marcar sesión activa para evitar splash al refrescar
@@ -5685,6 +5711,7 @@ function aplicarPermisos(rol) {
     alumnos: ['tab-alumnos', 'tab-alumnos'],
     incidentes: ['nav-incidentes', 'tab-incidentes'],
     materiales: ['nav-materiales'],
+    'materiales-entrega': ['nav-materiales-entrega'],
     comunicado: ['nav-comunicado'],
     agenda: ['nav-agenda'],
     'rol-examenes': ['nav-rol-examenes'],
@@ -5703,7 +5730,7 @@ function aplicarPermisos(rol) {
   });
 
   const hasAsistencia = ['scan','registro','reportes','alertas'].some(canAccessSection);
-  const hasAula = ['alumnos','incidentes','materiales'].some(canAccessSection);
+  const hasAula = ['alumnos','incidentes','materiales','materiales-entrega'].some(canAccessSection);
   const hasCom = ['comunicado','agenda','rol-examenes','ia-horarios','horarios-grado'].some(canAccessSection);
   const hasCfg = ['config','usuarios'].some(canAccessSection);
 
@@ -5778,6 +5805,7 @@ function showSectionDirect(id) {
   }
   if(id==='inicio') cargarDashboardInicio();
   if(id==='materiales') { initMateriales(); }
+  if(id==='materiales-entrega') { initMaterialesEntrega(); }
   if(id==='comunicado') { initComunicado(); }
   if(id==='agenda') { initAgenda(); }
   if(id==='scan') updateStats();
@@ -8507,8 +8535,12 @@ function matUpdateAccessUi() {
   const can = matCanAccess();
   const nav = document.getElementById('nav-materiales');
   if(nav) nav.style.display = can ? '' : 'none';
+  const nav2 = document.getElementById('nav-materiales-entrega');
+  if(nav2) nav2.style.display = can ? '' : 'none';
   const msb = document.getElementById('msb-sub-materiales');
   if(msb) msb.style.display = can ? '' : 'none';
+  const msb2 = document.getElementById('msb-sub-materiales-entrega');
+  if(msb2) msb2.style.display = can ? '' : 'none';
 }
 
 let _matInited = false;
@@ -9631,7 +9663,7 @@ async function matRefreshAll() {
   if(adminTutorGroup) adminTutorGroup.style.display = _matIsAdminMode() ? 'block' : 'none';
   if(tutorWrap) tutorWrap.style.display = 'none';
   if(adminWrap) adminWrap.style.display = _matIsAdminMode() ? 'block' : 'none';
-  if(adminCard) adminCard.style.display = _matIsAdminMode() ? '' : 'none';
+  if(adminCard) adminCard.style.display = '';
   if(label) {
     const who = _matIsAdminMode() ? (_matScope.tutorNombre ? `Tutor: ${_matScope.tutorNombre}` : 'Administración') : 'Tutor';
     label.textContent = `${who} · ${_matScope.grado||'—'} ${_matScope.seccion||''}`;
@@ -9683,6 +9715,36 @@ async function initMateriales() {
   _matEditingExisting = false;
   _matDraftItems = [];
   await matRefreshAll();
+}
+
+async function initMaterialesEntrega(refresh) {
+  if(!_matInited) {
+    await initMateriales();
+  } else if(refresh) {
+    await matRefreshAll();
+  }
+  const label = document.getElementById('mat-entrega-scope-label');
+  if(label) {
+    const who = _matIsAdminMode() ? (_matScope.tutorNombre ? `Tutor: ${_matScope.tutorNombre}` : 'Administración') : 'Tutor';
+    label.textContent = `${who} · ${_matScope.grado||'—'} ${_matScope.seccion||''}`;
+  }
+  const tutorWrap = document.getElementById('mat-handoff-tutor');
+  const adminWrap = document.getElementById('mat-admin-panel');
+  if(tutorWrap) tutorWrap.style.display = _matIsAdminMode() ? 'none' : 'block';
+  if(adminWrap) adminWrap.style.display = _matIsAdminMode() ? 'block' : 'none';
+  try {
+    if(!_matTemplate) {
+      await matLoadTemplate();
+      await matLoadReceiptsIndex();
+    }
+    if(_matIsAdminMode()) {
+      await matLoadAdminHandoffs();
+    } else {
+      await matLoadMyStockAndRequests();
+    }
+  } catch(e) {
+    toast('Error cargando entrega: ' + (e?.message || e), 'error');
+  }
 }
 
 let _comAlumnos = null;
@@ -15854,7 +15916,9 @@ async function cargarPrivilegiosActuales() {
 // Aplicar restricción a lista de alumnos
 function aplicarFiltroProfesor(alumnos) {
   if(_normRol(currentRol) !== 'profesor') return alumnos;
-  const base = (currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {};
+  const base = _isDocenteAula()
+    ? {}
+    : ((currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {});
   const asig = JSON.parse(JSON.stringify(base || {}));
   if(_isTutorUser()) {
     const g = String(currentTutorInfo.tutorGrado || '').trim();
@@ -15862,7 +15926,7 @@ function aplicarFiltroProfesor(alumnos) {
     if(g) {
       if(!asig[g]) asig[g] = s ? [s] : [];
       else if(Array.isArray(asig[g])) {
-        if(asig[g].length === 0) {}
+        if(asig[g].length === 0) { asig[g] = s ? [s] : []; }
         else if(s && !asig[g].includes(s)) asig[g].push(s);
       } else asig[g] = s ? [s] : [];
     }
@@ -15889,7 +15953,9 @@ function _invalidarCacheAlumnos() { _alumnosCacheFull = null; _alumnosCacheTs = 
 
 async function getAlumnosFiltrados() {
   if(_normRol(currentRol) === 'profesor') {
-    const base = (currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {};
+    const base = _isDocenteAula()
+      ? {}
+      : ((currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {});
     const asig = JSON.parse(JSON.stringify(base || {}));
     if(_isTutorUser()) {
       const g = String(currentTutorInfo.tutorGrado || '').trim();
@@ -15897,7 +15963,7 @@ async function getAlumnosFiltrados() {
       if(g) {
         if(!asig[g]) asig[g] = s ? [s] : [];
         else if(Array.isArray(asig[g])) {
-          if(asig[g].length === 0) {}
+          if(asig[g].length === 0) { asig[g] = s ? [s] : []; }
           else if(s && !asig[g].includes(s)) asig[g].push(s);
         } else asig[g] = s ? [s] : [];
       }
@@ -17919,6 +17985,7 @@ function msbInit() {
     alumnos: 'msb-sub-alumnos',
     incidentes: 'msb-sub-incidentes',
     materiales: 'msb-sub-materiales',
+    'materiales-entrega': 'msb-sub-materiales-entrega',
     comunicado: 'msb-sub-comunicado',
     agenda: 'msb-sub-agenda',
     'ia-horarios': 'msb-sub-ia-horarios',
@@ -17936,9 +18003,9 @@ function msbInit() {
   const subAs = document.getElementById('msb-sub-asistencia');
   if(subAs) subAs.style.display = ['scan','registro','reportes','alertas'].some(canAccessSection) ? '' : 'none';
   const btnAu = document.getElementById('msb-btn-aula');
-  if(btnAu) btnAu.style.display = ['alumnos','incidentes','materiales'].some(canAccessSection) ? '' : 'none';
+  if(btnAu) btnAu.style.display = ['alumnos','incidentes','materiales','materiales-entrega'].some(canAccessSection) ? '' : 'none';
   const subAu = document.getElementById('msb-sub-aula');
-  if(subAu) subAu.style.display = ['alumnos','incidentes','materiales'].some(canAccessSection) ? '' : 'none';
+  if(subAu) subAu.style.display = ['alumnos','incidentes','materiales','materiales-entrega'].some(canAccessSection) ? '' : 'none';
   const btnCo = document.getElementById('msb-btn-comunicacion');
   if(btnCo) btnCo.style.display = ['comunicado','agenda','rol-examenes','ia-horarios','horarios-grado'].some(canAccessSection) ? '' : 'none';
   const subCo = document.getElementById('msb-sub-comunicacion');
