@@ -906,7 +906,7 @@
   .modal-bg {
     position: fixed; inset:0;
     background: rgba(0,0,0,0.7);
-    z-index: 100050;
+    z-index: 999999;
     display: flex; align-items: center; justify-content: center;
     padding: 20px;
     overflow-y: auto;
@@ -914,7 +914,7 @@
     backdrop-filter: blur(4px);
     display: none;
   }
-  .modal-bg.open { display: flex; animation: fadeIn 0.2s; }
+  .modal-bg.open { display: flex; align-items: flex-start; animation: fadeIn 0.2s; }
   @keyframes fadeIn { from{opacity:0} to{opacity:1} }
   .modal {
     background: var(--surface);
@@ -927,6 +927,7 @@
     max-height: calc(100dvh - 40px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    margin: 20px auto;
   }
   @media (max-width: 520px) {
     .modal-bg { padding: 12px; align-items: flex-start; }
@@ -946,6 +947,11 @@
   body.modal-lock #bottom-nav,
   body.modal-lock #mobile-sidebar,
   body.modal-lock #msb-overlay { pointer-events: none !important; }
+  body.modal-lock header,
+  body.modal-lock #nav-tabs,
+  body.modal-lock #bottom-nav,
+  body.modal-lock #mobile-sidebar,
+  body.modal-lock #msb-overlay { z-index: 0 !important; }
   body.modal-lock #user-dropdown-menu { display: none !important; pointer-events: none !important; }
 
   .pta-wrap { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
@@ -3229,12 +3235,13 @@
         <select id="u-rol" onchange="togglePrivilegios()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:var(--font-body);font-size:0.88rem;width:100%;display:block;-webkit-appearance:menulist;appearance:menulist;cursor:pointer;">
           <option value="auxiliar">🧑‍🏫 Auxiliar (Escáner / Incidentes)</option>
           <option value="profesor">👨‍🏫 Profesor</option>
+          <option value="psicologo">🧠 Psicólogo</option>
           <option value="coordinador">🧩 Coordinador</option>
           <option value="director">🏫 Director</option>
           <option value="admin">⚙️ Acceso Total</option>
         </select>
         <div id="u-rol-hint" style="font-size:0.75rem;color:var(--muted);margin-top:6px;">
-          Para configurar <b>es_tutor</b>, <b>tutor_grado</b>, <b>tutor_seccion</b>, <b>restringir</b> y <b>asignaciones</b>, selecciona el rol <b>Profesor</b>.
+          Para configurar <b>restringir</b> y <b>asignaciones</b>, selecciona el rol <b>Profesor</b> o <b>Psicólogo</b>.
         </div>
       </div>
       <div class="form-group">
@@ -3255,19 +3262,17 @@
       <div id="u-permisos-extra" style="display:none;">
         <hr class="divider">
         <div style="font-size:0.9rem;font-weight:800;color:var(--text);margin-bottom:8px;">Permisos especiales</div>
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88rem;font-weight:600;">
-          <input type="checkbox" id="u-incidentes-dia-lectura" style="accent-color:var(--accent);width:16px;height:16px;">
-          Puede ver incidentes del día (solo lectura)
-        </label>
-        <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;line-height:1.35;">
-          Permite ver los incidentes del día sin acceso al historial completo. Solo lo asigna Admin/Director.
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <div id="u-permisos-especiales-resumen" style="font-size:0.78rem;color:var(--muted);">Sin permisos especiales</div>
+          <button class="btn btn-ghost" onclick="openModalPermisosEspeciales()" style="padding:6px 12px;font-size:0.8rem;">⚙ Configurar</button>
         </div>
+        <input type="checkbox" id="u-incidentes-dia-lectura" style="display:none;">
       </div>
       <!-- Solo visible si rol = profesor -->
       <div id="u-privilegios-group" style="display:block;">
         <hr class="divider">
         <div id="u-privilegios-note" style="font-size:0.78rem;color:var(--muted);margin:-4px 0 12px 0;display:none;">
-          Estos campos solo aplican al rol <b>Profesor</b>.
+          Estos campos solo aplican al rol <b>Profesor</b> o <b>Psicólogo</b>.
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
           <div>
@@ -3283,7 +3288,7 @@
           <label>Asignaciones (formato Excel)</label>
           <textarea id="u-asignaciones-text" rows="2" placeholder="Ej: 3:A,B;4:todas" oninput="onUsuarioAsignacionesInput()" style="resize:none;"></textarea>
           <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;">
-            Solo se usa si <b>Restringir</b> está activado (rol Profesor).
+            Solo se usa si <b>Restringir</b> está activado (rol Profesor o Psicólogo).
           </div>
         </div>
         <div style="margin-top:14px;">
@@ -3315,6 +3320,31 @@
       <div style="display:flex;gap:10px;margin-top:20px;">
         <button class="btn btn-primary" onclick="saveUsuario()" style="flex:1;justify-content:center;">Guardar</button>
         <button class="btn btn-ghost" onclick="closeModal('modal-usuario')" style="flex:1;justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Permisos Especiales -->
+  <div class="modal-bg" id="modal-permisos-especiales" onclick="closeModal('modal-permisos-especiales')">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;display:flex;flex-direction:column;overflow:hidden;">
+      <div class="modal-header">
+        <div class="modal-title">Permisos especiales</div>
+        <button class="modal-close" onclick="closeModal('modal-permisos-especiales')">✕</button>
+      </div>
+      <div style="overflow:auto;flex:1;min-height:0;padding-right:2px;">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.88rem;font-weight:650;line-height:1.25;">
+          <input type="checkbox" id="pe-incidentes-dia-lectura" style="margin-top:2px;accent-color:var(--accent);width:16px;height:16px;">
+          <span>
+            Puede ver incidentes del día (solo lectura)
+            <div style="font-size:0.75rem;color:var(--muted);font-weight:500;margin-top:6px;line-height:1.35;">
+              Permite ver los incidentes del día sin acceso al historial completo. Solo lo asigna Admin/Director.
+            </div>
+          </span>
+        </label>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:18px;">
+        <button class="btn btn-primary" onclick="savePermisosEspeciales()" style="flex:1;justify-content:center;">Guardar</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-permisos-especiales')" style="flex:1;justify-content:center;">Cancelar</button>
       </div>
     </div>
   </div>
@@ -5175,7 +5205,7 @@ async function _autoSelectTutoria(nivelId, gradoId, seccionId) {
 }
 function _rolLabel(r) {
   const v = _normRol(r);
-  const map = { admin:'ADMIN', director:'DIRECTOR', coordinador:'COORDINADOR', profesor:'PROFESOR', auxiliar:'AUXILIAR' };
+  const map = { admin:'ADMIN', director:'DIRECTOR', coordinador:'COORDINADOR', profesor:'PROFESOR', psicologo:'PSICÓLOGO', auxiliar:'AUXILIAR' };
   return map[v] || String(v || '').toUpperCase();
 }
 function _isTutorUser() {
@@ -5194,17 +5224,17 @@ function canAccessSection(secId) {
   const isTutor = _isTutorUser();
 
   if(id === 'inicio') return true;
-  if(id === 'scan') return (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'profesor' || r === 'auxiliar');
-  if(id === 'registro') return (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'profesor');
-  if(id === 'alumnos') return (r === 'admin' || r === 'coordinador' || r === 'profesor');
-  if(id === 'reportes') return (r === 'admin' || r === 'director' || r === 'coordinador' || (r === 'profesor' && isTutor));
+  if(id === 'scan') return (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'profesor' || r === 'psicologo' || r === 'auxiliar');
+  if(id === 'registro') return (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'profesor' || r === 'psicologo');
+  if(id === 'alumnos') return (r === 'admin' || r === 'coordinador' || r === 'profesor' || r === 'psicologo');
+  if(id === 'reportes') return (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'psicologo' || (r === 'profesor' && isTutor));
   if(id === 'alertas') return (r === 'admin' || r === 'director' || r === 'coordinador');
-  if(id === 'incidentes') return (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'profesor' || r === 'auxiliar');
-  if(id === 'materiales') return (_isAdminDirectorOrCoord() || (r === 'profesor' && isTutor));
+  if(id === 'incidentes') return (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'profesor' || r === 'psicologo' || r === 'auxiliar');
+  if(id === 'materiales') return (_isAdminDirectorOrCoord() || r === 'psicologo' || (r === 'profesor' && isTutor));
   if(id === 'materiales-entrega') return _isAdminDirectorOrCoord();
-  if(id === 'comunicado') return (r === 'admin' || r === 'director' || r === 'coordinador' || (r === 'profesor' && isTutor));
+  if(id === 'comunicado') return (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'psicologo' || (r === 'profesor' && isTutor));
   if(id === 'agenda') return (r === 'admin' || r === 'director' || r === 'coordinador');
-  if(id === 'rol-examenes') return (_isAdminDirectorOrCoord() || (r === 'profesor' && isTutor));
+  if(id === 'rol-examenes') return (_isAdminDirectorOrCoord() || r === 'psicologo' || (r === 'profesor' && isTutor));
   if(id === 'ia-horarios' || id === 'horarios-grado') return (r === 'admin' || r === 'director' || r === 'coordinador');
   if(id === 'usuarios' || id === 'config') return _isAdminDirector();
   if(id === 'generadores-ia') return false;
@@ -7111,8 +7141,8 @@ function _filaAlumno(a) {
     <td style="display:flex;gap:6px;flex-wrap:wrap;">
       <button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="showQR('${a.id}')">QR</button>
       <button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalAlumno('${a.id}')">✏</button>
-      ${_normRol(currentRol) !== 'profesor' ? `<button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;color:#f59e0b;border-color:#f59e0b44;" title="Resetear contraseña apoderado" onclick="resetPassApoderado('${a.id}')">🔑</button>` : ''}
-      ${_normRol(currentRol) !== 'profesor' ? `<button class="btn btn-danger btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>` : ''}
+      ${(_normRol(currentRol) !== 'profesor' && _normRol(currentRol) !== 'psicologo') ? `<button class="btn btn-ghost btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;color:#f59e0b;border-color:#f59e0b44;" title="Resetear contraseña apoderado" onclick="resetPassApoderado('${a.id}')">🔑</button>` : ''}
+      ${(_normRol(currentRol) !== 'profesor' && _normRol(currentRol) !== 'psicologo') ? `<button class="btn btn-danger btn-accion-alumno" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteAlumno('${a.id}')">✕</button>` : ''}
     </td>
     <td class="td-chk-alumno" style="display:none;text-align:center;"><input type="checkbox" class="chk-alumno" value="${a.id}" onchange="updateSeleccionados()"></td>
   </tr>`;
@@ -8889,7 +8919,8 @@ function _matIsAdminMode() {
 }
 
 function matCanAccess() {
-  return _matIsAdminMode() || (_normRol(currentRol) === 'profesor' && !!currentTutorInfo.esTutor);
+  const r = _normRol(currentRol);
+  return _matIsAdminMode() || (r === 'psicologo') || (r === 'profesor' && !!currentTutorInfo.esTutor);
 }
 
 function matUpdateAccessUi() {
@@ -10120,14 +10151,9 @@ let _comMediaName = '';
 
 async function initComunicado() {
   if(!_comAlumnos) {
-    if(_normRol(currentRol) === 'profesor') {
-      const g = String(currentTutorInfo?.tutorGrado || '').trim();
-      const s = String(currentTutorInfo?.tutorSeccion || '').trim().toUpperCase();
-      if(g && s) _comAlumnos = await DB.getAlumnosScoped({ [g]: [s] });
-      else _comAlumnos = [];
-    } else {
-      _comAlumnos = await DB.getAlumnos();
-    }
+    const r = _normRol(currentRol);
+    if(r === 'profesor' || r === 'psicologo') _comAlumnos = await getAlumnosFiltrados();
+    else _comAlumnos = await DB.getAlumnos();
   }
   if(!_comInit) {
     const cfg = await getConfig();
@@ -13978,7 +14004,7 @@ async function onRepNivelChange() {
   secEl.innerHTML   = '<option value="">Todas</option>';
   gradoEl.value = ''; secEl.value = '';
   if(nivel) {
-    const isProf = _normRol(currentRol) === 'profesor';
+    const isProf = (_normRol(currentRol) === 'profesor' || _normRol(currentRol) === 'psicologo');
     const cfg = await getConfig();
     let grados = (cfg.grados||{})[nivel] || [];
     if(isProf) {
@@ -14095,7 +14121,7 @@ async function iniciarFiltrosReportes() {
   const cfg = await getConfig();
   const nivEl = document.getElementById('rep-nivel');
   if(!nivEl) return;
-  const isProf = _normRol(currentRol) === 'profesor';
+  const isProf = (_normRol(currentRol) === 'profesor' || _normRol(currentRol) === 'psicologo');
   if(isProf) {
     const alumnos = await getAlumnosFiltrados();
     const turnos = new Set(alumnos.map(a => a.turno).filter(Boolean));
@@ -15407,6 +15433,46 @@ function toggleTutorFields() {
   }
 }
 
+function _getPermisosEspecialesFromForm() {
+  return {
+    incidentesDiaLectura: !!document.getElementById('u-incidentes-dia-lectura')?.checked
+  };
+}
+
+function _applyPermisosEspecialesToForm(perms) {
+  const inc = document.getElementById('u-incidentes-dia-lectura');
+  if(inc) inc.checked = !!perms?.incidentesDiaLectura;
+}
+
+function actualizarResumenPermisosEspeciales() {
+  const resumen = document.getElementById('u-permisos-especiales-resumen');
+  if(!resumen) return;
+  const p = _getPermisosEspecialesFromForm();
+  const labels = [];
+  if(p.incidentesDiaLectura) labels.push('Incidentes del día (lectura)');
+  resumen.textContent = labels.length ? labels.join(' · ') : 'Sin permisos especiales';
+}
+
+let _permisosEspecialesDraft = null;
+function openModalPermisosEspeciales() {
+  _permisosEspecialesDraft = _getPermisosEspecialesFromForm();
+  const chkInc = document.getElementById('pe-incidentes-dia-lectura');
+  if(chkInc) chkInc.checked = !!_permisosEspecialesDraft?.incidentesDiaLectura;
+  const m = document.getElementById('modal-permisos-especiales');
+  if(m) {
+    m.style.display = '';
+    _modalLockOn();
+    m.classList.add('open');
+  }
+}
+
+function savePermisosEspeciales() {
+  const chkInc = document.getElementById('pe-incidentes-dia-lectura');
+  _applyPermisosEspecialesToForm({ incidentesDiaLectura: !!chkInc?.checked });
+  actualizarResumenPermisosEspeciales();
+  closeModal('modal-permisos-especiales');
+}
+
 async function openModalUsuario(uid, nombre, rol, email) {
   editingUsuarioId = uid || null;
   document.getElementById('modal-usuario-title').textContent = uid ? 'Editar Usuario' : 'Nuevo Usuario';
@@ -15433,6 +15499,7 @@ async function openModalUsuario(uid, nombre, rol, email) {
       const cargo = uData.cargo || '';
       const permInc = document.getElementById('u-incidentes-dia-lectura');
       if(permInc) permInc.checked = canSetExtras ? !!uData.incidentesDiaLectura : false;
+      actualizarResumenPermisosEspeciales();
       // Cargar teléfono
       document.getElementById('u-telefono').value = uData.telefono || '';
       await poblarTutorAulaSelects({ grado: uData.tutorGrado || null, seccion: uData.tutorSeccion || null });
@@ -15470,6 +15537,7 @@ async function openModalUsuario(uid, nombre, rol, email) {
     document.getElementById('u-cargo').value = '';
     const permInc = document.getElementById('u-incidentes-dia-lectura');
     if(permInc) permInc.checked = false;
+    actualizarResumenPermisosEspeciales();
     tempAsignaciones = {};
     document.getElementById('u-restringir').checked = false;
     await poblarTutorAulaSelects();
@@ -15512,13 +15580,17 @@ async function saveUsuario() {
     const incidentesDiaLectura = _isAdminDirector()
       ? !!document.getElementById('u-incidentes-dia-lectura')?.checked
       : false;
-    // Obtener asignaciones si es profesor
-    const restringir = rol === 'profesor' ? document.getElementById('u-restringir').checked : false;
-    const asignaciones = (rol === 'profesor' && restringir) ? tempAsignaciones : {};
+    const rolScope = (rol === 'profesor' || rol === 'psicologo');
+    const restringir = rolScope ? document.getElementById('u-restringir').checked : false;
+    const asignaciones = (rolScope && restringir) ? tempAsignaciones : {};
     const esTutor = rol === 'profesor' ? !!document.getElementById('u-es-tutor')?.checked : false;
     const telefonoVal = document.getElementById('u-telefono').value.trim();
     const tutorGrado = esTutor ? (document.getElementById('u-tutor-grado')?.value || '') : '';
     const tutorSeccion = esTutor ? (document.getElementById('u-tutor-seccion')?.value || '') : '';
+    if(rol === 'psicologo') {
+      if(!restringir) { toast('Activa "Restringir acceso por grados/secciones"','warning'); return; }
+      if(!Object.keys(asignaciones || {}).length) { toast('Configura las asignaciones del psicólogo','warning'); return; }
+    }
     if(esTutor) {
       if(!telefonoVal) { toast('Completa el teléfono del tutor','warning'); return; }
       if(!tutorGrado) { toast('Selecciona el grado del tutor','warning'); return; }
@@ -15632,15 +15704,15 @@ async function renderUsuarios() {
   if(!tbody) return;
   try {
     const usuarios = await _cargarUsuariosCache();
-    const rolLabels = { admin:'⚙️ Admin', director:'🏫 Director', coordinador:'📊 Coordinador', profesor:'👨‍🏫 Profesor', auxiliar:'🧑‍🏫 Auxiliar' };
-    const rolColors = { admin:'var(--accent)', director:'#a78bfa', coordinador:'#60a5fa', profesor:'#34d399', auxiliar:'#fb923c' };
+    const rolLabels = { admin:'⚙️ Admin', director:'🏫 Director', coordinador:'📊 Coordinador', profesor:'👨‍🏫 Profesor', psicologo:'🧠 Psicólogo', auxiliar:'🧑‍🏫 Auxiliar' };
+    const rolColors = { admin:'var(--accent)', director:'#a78bfa', coordinador:'#60a5fa', profesor:'#34d399', psicologo:'#f472b6', auxiliar:'#fb923c' };
     tbody.innerHTML = usuarios.map(u => {
       const rol = _normRol(u.rol);
       const esYo = u.uid === currentUser.uid ? ' (tú)' : '';
       return `<tr>
         <td style="font-weight:500;">${u.nombre}${esYo}</td>
         <td style="color:var(--muted);font-size:0.85rem;">${u.email}</td>
-        <td><span style="color:${rolColors[rol]||'#fff'};font-weight:600;">${rolLabels[rol]||rol}</span>${u.cargo?`<br><span style="font-size:0.72rem;color:var(--muted);">${u.cargo}</span>`:''} ${rol==='profesor'&&u.restringir?`<br><span style="font-size:0.72rem;color:var(--accent);">Restringido: ${Object.keys(u.asignaciones||{}).join(', ')||'sin asignar'}</span>`:''}${u.esTutor&&u.tutorGrado&&u.tutorSeccion?`<br><span style="font-size:0.72rem;color:#60a5fa;">Tutor: ${u.tutorGrado} ${u.tutorSeccion}</span>`:''}</td>
+        <td><span style="color:${rolColors[rol]||'#fff'};font-weight:600;">${rolLabels[rol]||rol}</span>${u.cargo?`<br><span style="font-size:0.72rem;color:var(--muted);">${u.cargo}</span>`:''} ${(rol==='profesor'||rol==='psicologo')&&u.restringir?`<br><span style="font-size:0.72rem;color:var(--accent);">Restringido: ${Object.keys(u.asignaciones||{}).join(', ')||'sin asignar'}</span>`:''}${u.esTutor&&u.tutorGrado&&u.tutorSeccion?`<br><span style="font-size:0.72rem;color:#60a5fa;">Tutor: ${u.tutorGrado} ${u.tutorSeccion}</span>`:''}</td>
         <td style="display:flex;gap:6px;">
           <button class="btn btn-ghost" style="padding:5px 10px;font-size:0.78rem;" onclick="openModalUsuario('${u.uid}','${u.nombre}','${rol}','${u.email}')">✏</button>
           ${u.uid !== currentUser.uid ? `<button class="btn btn-danger" style="padding:5px 10px;font-size:0.78rem;" onclick="deleteUsuario('${u.uid}')">✕</button>` : ''}
@@ -15819,7 +15891,7 @@ async function downloadUsuariosTemplate() {
     const cfg = await getConfig();
     const gradosAll = [...new Set(Object.values(cfg.grados || {}).flat().map(x => String(x || '').trim()).filter(Boolean))];
     const secciones = (cfg.secciones || []).map(x => String(x || '').trim()).filter(Boolean);
-    const roles = ['admin','director','coordinador','profesor','auxiliar'];
+    const roles = ['admin','director','coordinador','profesor','psicologo','auxiliar'];
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('usuarios');
@@ -15905,7 +15977,7 @@ async function handleImportUsuariosFile() {
     const gradeSet = new Set(Object.values(cfg.grados || {}).flat().map(x => String(x || '').trim()).filter(Boolean));
     const sectionSet = new Set((cfg.secciones || []).map(x => String(x || '').trim()).filter(Boolean));
     const seenEmails = new Set();
-    const allowedRoles = new Set(['admin','director','coordinador','profesor','auxiliar']);
+    const allowedRoles = new Set(['admin','director','coordinador','profesor','psicologo','auxiliar']);
 
     _importUsuariosRows = normalized.map((r, idx) => {
       const nombre = String(_getRowVal(r, ['nombre','nombres','nombre_completo'])).trim();
@@ -15936,10 +16008,17 @@ async function handleImportUsuariosFile() {
         if(tutorGrado && gradeSet.size && !gradeSet.has(tutorGrado)) errors.push('Tutor grado no existe');
         if(tutorSeccion && sectionSet.size && !sectionSet.has(tutorSeccion)) errors.push('Tutor sección no existe');
       }
-      if(rol !== 'profesor' && (restringir || esTutor)) {
-        errors.push('Restringir/Tutor solo aplica a profesor');
+      if(rol === 'psicologo' && esTutor) {
+        errors.push('Tutor no aplica a psicólogo');
       }
-      if(rol === 'profesor' && restringir) {
+      if(rol !== 'profesor' && rol !== 'psicologo' && (restringir || esTutor)) {
+        errors.push('Restringir/Tutor solo aplica a profesor o psicólogo');
+      }
+      if(rol === 'psicologo' && !restringir) {
+        errors.push('Psicólogo debe estar restringido por asignaciones');
+      }
+      if((rol === 'profesor' || rol === 'psicologo') && restringir) {
+        if(!Object.keys(asignaciones || {}).length) errors.push('Sin asignaciones');
         const keys = Object.keys(asignaciones || {});
         keys.forEach(g => {
           if(gradeSet.size && !gradeSet.has(g)) errors.push('Asignación grado inválido: ' + g);
@@ -16110,15 +16189,30 @@ function togglePrivilegios() {
   const grp = document.getElementById('u-privilegios-group');
   const note = document.getElementById('u-privilegios-note');
   if(!grp) return;
-  const isProf = rol === 'profesor';
-  if(note) note.style.display = isProf ? 'none' : 'block';
-  grp.style.opacity = isProf ? '1' : '0.55';
+  const isProfLike = (rol === 'profesor' || rol === 'psicologo');
+  const canTutor = (rol === 'profesor');
+  if(note) note.style.display = isProfLike ? 'none' : 'block';
+  grp.style.opacity = isProfLike ? '1' : '0.55';
   grp.querySelectorAll('input,select,textarea,button').forEach(el => {
     if(el.id === 'u-rol') return;
-    el.disabled = !isProf;
+    el.disabled = !isProfLike;
   });
   const btnCfg = document.getElementById('btn-configurar-privilegios');
-  if(btnCfg) btnCfg.disabled = !isProf || !document.getElementById('u-restringir').checked;
+  if(btnCfg) btnCfg.disabled = !isProfLike || !document.getElementById('u-restringir').checked;
+  const chkTutor = document.getElementById('u-es-tutor');
+  const tutorFields = document.getElementById('u-tutor-fields');
+  const tutorGrado = document.getElementById('u-tutor-grado');
+  const tutorSecc  = document.getElementById('u-tutor-seccion');
+  if(!canTutor) {
+    if(chkTutor) { chkTutor.checked = false; chkTutor.disabled = true; }
+    if(tutorFields) tutorFields.style.display = 'none';
+    if(tutorGrado) { tutorGrado.value = ''; tutorGrado.disabled = true; }
+    if(tutorSecc)  { tutorSecc.value = '';  tutorSecc.disabled  = true; }
+  } else {
+    if(chkTutor) chkTutor.disabled = false;
+    if(tutorGrado) tutorGrado.disabled = false;
+    if(tutorSecc)  tutorSecc.disabled  = false;
+  }
 }
 
 function actualizarResumenPrivilegios() {
@@ -16157,7 +16251,7 @@ function _setUsuarioAsignacionesText(v) {
 
 function onUsuarioAsignacionesInput() {
   const rol = document.getElementById('u-rol')?.value || '';
-  if(rol !== 'profesor') return;
+  if(rol !== 'profesor' && rol !== 'psicologo') return;
   const chk = document.getElementById('u-restringir');
   if(chk && !chk.checked) return;
   const el = document.getElementById('u-asignaciones-text');
@@ -16272,7 +16366,8 @@ function getAsignaciones() {
 let currentPrivilegios = { restringir: false, asignaciones: {} };
 
 async function cargarPrivilegiosActuales() {
-  if(!currentUser || _normRol(currentRol) !== 'profesor') {
+  const r = _normRol(currentRol);
+  if(!currentUser || (r !== 'profesor' && r !== 'psicologo')) {
     currentPrivilegios = { restringir: false, asignaciones: {} };
     return;
   }
@@ -16291,7 +16386,8 @@ async function cargarPrivilegiosActuales() {
 
 // Aplicar restricción a lista de alumnos
 function aplicarFiltroProfesor(alumnos) {
-  if(_normRol(currentRol) !== 'profesor') return alumnos;
+  const r = _normRol(currentRol);
+  if(r !== 'profesor' && r !== 'psicologo') return alumnos;
   const base = ((currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {});
   const asig = JSON.parse(JSON.stringify(base || {}));
   if(_isTutorUser()) {
@@ -16326,7 +16422,8 @@ let _alumnosCacheTs = 0;
 function _invalidarCacheAlumnos() { _alumnosCacheFull = null; _alumnosCacheTs = 0; }
 
 async function getAlumnosFiltrados() {
-  if(_normRol(currentRol) === 'profesor') {
+  const r = _normRol(currentRol);
+  if(r === 'profesor' || r === 'psicologo') {
     const base = ((currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {});
     const asig = JSON.parse(JSON.stringify(base || {}));
     if(_isTutorUser()) {
@@ -16360,7 +16457,7 @@ async function poblarFiltroNivel(selectId, onchangeFn) {
   if(!el) return;
   const niveles = (cfg.niveles||[]).map(n => n.nombre);
   let nivelesVisibles = niveles;
-  const isProf = _normRol(currentRol) === 'profesor';
+  const isProf = (_normRol(currentRol) === 'profesor' || _normRol(currentRol) === 'psicologo');
   if(isProf) {
     const alumnos = await getAlumnosFiltrados();
     const turnos = new Set(alumnos.map(a => a.turno).filter(Boolean));
@@ -16439,7 +16536,7 @@ async function poblarFiltroGrado(selectId, nivel) {
   const el = document.getElementById(selectId);
   if(!el) return;
 
-  const isProf = _normRol(currentRol) === 'profesor';
+  const isProf = (_normRol(currentRol) === 'profesor' || _normRol(currentRol) === 'psicologo');
   const alumnos = isProf ? await getAlumnosFiltrados() : await DB.getAlumnos();
   const alumnosFiltrados = alumnos.filter(a => !nivel || nivel === 'TODOS' || a.turno === nivel);
   const gradosConAlumnos = new Set(alumnosFiltrados.map(a => a.grado).filter(Boolean));
@@ -16468,7 +16565,7 @@ async function poblarFiltroSeccion(selectId, grado) {
   if(!el) return;
 
   // Obtener secciones reales de los alumnos (incluir vacíos como 'A' por defecto)
-  const isProf = _normRol(currentRol) === 'profesor';
+  const isProf = (_normRol(currentRol) === 'profesor' || _normRol(currentRol) === 'psicologo');
   const alumnos = isProf ? await getAlumnosFiltrados() : await DB.getAlumnos();
   const alumnosFiltrados = alumnos.filter(a => !grado || grado === 'TODOS' || a.grado === grado);
   const seccionesDeAlumnos = [...new Set(alumnosFiltrados.map(a => a.seccion || 'A').filter(Boolean))].sort();
@@ -17925,7 +18022,8 @@ async function renderIncidentes() {
     let docs = await _cargarIncidentesCache();
 
     // Filtro por rol
-    if(_normRol(currentRol) === 'profesor') {
+    const _rInc = _normRol(currentRol);
+    if(_rInc === 'profesor' || _rInc === 'psicologo') {
       const asig = (currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {};
       const merged = JSON.parse(JSON.stringify(asig || {}));
       if(_isTutorUser()) {
@@ -17940,7 +18038,7 @@ async function renderIncidentes() {
         }
       }
       const hasScope = Object.keys(merged).length > 0;
-      if((currentPrivilegios && currentPrivilegios.restringir) || _isTutorUser()) {
+      if(_rInc === 'psicologo' || (currentPrivilegios && currentPrivilegios.restringir) || _isTutorUser()) {
         if(hasScope) {
           docs = docs.filter(d => {
             const g = String(d.grado || '').trim();

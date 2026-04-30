@@ -80,7 +80,7 @@ serve(async (req) => {
       });
     }
 
-    if (!['admin', 'director', 'profesor'].includes(rol)) {
+    if (!['admin', 'director', 'profesor', 'psicologo'].includes(rol)) {
       return new Response(JSON.stringify({ error: 'No permitido' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

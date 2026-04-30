@@ -735,6 +735,7 @@ function aplicarPermisos(rol) {
     admin:    ['inicio','scan','alumnos','registro','reportes','incidentes','usuarios','config'],
     director: ['inicio','registro','reportes','incidentes'],
     profesor: ['inicio','alumnos','registro','incidentes'],
+    psicologo:['inicio','alumnos','registro','reportes','incidentes'],
     portero:  ['inicio','scan'],
   };
   const tabs = permisos[rol] || ['scan'];
@@ -5182,7 +5183,7 @@ function getAsignaciones() {
 let currentPrivilegios = { restringir: false, asignaciones: {} };
 
 async function cargarPrivilegiosActuales() {
-  if(!currentUser || currentRol !== 'profesor') {
+  if(!currentUser || (currentRol !== 'profesor' && currentRol !== 'psicologo')) {
     currentPrivilegios = { restringir: false, asignaciones: {} };
     return;
   }
@@ -5201,8 +5202,9 @@ async function cargarPrivilegiosActuales() {
 
 // Aplicar restricción a lista de alumnos
 function aplicarFiltroProfesor(alumnos) {
-  if(currentRol !== 'profesor') return alumnos;
-  const shouldRestrict = !!(currentPrivilegios?.restringir || _isTutorUser() || _isDocenteAula());
+  if(currentRol !== 'profesor' && currentRol !== 'psicologo') return alumnos;
+  const isPsy = currentRol === 'psicologo';
+  const shouldRestrict = !!(isPsy || currentPrivilegios?.restringir || _isTutorUser() || _isDocenteAula());
   if(!shouldRestrict) return alumnos;
   const asig = _profesorAsignacionesEfectivas();
   if(!Object.keys(asig).length) return [];
@@ -5225,8 +5227,9 @@ let _alumnosCacheTs = 0;
 function _invalidarCacheAlumnos() { _alumnosCacheFull = null; _alumnosCacheTs = 0; }
 
 async function getAlumnosFiltrados() {
-  if(currentRol === 'profesor') {
-    const shouldRestrict = !!(currentPrivilegios?.restringir || _isTutorUser() || _isDocenteAula());
+  if(currentRol === 'profesor' || currentRol === 'psicologo') {
+    const isPsy = currentRol === 'psicologo';
+    const shouldRestrict = !!(isPsy || currentPrivilegios?.restringir || _isTutorUser() || _isDocenteAula());
     if(shouldRestrict) {
       const asig = _profesorAsignacionesEfectivas();
       if(Object.keys(asig).length) return DB.getAlumnosScoped(asig);
@@ -5250,7 +5253,7 @@ async function poblarFiltroNivel(selectId, onchangeFn) {
   if(!el) return;
   const niveles = (cfg.niveles||[]).map(n => n.nombre);
   let nivelesVisibles = niveles;
-  if(currentRol === 'profesor') {
+  if(currentRol === 'profesor' || currentRol === 'psicologo') {
     const alumnos = await getAlumnosFiltrados();
     const turnos = new Set(alumnos.map(a => a.turno).filter(Boolean));
     nivelesVisibles = niveles.filter(n => turnos.has(n));
@@ -5264,7 +5267,7 @@ async function poblarFiltroGrado(selectId, nivel) {
   const el = document.getElementById(selectId);
   if(!el) return;
 
-  const alumnos = (currentRol === 'profesor') ? await getAlumnosFiltrados() : await DB.getAlumnos();
+  const alumnos = (currentRol === 'profesor' || currentRol === 'psicologo') ? await getAlumnosFiltrados() : await DB.getAlumnos();
   const alumnosFiltrados = alumnos.filter(a => !nivel || nivel === 'TODOS' || a.turno === nivel);
   const gradosConAlumnos = new Set(alumnosFiltrados.map(a => a.grado).filter(Boolean));
 
@@ -5288,7 +5291,7 @@ async function poblarFiltroSeccion(selectId, grado) {
   if(!el) return;
 
   // Obtener secciones reales de los alumnos (incluir vacíos como 'A' por defecto)
-  const alumnos = (currentRol === 'profesor') ? await getAlumnosFiltrados() : await DB.getAlumnos();
+  const alumnos = (currentRol === 'profesor' || currentRol === 'psicologo') ? await getAlumnosFiltrados() : await DB.getAlumnos();
   const alumnosFiltrados = alumnos.filter(a => !grado || grado === 'TODOS' || a.grado === grado);
   const seccionesDeAlumnos = [...new Set(alumnosFiltrados.map(a => a.seccion || 'A').filter(Boolean))].sort();
 
@@ -6375,7 +6378,7 @@ async function renderIncidentes() {
     let docs = await _cargarIncidentesCache();
 
     // Filtro por rol
-    if(currentRol === 'profesor' && currentPrivilegios.restringir) {
+    if((currentRol === 'profesor' && currentPrivilegios.restringir) || currentRol === 'psicologo') {
       docs = docs.filter(d => aplicarFiltroProfesor([{ grado: d.grado, seccion: d.seccion }]).length > 0);
     }
     if(currentRol === 'profesor') {

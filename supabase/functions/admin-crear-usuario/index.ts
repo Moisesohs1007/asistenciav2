@@ -14,7 +14,7 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-const STAFF_ROLES = new Set(['admin', 'director', 'coordinador', 'profesor', 'auxiliar', 'portero']);
+const STAFF_ROLES = new Set(['admin', 'director', 'coordinador', 'profesor', 'psicologo', 'auxiliar', 'portero']);
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
