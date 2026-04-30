@@ -1,4 +1,4 @@
-const CACHE_NAME = 'asistencia-v2-1.0.0';
+const CACHE_NAME = 'asistencia-v2-1.0.1';
 const ASSETS = [
   './index.html',
   './apoderado.html',
@@ -8,7 +8,10 @@ const ASSETS = [
   './js/main.js',
   './js/portal.js',
   './js/auth.js',
-  './js/supabase-client.js'
+  './js/supabase-client.js',
+  './img/logo-colegio.png',
+  './img/apple-icon.png',
+  './img/banner-default-1.jpg'
 ];
 
 // Instalar y cachear archivos base

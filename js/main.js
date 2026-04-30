@@ -60,7 +60,7 @@ async function _buildGradoIdx() { return {}; } // mantenido por compatibilidad
 function _aplicarConfigColegio(cfg) {
   if (!cfg) return;
   const nombre = String(cfg.nombreColegio || COLEGIO_NOMBRE || '').trim();
-  const eslogan = String(cfg.esloganColegio || COLEGIO_ESLOGAN || '').trim();
+  const eslogan = String(cfg.esloganColegio || cfg.eslogan || COLEGIO_ESLOGAN || '').trim();
   const logo = String(cfg.logoColegio || cfg.logoUrl || COLEGIO_LOGO || '').trim();
   const anio = String(cfg.anio || COLEGIO_ANIO || '').trim();
 
@@ -930,7 +930,6 @@ function showSectionDirect(id) {
 // SPLASH SCREEN
 // ============================================================
 const FRASES_SPLASH = [
-  '"Ser Santo Dominguino es ser el mejor"',
   '"El futuro pertenece a quienes creen en la belleza de sus sueños."',
   '"Invertir en conocimiento siempre paga el mejor interés."',
   '"La disciplina es el puente entre las metas y los logros."',
@@ -5941,7 +5940,7 @@ async function guardarImagenesBanner() {
   }
 }
 
-var _bannerImgsDefault = ["img/banner-default-1.jpg", "img/banner-default-2.jpg", "img/banner-default-3.jpg", "img/banner-default-4.jpg", "img/banner-default-5.jpg"];
+var _bannerImgsDefault = ["img/banner-default-1.jpg"];
 
 function aplicarImagenesBanner() {
   var imgs = _bannerImgs.length ? _bannerImgs : _bannerImgsDefault;

@@ -27,7 +27,7 @@ function getConfigCache() {
     _configCache = snap.exists ? snap.data() : {};
     try {
       var nombre = String(_configCache.nombreColegio || window.COLEGIO_NOMBRE || '').trim();
-      var eslogan = String(_configCache.esloganColegio || window.COLEGIO_ESLOGAN || '').trim();
+      var eslogan = String(_configCache.esloganColegio || _configCache.eslogan || window.COLEGIO_ESLOGAN || '').trim();
       var logo = String(_configCache.logoColegio || _configCache.logoUrl || window.COLEGIO_LOGO || '').trim();
       var anio = String(_configCache.anio || window.COLEGIO_ANIO || '').trim();
       if(nombre) window.COLEGIO_NOMBRE = nombre;
@@ -704,7 +704,7 @@ function descargarIncidente(idx) {
   doc.rect(0,0,W,28,'F');
   doc.setTextColor(255,255,255);
   doc.setFont('helvetica','bold'); doc.setFontSize(13);
-  doc.text((inc.alumnoNombre ? inc.alumnoNombre.split(' ').slice(0,2).join(' ') : 'I.E.P. "SANTO DOMINGO DE GUZMAN"').toUpperCase(), W/2, 11, {align:'center'});
+  doc.text((inc.alumnoNombre ? inc.alumnoNombre.split(' ').slice(0,2).join(' ') : (window.COLEGIO_NOMBRE || 'I.E.')).toUpperCase(), W/2, 11, {align:'center'});
   doc.setFontSize(9); doc.setFont('helvetica','normal');
   doc.text('REPORTE DE INCIDENTE', W/2, 19, {align:'center'});
   doc.text(new Date().getFullYear().toString(), W/2, 25, {align:'center'});
@@ -785,7 +785,7 @@ function descargarIncidente(idx) {
 function renderCarnet() {
   getConfigCache().then(function(cfg) {
     // Separar "Institución Educativa" del nombre en dos líneas
-    var partes = COLEGIO_NOMBRE.match(/^(Institución Educativa)\s+(.+)$/i);
+    var partes = COLEGIO_NOMBRE.match(/^(Institución Educativa|I\.E\.P\.?|I\.E\.)\s+(.+)$/i);
     var linea1 = partes ? partes[1] : COLEGIO_NOMBRE;
     var linea2 = partes ? partes[2] : '';
     document.getElementById('carnet-colegio').innerHTML =
@@ -833,7 +833,7 @@ function compartirCarnet() {
   if(typeof html2canvas === 'undefined') {
     // Fallback: compartir texto + link QR
     var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&ecc=H&data=' + alumno.id;
-    var texto = '🪪 Carnet Digital — I.E.P. San José Marello\n'
+    var texto = '🪪 Carnet Digital — ' + (window.COLEGIO_NOMBRE || 'I.E.') + '\n'
       + alumno.nombres + ' ' + alumno.apellidos + '\n'
       + alumno.grado + ' ' + alumno.seccion + '\n'
       + 'DNI: ' + alumno.id + '\n'

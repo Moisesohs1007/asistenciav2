@@ -21,8 +21,8 @@
 // ║  Aplica en toda la app: index.html Y apoderado.html        ║
 // ║  header, login, reportes, PDFs, Excel, WhatsApp            ║
 // ╚══════════════════════════════════════════════════════════════╝
-window.COLEGIO_NOMBRE  = 'Institución Educativa "SANTO DOMINGO DE GUZMAN"';
-window.COLEGIO_ESLOGAN = '"SER SANTO DOMINGUINO ES, SER EL MEJOR"';
+window.COLEGIO_NOMBRE  = 'I.E. Nº 1049 Juana Alarco De Dammert';
+window.COLEGIO_ESLOGAN = '';
 window.COLEGIO_LOGO    = 'img/logo-colegio.png'; // reemplaza este archivo para cambiar el logo
 window.COLEGIO_ANIO    = '2026';
 window.APO_DOMAIN      = '@apo.marello.pe';      // dominio de cuentas de apoderados

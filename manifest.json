@@ -1,7 +1,7 @@
 {
-  "name": "Institución Educativa Santo Domingo de Guzmán v2",
+  "name": "I.E. Nº 1049 Juana Alarco De Dammert - AsistenciaQR",
   "short_name": "AsistenciaQR v2",
-  "description": "Sistema de asistencia escolar - I.E. Santo Domingo de Guzmán",
+  "description": "Sistema de asistencia escolar - I.E. Nº 1049 Juana Alarco De Dammert",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

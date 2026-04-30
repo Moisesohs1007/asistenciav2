@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
   <link rel="icon" type="image/png" href="img/logo-colegio.png">
-  <link rel="apple-touch-icon" href="img/logo-colegio.png">
+  <link rel="apple-touch-icon" href="img/apple-icon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Permissions-Policy" content="camera=*, microphone=*">
 <title>AsistenciaQR — Sistema Escolar</title>
@@ -2126,7 +2126,7 @@
       <img src="" id="msb-logo-img" alt="">
     </div>
     <div class="msb-info">
-      <div class="msb-school" id="msb-school-name">Institución Educativa "SANTO DOMINGO DE GUZMAN"</div>
+      <div class="msb-school" id="msb-school-name">I.E. Nº 1049 Juana Alarco De Dammert</div>
       <div class="msb-user" id="msb-user-name">—</div>
       <div class="msb-role" id="msb-user-role">—</div>
     </div>
@@ -5110,7 +5110,7 @@ async function _buildGradoIdx() { return {}; } // mantenido por compatibilidad
 function _aplicarConfigColegio(cfg) {
   if (!cfg) return;
   const nombre = String(cfg.nombreColegio || COLEGIO_NOMBRE || '').trim();
-  const eslogan = String(cfg.esloganColegio || COLEGIO_ESLOGAN || '').trim();
+  const eslogan = String(cfg.esloganColegio || cfg.eslogan || COLEGIO_ESLOGAN || '').trim();
   const logo = String(cfg.logoColegio || cfg.logoUrl || COLEGIO_LOGO || '').trim();
   const anio = String(cfg.anio || COLEGIO_ANIO || '').trim();
 
@@ -6077,7 +6077,6 @@ function showSectionDirect(id) {
 // SPLASH SCREEN
 // ============================================================
 const FRASES_SPLASH = [
-  '"Ser Santo Dominguino es ser el mejor"',
   '"El futuro pertenece a quienes creen en la belleza de sus sueños."',
   '"Invertir en conocimiento siempre paga el mejor interés."',
   '"La disciplina es el puente entre las metas y los logros."',
@@ -17846,7 +17845,7 @@ async function guardarImagenesBanner() {
   }
 }
 
-var _bannerImgsDefault = ["img/banner-default-1.jpg", "img/banner-default-2.jpg", "img/banner-default-4.jpg", "img/banner-default-5.jpg"];
+var _bannerImgsDefault = ["img/banner-default-1.jpg"];
 
 function aplicarImagenesBanner() {
   var imgs = _bannerImgs.length ? _bannerImgs : _bannerImgsDefault;
@@ -17925,6 +17924,7 @@ async function guardarInfoColegio() {
     if(!nombre) { toast('Completa el nombre del colegio','warning'); return; }
     const payload = {
       nombreColegio: nombre,
+      eslogan: eslogan,
       esloganColegio: eslogan,
       anio: anio || (cfg.anio || COLEGIO_ANIO || ''),
     };
