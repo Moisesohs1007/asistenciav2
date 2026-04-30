@@ -5126,7 +5126,7 @@ function canAccessSection(secId) {
   if(id === 'alertas') return (r === 'admin' || r === 'director' || r === 'coordinador');
   if(id === 'incidentes') return (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'profesor' || r === 'auxiliar');
   if(id === 'materiales') return (_isAdminDirectorOrCoord() || (r === 'profesor' && isTutor));
-  if(id === 'materiales-entrega') return (_isAdminDirectorOrCoord() || (r === 'profesor' && isTutor));
+  if(id === 'materiales-entrega') return _isAdminDirectorOrCoord();
   if(id === 'comunicado') return (r === 'admin' || r === 'director' || r === 'coordinador' || (r === 'profesor' && isTutor));
   if(id === 'agenda') return (r === 'admin' || r === 'director' || r === 'coordinador');
   if(id === 'rol-examenes') return (_isAdminDirectorOrCoord() || (r === 'profesor' && isTutor));
@@ -5742,6 +5742,14 @@ function aplicarPermisos(rol) {
   if(tabCo) tabCo.style.display = hasCom ? '' : 'none';
   const tabCfg = document.getElementById('tab-config');
   if(tabCfg) tabCfg.style.display = hasCfg ? '' : 'none';
+
+  try {
+    const canManageAlumnos = _isAdminDirectorOrCoord();
+    const b1 = document.getElementById('btn-nuevo-alumno');
+    const b2 = document.getElementById('btn-importar-excel');
+    if(b1) b1.style.display = canManageAlumnos ? '' : 'none';
+    if(b2) b2.style.display = canManageAlumnos ? '' : 'none';
+  } catch(e) {}
 
   // Restaurar última sección activa si existe y está permitida
   var lastSection = null;
@@ -8509,10 +8517,13 @@ async function cargarTutorActual() {
     if(doc.exists) {
       const d = doc.data() || {};
       const norm = (v) => String(v ?? '').trim().replace(/\s+/g,' ');
+      const tutorGrado = norm(d.tutorGrado || '');
+      const tutorSeccion = norm(d.tutorSeccion || '').toUpperCase();
+      const esTutor = !!d.esTutor && !!tutorGrado && !!tutorSeccion;
       currentTutorInfo = {
-        esTutor: !!d.esTutor,
-        tutorGrado: norm(d.tutorGrado || ''),
-        tutorSeccion: norm(d.tutorSeccion || '').toUpperCase(),
+        esTutor,
+        tutorGrado,
+        tutorSeccion,
         nombre: norm(d.nombre || ''),
         telefono: norm(d.telefono || ''),
       };
@@ -8533,14 +8544,15 @@ function matCanAccess() {
 
 function matUpdateAccessUi() {
   const can = matCanAccess();
+  const canEntrega = _matIsAdminMode();
   const nav = document.getElementById('nav-materiales');
   if(nav) nav.style.display = can ? '' : 'none';
   const nav2 = document.getElementById('nav-materiales-entrega');
-  if(nav2) nav2.style.display = can ? '' : 'none';
+  if(nav2) nav2.style.display = canEntrega ? '' : 'none';
   const msb = document.getElementById('msb-sub-materiales');
   if(msb) msb.style.display = can ? '' : 'none';
   const msb2 = document.getElementById('msb-sub-materiales-entrega');
-  if(msb2) msb2.style.display = can ? '' : 'none';
+  if(msb2) msb2.style.display = canEntrega ? '' : 'none';
 }
 
 let _matInited = false;
@@ -15996,6 +16008,10 @@ async function poblarFiltroNivel(selectId, onchangeFn) {
   }
   el.innerHTML = `<option value="" disabled selected>-- Nivel --</option>${isProf ? '' : '<option value="TODOS">Todos</option>'}`;
   nivelesVisibles.forEach(n => { el.innerHTML += `<option value="${n}">${n}</option>`; });
+  try {
+    const opts = new Set(Array.from(el.options).map(o => o.value));
+    if(el.value && !opts.has(el.value)) el.value = '';
+  } catch(e) {}
 }
 
 async function poblarFiltroGrado(selectId, nivel) {
@@ -16020,6 +16036,10 @@ async function poblarFiltroGrado(selectId, nivel) {
 
   el.innerHTML = `<option value="" disabled selected>-- Grado --</option>${isProf ? '' : '<option value="TODOS">Todos</option>'}`;
   grados.forEach(g => { el.innerHTML += `<option value="${g}">${g}</option>`; });
+  try {
+    const opts = new Set(Array.from(el.options).map(o => o.value));
+    if(el.value && !opts.has(el.value)) el.value = '';
+  } catch(e) {}
 }
 
 async function poblarFiltroSeccion(selectId, grado) {
@@ -16038,11 +16058,15 @@ async function poblarFiltroSeccion(selectId, grado) {
   let secciones = seccCfg.length > 0
     ? seccCfg.filter(s => seccionesDeAlumnos.includes(s))
     : seccionesDeAlumnos;
-  // Si la config no cubrió ninguna sección real, mostrar las de alumnos
-  if(secciones.length === 0) secciones = seccionesDeAlumnos.length > 0 ? seccionesDeAlumnos : seccCfg;
+  // Si la config no cubrió ninguna sección real, mostrar las de alumnos (pero nunca "inventar" secciones para profesor)
+  if(secciones.length === 0) secciones = seccionesDeAlumnos.length > 0 ? seccionesDeAlumnos : (isProf ? [] : seccCfg);
 
   el.innerHTML = `<option value="" disabled selected>-- Sección --</option>${isProf ? '' : '<option value="TODOS">Todas</option>'}`;
   secciones.forEach(s => { el.innerHTML += `<option value="${s}">${s}</option>`; });
+  try {
+    const opts = new Set(Array.from(el.options).map(o => o.value));
+    if(el.value && !opts.has(el.value)) el.value = '';
+  } catch(e) {}
 }
 
 async function onNivelChangeAlumnos() {
