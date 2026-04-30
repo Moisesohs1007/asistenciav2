@@ -766,43 +766,68 @@ function _isDocenteAula() {
   return c.includes('docente de aula') || c.includes('docente aula');
 }
 
+// Flag para evitar que onChange sobrescriba la auto-selección de tutoría
+let _tutoriaLocked = false;
+
 /**
  * Auto-selecciona la tutoría si el usuario es docente de aula única.
  * Bloquea los campos si se auto-selecciona.
  */
 async function _autoSelectTutoria(nivelId, gradoId, seccionId) {
-  if (!_isDocenteAula()) return; 
+  if (!_isDocenteAula()) return;
   const g = String(currentTutorInfo?.tutorGrado || '').trim();
   const s = String(currentTutorInfo?.tutorSeccion || '').trim().toUpperCase();
   if (!g || !s) return;
+
+  _tutoriaLocked = true; // Bloquear onChange mientras se auto-selecciona
+
   const nEl = document.getElementById(nivelId);
   const gEl = document.getElementById(gradoId);
   const sEl = document.getElementById(seccionId);
-  
-  // 1. Asegurar que el nivel esté poblado y seleccionado
-  let nivel = nEl?.value || '';
-  if (!nivel) {
-    const alumnos = await getAlumnosFiltrados();
-    nivel = alumnos[0]?.turno || '';
-  }
-  if (nEl) { 
-    if (![...nEl.options].some(o => o.value === nivel)) {
-      await poblarFiltroNivel(nivelId);
+
+  // 1. Poblar y seleccionar nivel
+  let nivel = '';
+  if (nEl) {
+    await poblarFiltroNivel(nivelId);
+    nivel = [...(nEl.options || [])].find(o => o.value && o.value !== 'TODOS')?.value || '';
+    if (!nivel) {
+      const alumnos = await getAlumnosFiltrados();
+      nivel = alumnos[0]?.turno || '';
     }
-    nEl.value = nivel; nEl.disabled = true; 
+    if (nivel) {
+      if (![...nEl.options].some(o => o.value === nivel)) await poblarFiltroNivel(nivelId);
+      nEl.value = nivel;
+      nEl.disabled = true;
+    }
   }
 
-  // 2. Asegurar que el grado esté poblado y seleccionado
+  // 2. Poblar y seleccionar grado
   if (gEl) {
-    await poblarFiltroGrado(gradoId, nivel); // Forzar poblado real para que aparezca en el combo
-    gEl.value = g; gEl.disabled = true;
+    await poblarFiltroGrado(gradoId, nivel);
+    if (![...gEl.options].some(o => o.value === g)) {
+      gEl.innerHTML = `<option value="${g}">${g}</option>`;
+    }
+    gEl.value = g;
+    gEl.disabled = true;
   }
 
-  // 3. Asegurar que la sección esté poblada y seleccionada
+  // 3. Poblar y seleccionar sección
   if (sEl) {
-    await poblarFiltroSeccion(seccionId, g); // Forzar poblado real para que aparezca en el combo
-    sEl.value = s; sEl.disabled = true;
+    await poblarFiltroSeccion(seccionId, g);
+    if (![...sEl.options].some(o => o.value === s)) {
+      sEl.innerHTML = `<option value="${s}">${s}</option>`;
+    }
+    sEl.value = s;
+    sEl.disabled = true;
   }
+
+  // Asegurar que los valores quedan puestos tras un pequeño delay
+  setTimeout(() => {
+    if (nEl && !nEl.value) nEl.value = nivel;
+    if (gEl && !gEl.value) gEl.value = g;
+    if (sEl && !sEl.value) sEl.value = s;
+    _tutoriaLocked = false; // Desbloquear onChange
+  }, 150);
 }
 
 function showSectionDirect(id) {
@@ -829,16 +854,16 @@ function showSectionDirect(id) {
 
   // Scroll al top siempre al cambiar sección
   window.scrollTo({ top: 0, behavior: 'instant' });
-  if(id==='alumnos') { 
-    limpiarFiltrosAlumnos(); 
+  if(id==='alumnos') {
+    Promise.resolve().then(() => limpiarFiltrosAlumnos());
     const labelCarnets = document.getElementById('label-modo-carnets');
     if(labelCarnets) {
       labelCarnets.style.display = _isAdminDirectorOrCoord() ? 'flex' : 'none';
     }
   }
   if(id==='registro') {
-    poblarSelectorMes('reg-mes-select'); 
-    limpiarFiltrosRegistro(); 
+    poblarSelectorMes('reg-mes-select');
+    Promise.resolve().then(() => limpiarFiltrosRegistro());
     const btnBorrar = document.getElementById('btn-borrar-registros-hoy');
     if(btnBorrar) {
       // Solo administrador puede borrar registros (user instruction)
