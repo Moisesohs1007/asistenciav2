@@ -785,7 +785,13 @@ function showSectionDirect(id) {
 
   // Scroll al top siempre al cambiar sección
   window.scrollTo({ top: 0, behavior: 'instant' });
-  if(id==='alumnos') { limpiarFiltrosAlumnos(); }
+  if(id==='alumnos') { 
+    limpiarFiltrosAlumnos(); 
+    const labelCarnets = document.getElementById('label-modo-carnets');
+    if(labelCarnets) {
+      labelCarnets.style.display = _isAdminDirectorOrCoord() ? 'flex' : 'none';
+    }
+  }
   if(id==='registro') {
     poblarSelectorMes('reg-mes-select'); 
     limpiarFiltrosRegistro(); 

@@ -2844,7 +2844,7 @@
         <button class="btn btn-ghost" id="btn-importar-excel" onclick="importExcel()">📊 Importar Excel</button>
         <button class="btn btn-ghost" onclick="exportPDFAlumnos()">🖨 Exportar PDF</button>
         <!-- Toggle modo carnets -->
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:0.82rem;color:var(--text);user-select:none;" title="Activar modo impresión de carnets">
+        <label id="label-modo-carnets" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:0.82rem;color:var(--text);user-select:none;" title="Activar modo impresión de carnets">
           <input type="checkbox" id="toggle-modo-carnets" onchange="toggleModoCarnets(this.checked)" style="width:15px;height:15px;cursor:pointer;">
           🖨 Modo Carnets
         </label>
@@ -5834,7 +5834,13 @@ function showSectionDirect(id) {
 
   // Scroll al top siempre al cambiar sección
   window.scrollTo({ top: 0, behavior: 'instant' });
-  if(id==='alumnos') { limpiarFiltrosAlumnos(); }
+  if(id==='alumnos') { 
+    limpiarFiltrosAlumnos(); 
+    const labelCarnets = document.getElementById('label-modo-carnets');
+    if(labelCarnets) {
+      labelCarnets.style.display = _isAdminDirectorOrCoord() ? 'flex' : 'none';
+    }
+  }
   if(id==='registro') {
     poblarSelectorMes('reg-mes-select'); 
     limpiarFiltrosRegistro(); 
