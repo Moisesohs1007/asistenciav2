@@ -2097,6 +2097,13 @@
       font-size: 0.8rem !important;
     }
   }
+  /* Estilos para campos deshabilitados pero legibles */
+  select:disabled, input:disabled {
+    opacity: 0.9 !important;
+    color: var(--text) !important;
+    background-color: rgba(255,255,255,0.05) !important;
+    cursor: not-allowed;
+  }
 </style>
 </head>
 <body>
@@ -5099,6 +5106,34 @@ function _isDocenteAula() {
   const c = String(currentCargo || '').trim().toLowerCase();
   return c.includes('docente de aula') || c.includes('docente aula');
 }
+
+/**
+ * Auto-selecciona la tutoría si el usuario es docente de aula única.
+ * Bloquea los campos si se auto-selecciona.
+ */
+async function _autoSelectTutoria(nivelId, gradoId, seccionId) {
+  if (!_isDocenteAula()) return; 
+  const g = String(currentTutorInfo?.tutorGrado || '').trim();
+  const s = String(currentTutorInfo?.tutorSeccion || '').trim().toUpperCase();
+  if (!g || !s) return;
+  const nEl = document.getElementById(nivelId);
+  const gEl = document.getElementById(gradoId);
+  const sEl = document.getElementById(seccionId);
+  let nivel = nEl?.value || '';
+  if (!nivel) {
+    const alumnos = await getAlumnosFiltrados();
+    nivel = alumnos[0]?.turno || '';
+  }
+  if (nEl) { nEl.value = nivel; nEl.disabled = true; }
+  if (gEl) {
+    if (![...gEl.options].some(o => o.value === g)) gEl.innerHTML = `<option value="${g}">${g}</option>`;
+    gEl.value = g; gEl.disabled = true;
+  }
+  if (sEl) {
+    if (![...sEl.options].some(o => o.value === s)) sEl.innerHTML = `<option value="${s}">${s}</option>`;
+    sEl.value = s; sEl.disabled = true;
+  }
+}
 function _rolLabel(r) {
   const v = _normRol(r);
   const map = { admin:'ADMIN', director:'DIRECTOR', coordinador:'COORDINADOR', profesor:'PROFESOR', auxiliar:'AUXILIAR' };
@@ -6933,6 +6968,7 @@ async function limpiarFiltrosAlumnos() {
   await poblarFiltroSeccion('fa-seccion', null);
   _disableSelect('fa-grado');
   _disableSelect('fa-seccion');
+  await _autoSelectTutoria('fa-nivel', 'fa-grado', 'fa-seccion');
   mostrarEstadoInicial();
 }
 
@@ -7225,6 +7261,7 @@ async function limpiarFiltrosRegistro() {
   await poblarFiltroSeccion('filter-seccion', null);
   _disableSelect('filter-grado');
   _disableSelect('filter-seccion');
+  await _autoSelectTutoria('filter-nivel', 'filter-grado', 'filter-seccion');
   document.getElementById('registro-tbody').innerHTML = '';
   document.getElementById('registro-empty').style.display = 'block';
   document.getElementById('registro-empty').querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
@@ -9729,7 +9766,7 @@ async function matRefreshAll() {
   if(adminWrap) adminWrap.style.display = _matIsAdminMode() ? 'block' : 'none';
   if(adminCard) adminCard.style.display = '';
   if(label) {
-    const who = _matIsAdminMode() ? (_matScope.tutorNombre ? `Tutor: ${_matScope.tutorNombre}` : 'Administración') : 'Tutor';
+    const who = _matIsAdminMode() ? (_matScope.tutorNombre ? `Tutor: ${_matScope.tutorNombre}` : 'Administración') : (_matScope.tutorNombre || 'Tutor');
     label.textContent = `${who} · ${_matScope.grado||'—'} ${_matScope.seccion||''}`;
   }
   if(_matEditingExisting) {
@@ -9789,7 +9826,7 @@ async function initMaterialesEntrega(refresh) {
   }
   const label = document.getElementById('mat-entrega-scope-label');
   if(label) {
-    const who = _matIsAdminMode() ? (_matScope.tutorNombre ? `Tutor: ${_matScope.tutorNombre}` : 'Administración') : 'Tutor';
+    const who = _matIsAdminMode() ? (_matScope.tutorNombre ? `Tutor: ${_matScope.tutorNombre}` : 'Administración') : (_matScope.tutorNombre || 'Tutor');
     label.textContent = `${who} · ${_matScope.grado||'—'} ${_matScope.seccion||''}`;
   }
   const tutorWrap = document.getElementById('mat-handoff-tutor');
@@ -9843,15 +9880,7 @@ async function initComunicado() {
     _comInit = true;
   }
   if(_normRol(currentRol) === 'profesor') {
-    const a0 = (_comAlumnos || [])[0] || null;
-    const nivelEl = document.getElementById('com-nivel');
-    const gradoEl = document.getElementById('com-grado');
-    const seccEl = document.getElementById('com-seccion');
-    const g = String(currentTutorInfo?.tutorGrado || '').trim();
-    const s = String(currentTutorInfo?.tutorSeccion || '').trim().toUpperCase();
-    if(nivelEl) { nivelEl.value = a0?.turno || ''; nivelEl.disabled = true; nivelEl.style.opacity = '0.55'; }
-    if(gradoEl) { gradoEl.innerHTML = g ? `<option value="${g}">${g}</option>` : '<option value="">—</option>'; gradoEl.value = g; gradoEl.disabled = true; gradoEl.style.opacity = '0.55'; }
-    if(seccEl) { seccEl.innerHTML = s ? `<option value="${s}">${s}</option>` : '<option value="">—</option>'; seccEl.value = s; seccEl.disabled = true; seccEl.style.opacity = '0.55'; }
+    await _autoSelectTutoria('com-nivel', 'com-grado', 'com-seccion');
   }
   renderComLista();
 }
@@ -10498,6 +10527,14 @@ function initRolExamenes() {
     if(opv) opv.textContent = String(_rexState.wmOpacity || 10) + '%';
     const tm = document.getElementById('rex-template-mode');
     if(tm) tm.checked = !!_rexState.templateEnabled;
+
+    // Pre-llenar si es tutor y los campos están vacíos
+    if(_isTutorUser()) {
+      const gEl = document.getElementById('rex-grado');
+      const tEl = document.getElementById('rex-tutor');
+      if(gEl && !gEl.value) gEl.value = `${currentTutorInfo.tutorGrado} ${currentTutorInfo.tutorSeccion}`;
+      if(tEl && !tEl.value) tEl.value = currentTutorInfo.nombre;
+    }
   } catch(e) {}
   rexRenderDays();
   try { rexRenderPreview().catch(()=>{}); } catch(e) {}
@@ -13809,6 +13846,7 @@ async function iniciarFiltrosReportes() {
     nivEl.innerHTML = '<option value="">Todos</option>';
     (cfg.niveles||[]).forEach(n => { nivEl.innerHTML += `<option value="${n.nombre}">${n.nombre}</option>`; });
   }
+  await _autoSelectTutoria('rep-nivel', 'rep-grado', 'rep-seccion');
 }
 
 async function initAlertas() {
@@ -13823,6 +13861,7 @@ async function initAlertas() {
   await poblarFiltroSeccion('al-seccion', null);
   _disableSelect('al-grado');
   _disableSelect('al-seccion');
+  await _autoSelectTutoria('al-nivel', 'al-grado', 'al-seccion');
   const st = document.getElementById('al-alertas-status');
   const wrap = document.getElementById('al-alertas-wrap');
   if(st) st.textContent = '';
