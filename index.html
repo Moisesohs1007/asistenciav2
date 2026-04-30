@@ -8484,7 +8484,17 @@ async function exportExcelAlumnos() {
 
   const aoa = [];
   const merges = [];
+  const styleMap = {};
   const COLS = ['#', 'DNI', 'Apellidos', 'Nombres', 'Grado', 'Sección', 'Nivel'];
+  const WIDTHS = [5, 12, 22, 22, 12, 10, 12];
+
+  const NAVY = '0D1A3A';
+  const GOLD = 'C9A84C';
+  const WHITE = 'FFFFFF';
+  const GRAY = 'F0F2F8';
+  const TEXT = '1E293B';
+  const MUTED = '64748B';
+  const BORDER = 'DCE2EE';
 
   const fechaExport = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
   const subtitulo = (nivel && nivel !== 'TODOS' ? nivel : '') +
@@ -8494,14 +8504,21 @@ async function exportExcelAlumnos() {
 
   aoa.push([COLEGIO_NOMBRE, ...Array(COLS.length-1).fill('')]);
   merges.push({s:{r:0,c:0}, e:{r:0,c:COLS.length-1}});
+  styleMap[0] = 'title';
+
   aoa.push([`Lista de Alumnos - ${subtitulo.trim()} - ${fechaExport}`, ...Array(COLS.length-1).fill('')]);
   merges.push({s:{r:1,c:0}, e:{r:1,c:COLS.length-1}});
+  styleMap[1] = 'subtitle';
+
   aoa.push(Array(COLS.length).fill(''));
+  styleMap[2] = 'spacer';
+
   aoa.push(COLS);
+  styleMap[3] = 'header';
 
   let grupoActual = null;
   let contadorGrupo = 0;
-  alumnos.forEach((a) => {
+  alumnos.forEach((a, idx) => {
     const grupoKey = (a.turno||'') + '|' + (a.grado||'') + '|' + (a.seccion||'');
     if(grupoKey !== grupoActual) {
       grupoActual = grupoKey;
@@ -8509,6 +8526,7 @@ async function exportExcelAlumnos() {
       const label = `${a.turno||''} — ${a.grado||''} Sección ${a.seccion||''}`.trim();
       aoa.push([label, ...Array(COLS.length-1).fill('')]);
       merges.push({s:{r:aoa.length-1,c:0}, e:{r:aoa.length-1,c:COLS.length-1}});
+      styleMap[aoa.length-1] = 'group';
     }
     contadorGrupo++;
     aoa.push([
@@ -8520,14 +8538,72 @@ async function exportExcelAlumnos() {
       a.seccion || '',
       a.turno || '',
     ]);
+    styleMap[aoa.length-1] = (idx % 2 === 0) ? 'even' : 'odd';
   });
 
   aoa.push(Array(COLS.length).fill(''));
+  styleMap[aoa.length-1] = 'spacer';
+
   aoa.push([`Total: ${alumnos.length} alumno${alumnos.length!==1?'s':''}`, ...Array(COLS.length-1).fill('')]);
   merges.push({s:{r:aoa.length-1,c:0}, e:{r:aoa.length-1,c:COLS.length-1}});
+  styleMap[aoa.length-1] = 'total';
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!merges'] = merges;
+  ws['!cols'] = WIDTHS.map(w => ({ wch: w }));
+
+  aoa.forEach((row, ri) => {
+    row.forEach((_, ci) => {
+      const addr = XLSX.utils.encode_cell({ r: ri, c: ci });
+      if(!ws[addr]) return;
+      const st = styleMap[ri];
+      let fill, font, alignment;
+      if(st === 'title') {
+        fill = { fgColor: { rgb: NAVY } };
+        font = { bold: true, color: { rgb: WHITE }, sz: 13 };
+        alignment = { horizontal: 'center', vertical: 'center' };
+      } else if(st === 'subtitle') {
+        fill = { fgColor: { rgb: NAVY } };
+        font = { color: { rgb: 'B0C4E8' }, sz: 9 };
+        alignment = { horizontal: 'center', vertical: 'center' };
+      } else if(st === 'header') {
+        fill = { fgColor: { rgb: NAVY } };
+        font = { bold: true, color: { rgb: WHITE }, sz: 9 };
+        alignment = { horizontal: 'center', vertical: 'center' };
+      } else if(st === 'group') {
+        fill = { fgColor: { rgb: NAVY } };
+        font = { bold: true, color: { rgb: GOLD }, sz: 9 };
+        alignment = { horizontal: 'left', vertical: 'center' };
+      } else if(st === 'even') {
+        fill = { fgColor: { rgb: GRAY } };
+        font = { sz: 9, color: { rgb: TEXT } };
+        alignment = { horizontal: 'center', vertical: 'center' };
+      } else if(st === 'odd') {
+        fill = { fgColor: { rgb: WHITE } };
+        font = { sz: 9, color: { rgb: TEXT } };
+        alignment = { horizontal: 'center', vertical: 'center' };
+      } else if(st === 'total') {
+        font = { italic: true, sz: 9, color: { rgb: MUTED } };
+        alignment = { horizontal: 'left', vertical: 'center' };
+      }
+
+      if((st === 'even' || st === 'odd') && (ci === 2 || ci === 3)) {
+        alignment = { horizontal: 'left', vertical: 'center' };
+      }
+
+      ws[addr].s = {
+        fill,
+        font,
+        alignment,
+        border: {
+          top:    { style: 'thin', color: { rgb: BORDER } },
+          bottom: { style: 'thin', color: { rgb: BORDER } },
+          left:   { style: 'thin', color: { rgb: BORDER } },
+          right:  { style: 'thin', color: { rgb: BORDER } },
+        }
+      };
+    });
+  });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Alumnos');
   const sufijo = grado && grado !== 'TODOS' ? `_${grado}${seccion && seccion !== 'TODOS' ? seccion : ''}` : '_general';
