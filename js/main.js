@@ -787,7 +787,14 @@ function showSectionDirect(id) {
   window.scrollTo({ top: 0, behavior: 'instant' });
   if(id==='alumnos') { limpiarFiltrosAlumnos(); }
   if(id==='registro') {
-    poblarSelectorMes('reg-mes-select'); limpiarFiltrosRegistro(); }
+    poblarSelectorMes('reg-mes-select'); 
+    limpiarFiltrosRegistro(); 
+    const btnBorrar = document.getElementById('btn-borrar-registros-hoy');
+    if(btnBorrar) {
+      // Solo administrador puede borrar registros (user instruction)
+      btnBorrar.style.display = (_normRol(currentRol) === 'admin') ? '' : 'none';
+    }
+  }
   if(id==='reportes') {
     poblarSelectorMes('rep-mes-select');
     iniciarFiltrosReportes();
