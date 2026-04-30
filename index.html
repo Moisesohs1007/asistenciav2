@@ -4692,6 +4692,7 @@
         </div>
         <button class="btn btn-primary" id="al-btn-gen-alertas" onclick="generarAlertasAsistencia()" style="justify-content:center;min-width:220px;">Generar alertas</button>
         <button class="btn btn-ghost" id="al-btn-excel-alertas" onclick="exportarAlertasAsistenciaXLSX()" style="justify-content:center;border-color:var(--accent2);color:var(--accent2);">⬇ Excel</button>
+        <button class="btn btn-ghost" id="al-btn-pdf-alertas" onclick="exportarAlertasAsistenciaPDF()" style="justify-content:center;border-color:rgba(244,114,182,0.55);color:rgba(244,114,182,0.95);">⬇ PDF</button>
       </div>
       <div id="al-alertas-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
       <div id="al-alertas-wrap" style="margin-top:10px;display:none;"></div>
@@ -15151,8 +15152,10 @@ async function generarAlertasAsistencia() {
   try {
     const btnGen = (prefix === 'al') ? document.getElementById('al-btn-gen-alertas') : null;
     const btnXls = (prefix === 'al') ? document.getElementById('al-btn-excel-alertas') : null;
+    const btnPdf = (prefix === 'al') ? document.getElementById('al-btn-pdf-alertas') : null;
     if(btnGen) btnGen.disabled = true;
     if(btnXls) btnXls.disabled = true;
+    if(btnPdf) btnPdf.disabled = true;
     const tardTh = Math.max(1, parseInt(document.getElementById(prefix + '-alert-tard')?.value || '3', 10) || 3);
     const ausTh  = Math.max(1, parseInt(document.getElementById(prefix + '-alert-aus')?.value  || '3', 10) || 3);
     const mesSel = (prefix === 'al'
@@ -15488,15 +15491,19 @@ async function generarAlertasAsistencia() {
       if(mesEl) { mesEl.disabled = false; mesEl.style.opacity = '1'; }
       const btnGen2 = document.getElementById('al-btn-gen-alertas');
       const btnXls2 = document.getElementById('al-btn-excel-alertas');
+      const btnPdf2 = document.getElementById('al-btn-pdf-alertas');
       if(btnGen2) btnGen2.disabled = false;
       if(btnXls2) btnXls2.disabled = false;
+      if(btnPdf2) btnPdf2.disabled = false;
     }
   } catch(e) {
     if(prefix === 'al') {
       const btnGen2 = document.getElementById('al-btn-gen-alertas');
       const btnXls2 = document.getElementById('al-btn-excel-alertas');
+      const btnPdf2 = document.getElementById('al-btn-pdf-alertas');
       if(btnGen2) btnGen2.disabled = false;
       if(btnXls2) btnXls2.disabled = false;
+      if(btnPdf2) btnPdf2.disabled = false;
     }
     if(status) status.textContent = '❌ ' + e.message;
     if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
@@ -15593,6 +15600,118 @@ async function enviarWhatsAppAlertaAsistencia(alumnoId) {
     toast('✅ WhatsApp enviado','success');
   } catch(e) {
     toast('❌ ' + e.message, 'error');
+  }
+}
+
+async function exportarAlertasAsistenciaPDF() {
+  try {
+    if(!_repAlertasCache?.periodoInicio) {
+      await generarAlertasAsistencia();
+      if(!_repAlertasCache?.periodoInicio) return;
+    }
+
+    await cargarJsPDF();
+    if(!window.jspdf){ toast('Error cargando jsPDF','error'); return; }
+    const { jsPDF } = window.jspdf;
+    const logoB64 = await cargarLogoBase64();
+
+    const { periodoInicio, periodoFin, mes, tardTh, ausTh, rows } = _repAlertasCache;
+    const fmt = (iso) => {
+      const s = String(iso||'');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+      return s.slice(8,10) + '/' + s.slice(5,7) + '/' + s.slice(0,4);
+    };
+    const pText = (periodoInicio === periodoFin) ? `Día: ${fmt(periodoInicio)}` : `Periodo: ${fmt(periodoInicio)} al ${fmt(periodoFin)}`;
+
+    const data = (rows||[]).slice().sort((a,b) => {
+      const ga = String(a.grado||''); const gb = String(b.grado||'');
+      const sa = String(a.seccion||''); const sb = String(b.seccion||'');
+      const na = String(a.nombre||''); const nb = String(b.nombre||'');
+      const ta = String(a.tipo||''); const tb = String(b.tipo||'');
+      return ga.localeCompare(gb) || sa.localeCompare(sb) || na.localeCompare(nb) || ta.localeCompare(tb);
+    });
+
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const PW = 297, PH = 210;
+    const NAVY=[13,26,58],GOLD=[201,168,76],WHITE=[255,255,255],GRAY=[240,242,248],MUTED=[100,116,139],TEXT=[30,41,59];
+
+    const COLS = [
+      { label:'DNI', key:'alumnoId', w: 20, align:'center' },
+      { label:'Alumno', key:'nombre', w: 66, align:'left' },
+      { label:'Grado', key:'grado', w: 18, align:'center' },
+      { label:'Sección', key:'seccion', w: 18, align:'center' },
+      { label:'Nivel', key:'nivel', w: 22, align:'center' },
+      { label:'Día (dd/mm)', key:'dias', w: 90, align:'left' },
+      { label:'Ausencias', key:'ausencias', w: 18, align:'center' },
+      { label:'Tardanza', key:'tardanzas', w: 18, align:'center' },
+    ];
+    const TABLE_X = 10;
+    const TABLE_W = COLS.reduce((s,c)=>s+c.w,0);
+    const HEAD_H = 8;
+    const ROW_H = 7;
+
+    let pageNum = 1;
+    let curY = 0;
+    const topY = () => (curY = pdfHeaderColegio(doc, PW, logoB64, {
+      subtitulo: 'Alertas automáticas',
+      infoExtra: `${pText} · Mes: ${mes} · Umbrales: T≥${tardTh} / A≥${ausTh} · Pág. ${pageNum}`
+    }));
+
+    const drawTableHeader = () => {
+      doc.setFillColor(...NAVY); doc.rect(TABLE_X, curY, TABLE_W, HEAD_H, 'F');
+      doc.setTextColor(...WHITE); doc.setFontSize(8); doc.setFont('helvetica','bold');
+      let cx = TABLE_X;
+      COLS.forEach(c => {
+        doc.text(c.label, c.align==='left' ? (cx + 2) : (cx + c.w/2), curY + HEAD_H/2 + 2, { align: c.align==='left' ? 'left' : 'center' });
+        cx += c.w;
+      });
+      curY += HEAD_H;
+    };
+
+    const ensureSpace = () => {
+      if(curY + ROW_H > PH - 12) {
+        doc.addPage();
+        pageNum++;
+        topY();
+        drawTableHeader();
+      }
+    };
+
+    const trunc = (s, max) => {
+      const v = String(s ?? '');
+      return v.length > max ? (v.slice(0, max-1) + '…') : v;
+    };
+
+    topY();
+    drawTableHeader();
+
+    data.forEach((r, i) => {
+      ensureSpace();
+      if(i % 2 === 0) { doc.setFillColor(...GRAY); doc.rect(TABLE_X, curY, TABLE_W, ROW_H, 'F'); }
+      doc.setDrawColor(220,226,238); doc.setLineWidth(0.2); doc.line(TABLE_X, curY + ROW_H, TABLE_X + TABLE_W, curY + ROW_H);
+      doc.setFontSize(8); doc.setFont('helvetica','normal');
+      let cx = TABLE_X;
+      COLS.forEach(c => {
+        let val = (r && r[c.key] !== undefined && r[c.key] !== null) ? r[c.key] : '';
+        if(c.key === 'dias') val = trunc(val || '-', 70);
+        if(c.key === 'nombre') val = trunc(val || '-', 34);
+        if(val === '' || val === null || val === undefined) val = '-';
+        doc.setTextColor(...TEXT);
+        const txt = String(val);
+        doc.text(txt, c.align==='left' ? (cx + 2) : (cx + c.w/2), curY + ROW_H/2 + 2, { align: c.align==='left' ? 'left' : 'center' });
+        cx += c.w;
+      });
+      curY += ROW_H;
+    });
+
+    doc.setDrawColor(...NAVY); doc.setLineWidth(0.4); doc.rect(TABLE_X, 33, TABLE_W, curY - 33);
+    curY += 4;
+    doc.setTextColor(...MUTED); doc.setFontSize(8.5); doc.setFont('helvetica','italic');
+    doc.text(`Total: ${data.length} alerta${data.length!==1?'s':''}`, TABLE_X, curY);
+    doc.save(`alertas_asistencia_${periodoInicio}_${periodoFin}_${mes}.pdf`);
+    toast('✅ PDF exportado','success');
+  } catch(e) {
+    toast('❌ Error: ' + e.message, 'error');
   }
 }
 
