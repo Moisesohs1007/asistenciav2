@@ -2843,6 +2843,7 @@
         <button class="btn btn-primary" id="btn-nuevo-alumno" onclick="openModalAlumno()">+ Nuevo Alumno</button>
         <button class="btn btn-ghost" id="btn-importar-excel" onclick="importExcel()">📊 Importar Excel</button>
         <button class="btn btn-ghost" onclick="exportPDFAlumnos()">🖨 Exportar PDF</button>
+        <button class="btn btn-ghost" onclick="exportExcelAlumnos()">📊 Exportar Excel</button>
         <!-- Toggle modo carnets -->
         <label id="label-modo-carnets" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:0.82rem;color:var(--text);user-select:none;" title="Activar modo impresión de carnets">
           <input type="checkbox" id="toggle-modo-carnets" onchange="toggleModoCarnets(this.checked)" style="width:15px;height:15px;cursor:pointer;">
@@ -6975,7 +6976,11 @@ async function limpiarFiltrosAlumnos() {
   _disableSelect('fa-grado');
   _disableSelect('fa-seccion');
   await _autoSelectTutoria('fa-nivel', 'fa-grado', 'fa-seccion');
-  mostrarEstadoInicial();
+  const n = document.getElementById('fa-nivel').value;
+  const g = document.getElementById('fa-grado').value;
+  const s = document.getElementById('fa-seccion').value;
+  if(n || g || s) renderAlumnos();
+  else mostrarEstadoInicial();
 }
 
 async function mostrarEstadoInicial() {
@@ -7268,10 +7273,17 @@ async function limpiarFiltrosRegistro() {
   _disableSelect('filter-grado');
   _disableSelect('filter-seccion');
   await _autoSelectTutoria('filter-nivel', 'filter-grado', 'filter-seccion');
-  document.getElementById('registro-tbody').innerHTML = '';
-  document.getElementById('registro-empty').style.display = 'block';
-  document.getElementById('registro-empty').querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
-  document.getElementById('registro-count').textContent = '';
+  const n = document.getElementById('filter-nivel').value;
+  const g = document.getElementById('filter-grado').value;
+  const s = document.getElementById('filter-seccion').value;
+  if(n || g || s) {
+    renderRegistros();
+  } else {
+    document.getElementById('registro-tbody').innerHTML = '';
+    document.getElementById('registro-empty').style.display = 'block';
+    document.getElementById('registro-empty').querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
+    document.getElementById('registro-count').textContent = '';
+  }
 }
 
 function validarRangoFecha(desdeId = 'filter-desde', hastaId = 'filter-hasta') {
@@ -8391,6 +8403,63 @@ async function exportPDFAlumnos() {
   const sufijo = grado && grado !== 'TODOS' ? `_${grado}${seccion && seccion !== 'TODOS' ? seccion : ''}` : '_general';
   doc.save(`alumnos${sufijo}_${hoy()}.pdf`);
   toast('✅ PDF exportado', 'success');
+}
+
+async function exportExcelAlumnos() {
+  const grado   = document.getElementById('fa-grado').value;
+  const seccion = document.getElementById('fa-seccion').value;
+  const nivel   = document.getElementById('fa-nivel').value;
+  const q       = (document.getElementById('search-alumnos').value||'').toLowerCase();
+
+  let alumnos = await DB.getAlumnos();
+  if(nivel   && nivel   !== 'TODOS') alumnos = alumnos.filter(a => a.turno === nivel);
+  if(grado   && grado   !== 'TODOS') alumnos = alumnos.filter(a => a.grado === grado);
+  if(seccion && seccion !== 'TODOS') alumnos = alumnos.filter(a => a.seccion === seccion);
+  if(q) alumnos = alumnos.filter(a =>
+    (a.nombres+' '+a.apellidos).toLowerCase().includes(q) || (a.id||'').includes(q)
+  );
+
+  if(!alumnos.length) { toast('No hay alumnos para exportar','warning'); return; }
+  alumnos.sort(_cmpAlumnoReporte);
+
+  if(!window.XLSX) {
+    toast('Cargando libreria Excel...','info');
+    await new Promise((res,rej) => {
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload=res; s.onerror=()=>rej(new Error('Error'));
+      document.head.appendChild(s);
+    });
+  }
+
+  const aoa = [];
+  const COLS = ['#', 'DNI', 'Apellidos', 'Nombres', 'Grado', 'Sección', 'Nivel', 'Apoderado 1', 'Celular 1', 'Apoderado 2', 'Celular 2'];
+  aoa.push([COLEGIO_NOMBRE]);
+  aoa.push(['Lista de Alumnos - ' + new Date().toLocaleDateString('es-PE')]);
+  aoa.push([]);
+  aoa.push(COLS);
+
+  alumnos.forEach((a, i) => {
+    aoa.push([
+      i + 1,
+      a.id,
+      a.apellidos,
+      a.nombres,
+      a.grado,
+      a.seccion,
+      a.turno,
+      a.apoderado1_nombre || '',
+      a.apoderado1_celular || '',
+      a.apoderado2_nombre || '',
+      a.apoderado2_celular || ''
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Alumnos');
+  XLSX.writeFile(wb, `alumnos_${grado||'lista'}_${seccion||''}_${hoy()}.xlsx`);
+  toast('Excel exportado','success');
 }
 
 function importCSV() {
