@@ -7857,6 +7857,17 @@ async function exportXLSX() {
     const fm=mesSel+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');
     return fm<hs?fm:hs;
   })();
+
+  // Validar límite de 30 días para exportación (User instruction)
+  const dateDesde = new Date(desde + 'T12:00:00');
+  const dateHasta = new Date(hasta + 'T12:00:00');
+  const diffTime = Math.abs(dateHasta - dateDesde);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  if(diffDays > 30) {
+    toast('Como máximo se podrá exportar 30 días', 'warning');
+    return;
+  }
+
   const esPorAlumno = q.length > 0;
   const esPorAula   = grado && grado !== 'TODOS' && seccion && seccion !== 'TODOS';
 
@@ -8072,6 +8083,17 @@ async function exportPDFRegistro() {
       return fm<hs?fm:hs;
     })();
   }
+
+  // Validar límite de 30 días para exportación (User instruction)
+  const dateDesde = new Date(desde + 'T12:00:00');
+  const dateHasta = new Date(hasta + 'T12:00:00');
+  const diffTime = Math.abs(dateHasta - dateDesde);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  if(diffDays > 30) {
+    toast('Como máximo se podrá exportar 30 días', 'warning');
+    return;
+  }
+
   const esPorAlumno = q.length > 0;
   const esPorAula   = grado && grado !== 'TODOS' && seccion && seccion !== 'TODOS';
 
@@ -8139,7 +8161,17 @@ async function exportPDFRegistro() {
       let cx=TABLE_X;
       doc.text('DNI',cx+COL_DNI/2,curY+HEAD_H/2+2,{align:'center'});cx+=COL_DNI;
       doc.text('Alumno',cx+4,curY+HEAD_H/2+2);cx+=COL_NOMBRE;
-      diasHabiles.forEach(d=>{doc.text(d.label,cx+COL_DIA/2,curY+HEAD_H/2+2,{align:'center'});cx+=COL_DIA;});
+      diasHabiles.forEach(d=>{
+        const parts = d.label.split(' ');
+        if(parts.length === 2) {
+          // Día semana arriba, número abajo para evitar superposición (User instruction)
+          doc.text(parts[0], cx+COL_DIA/2, curY+HEAD_H/2 - 0.5, {align:'center'});
+          doc.text(parts[1], cx+COL_DIA/2, curY+HEAD_H/2 + 2.5, {align:'center'});
+        } else {
+          doc.text(d.label, cx+COL_DIA/2, curY+HEAD_H/2+2, {align:'center'});
+        }
+        cx+=COL_DIA;
+      });
       doc.setTextColor(...WHITE);
       ['P','T','A'].forEach(l=>{doc.text(l,cx+COL_TOT/2,curY+HEAD_H/2+2,{align:'center'});cx+=COL_TOT;});
       curY+=HEAD_H;
