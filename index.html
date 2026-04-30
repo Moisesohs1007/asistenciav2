@@ -8386,8 +8386,17 @@ async function exportPDFAlumnos() {
     // Separador por grado+sección
     const grupoKey = (a.grado||'') + '|' + (a.seccion||'');
     if(grupoKey !== gradoActual) {
+      const isFirstGroup = (gradoActual === null);
       gradoActual = grupoKey;
-      if(curY + 6 + ROW_H > PH - 10) { doc.addPage(); pageNum++; drawHeader(); drawTableHeader(); }
+      
+      // Si no es el primer grupo, saltar a una nueva página (User instruction)
+      if(!isFirstGroup) {
+        doc.addPage();
+        pageNum++;
+        drawHeader();
+        drawTableHeader();
+      }
+      
       doc.setFillColor(...NAVY); doc.rect(TABLE_X,curY,TABLE_W,6,'F');
       doc.setTextColor(...GOLD); doc.setFontSize(7.5); doc.setFont('helvetica','bold');
       doc.text(`${a.turno||''} — ${a.grado||''} Sección ${a.seccion||''}`, TABLE_X+4, curY+4.2);
