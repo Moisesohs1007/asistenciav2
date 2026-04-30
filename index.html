@@ -5120,18 +5120,33 @@ async function _autoSelectTutoria(nivelId, gradoId, seccionId) {
   const nEl = document.getElementById(nivelId);
   const gEl = document.getElementById(gradoId);
   const sEl = document.getElementById(seccionId);
+  
+  // 1. Asegurar que el nivel esté poblado y seleccionado
   let nivel = nEl?.value || '';
   if (!nivel) {
     const alumnos = await getAlumnosFiltrados();
     nivel = alumnos[0]?.turno || '';
   }
-  if (nEl) { nEl.value = nivel; nEl.disabled = true; }
+  if (nEl) { 
+    if (![...nEl.options].some(o => o.value === nivel)) {
+      await poblarFiltroNivel(nivelId);
+    }
+    nEl.value = nivel; nEl.disabled = true; 
+  }
+
+  // 2. Asegurar que el grado esté poblado y seleccionado
   if (gEl) {
-    if (![...gEl.options].some(o => o.value === g)) gEl.innerHTML = `<option value="${g}">${g}</option>`;
+    if (![...gEl.options].some(o => o.value === g)) {
+      gEl.innerHTML = `<option value="${g}">${g}</option>`;
+    }
     gEl.value = g; gEl.disabled = true;
   }
+
+  // 3. Asegurar que la sección esté poblada y seleccionada
   if (sEl) {
-    if (![...sEl.options].some(o => o.value === s)) sEl.innerHTML = `<option value="${s}">${s}</option>`;
+    if (![...sEl.options].some(o => o.value === s)) {
+      sEl.innerHTML = `<option value="${s}">${s}</option>`;
+    }
     sEl.value = s; sEl.disabled = true;
   }
 }
@@ -6967,6 +6982,7 @@ async function deleteAlumno(id) {
 
 
 async function limpiarFiltrosAlumnos() {
+  await poblarFiltroNivel('fa-nivel');
   document.getElementById('fa-nivel').value   = '';
   document.getElementById('fa-grado').value   = '';
   document.getElementById('fa-seccion').value = '';
@@ -7260,6 +7276,7 @@ function setTodayFilter() {
 }
 
 async function limpiarFiltrosRegistro() {
+  await poblarFiltroNivel('filter-nivel');
   document.getElementById('filter-desde').value   = '';
   document.getElementById('filter-hasta').value   = '';
   document.getElementById('filter-nivel').value   = '';

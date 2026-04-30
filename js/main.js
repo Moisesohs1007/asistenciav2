@@ -761,6 +761,54 @@ function aplicarPermisos(rol) {
   }
 }
 
+function _isDocenteAula() {
+  const c = String(currentCargo || '').trim().toLowerCase();
+  return c.includes('docente de aula') || c.includes('docente aula');
+}
+
+/**
+ * Auto-selecciona la tutoría si el usuario es docente de aula única.
+ * Bloquea los campos si se auto-selecciona.
+ */
+async function _autoSelectTutoria(nivelId, gradoId, seccionId) {
+  if (!_isDocenteAula()) return; 
+  const g = String(currentTutorInfo?.tutorGrado || '').trim();
+  const s = String(currentTutorInfo?.tutorSeccion || '').trim().toUpperCase();
+  if (!g || !s) return;
+  const nEl = document.getElementById(nivelId);
+  const gEl = document.getElementById(gradoId);
+  const sEl = document.getElementById(seccionId);
+  
+  // 1. Asegurar que el nivel esté poblado y seleccionado
+  let nivel = nEl?.value || '';
+  if (!nivel) {
+    const alumnos = await getAlumnosFiltrados();
+    nivel = alumnos[0]?.turno || '';
+  }
+  if (nEl) { 
+    if (![...nEl.options].some(o => o.value === nivel)) {
+      await poblarFiltroNivel(nivelId);
+    }
+    nEl.value = nivel; nEl.disabled = true; 
+  }
+
+  // 2. Asegurar que el grado esté poblado y seleccionado
+  if (gEl) {
+    if (![...gEl.options].some(o => o.value === g)) {
+      gEl.innerHTML = `<option value="${g}">${g}</option>`;
+    }
+    gEl.value = g; gEl.disabled = true;
+  }
+
+  // 3. Asegurar que la sección esté poblada y seleccionada
+  if (sEl) {
+    if (![...sEl.options].some(o => o.value === s)) {
+      sEl.innerHTML = `<option value="${s}">${s}</option>`;
+    }
+    sEl.value = s; sEl.disabled = true;
+  }
+}
+
 function showSectionDirect(id) {
   currentSection = id;
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -1848,6 +1896,7 @@ async function deleteAlumno(id) {
 
 
 async function limpiarFiltrosAlumnos() {
+  await poblarFiltroNivel('fa-nivel');
   document.getElementById('fa-nivel').value   = '';
   document.getElementById('fa-grado').value   = '';
   document.getElementById('fa-seccion').value = '';
@@ -1856,7 +1905,12 @@ async function limpiarFiltrosAlumnos() {
   await poblarFiltroSeccion('fa-seccion', null);
   _disableSelect('fa-grado');
   _disableSelect('fa-seccion');
-  mostrarEstadoInicial();
+  await _autoSelectTutoria('fa-nivel', 'fa-grado', 'fa-seccion');
+  const n = document.getElementById('fa-nivel').value;
+  const g = document.getElementById('fa-grado').value;
+  const s = document.getElementById('fa-seccion').value;
+  if(n || g || s) renderAlumnos();
+  else mostrarEstadoInicial();
 }
 
 async function mostrarEstadoInicial() {
@@ -2127,6 +2181,7 @@ function setTodayFilter() {
 }
 
 async function limpiarFiltrosRegistro() {
+  await poblarFiltroNivel('filter-nivel');
   document.getElementById('filter-desde').value   = '';
   document.getElementById('filter-hasta').value   = '';
   document.getElementById('filter-nivel').value   = '';
@@ -2139,10 +2194,18 @@ async function limpiarFiltrosRegistro() {
   await poblarFiltroSeccion('filter-seccion', null);
   _disableSelect('filter-grado');
   _disableSelect('filter-seccion');
-  document.getElementById('registro-tbody').innerHTML = '';
-  document.getElementById('registro-empty').style.display = 'block';
-  document.getElementById('registro-empty').querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
-  document.getElementById('registro-count').textContent = '';
+  await _autoSelectTutoria('filter-nivel', 'filter-grado', 'filter-seccion');
+  const n = document.getElementById('filter-nivel').value;
+  const g = document.getElementById('filter-grado').value;
+  const s = document.getElementById('filter-seccion').value;
+  if(n || g || s) {
+    renderRegistros();
+  } else {
+    document.getElementById('registro-tbody').innerHTML = '';
+    document.getElementById('registro-empty').style.display = 'block';
+    document.getElementById('registro-empty').querySelector('p').textContent = 'Selecciona una fecha u otro filtro para ver los registros';
+    document.getElementById('registro-count').textContent = '';
+  }
 }
 
 function validarRangoFecha() {
