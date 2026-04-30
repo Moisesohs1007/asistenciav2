@@ -5392,6 +5392,9 @@ async function inicializarFiltros() {
     _disableSelect('fa-grado');
     _disableSelect('fa-seccion');
   }
+
+  await _autoSelectTutoria('fa-nivel', 'fa-grado', 'fa-seccion');
+  await _autoSelectTutoria('filter-nivel', 'filter-grado', 'filter-seccion');
 }
 
 // ============================================================
@@ -5857,6 +5860,9 @@ async function actualizarTodosLosFiltros() {
     fSeccion.innerHTML = '<option value="">Seleccionar</option>';
     secciones.forEach(s => { fSeccion.innerHTML += `<option value="${s}">${s}</option>`; });
   }
+
+  await _autoSelectTutoria('fa-nivel', 'fa-grado', 'fa-seccion');
+  await _autoSelectTutoria('filter-nivel', 'filter-grado', 'filter-seccion');
 }
 
 async function actualizarFiltrosGrado() {
