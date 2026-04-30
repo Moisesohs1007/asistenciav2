@@ -7671,13 +7671,14 @@ async function getRegistrosFiltrados() {
   const nivel   = document.getElementById('filter-nivel').value;
   const q       = (document.getElementById('filter-search').value||'').toLowerCase();
 
-  // Construir filtro DB: si hay rango de fechas usarlo, si no, solo hoy como default
-  // (evita cargar ~52k docs del mes entero cuando el usuario no ha especificado rango)
+  // Construir filtro DB: si hay rango de fechas usarlo, si no, usar el mes seleccionado
+  const mesSel = document.getElementById('reg-mes-select')?.value || mesActual();
   let filtroDb;
-  if(desde && hasta)        filtroDb = { desde, hasta };
-  else if(desde && !hasta)  filtroDb = { desde, hasta: desde };
-  else if(!desde && hasta)  filtroDb = { desde: hasta, hasta };
-  else                      filtroDb = { fecha: hoy() };
+  if(desde || hasta) {
+    filtroDb = { desde: desde || hasta, hasta: hasta || desde };
+  } else {
+    filtroDb = { mes: mesSel };
+  }
   let regs = await DB.getRegistros(filtroDb);
 
   // Aplicar filtros adicionales en cliente (nivel, grado, sección, búsqueda)
@@ -7878,7 +7879,10 @@ async function exportXLSX() {
 
     aoa.push([nombreColegio,...Array(nCols-1).fill('')]); merges.push({s:{r:0,c:0},e:{r:0,c:nCols-1}}); styleMap[0]='title';
     const nivel=alumnosAula[0]?.turno||'';
-    aoa.push([`${nivel} ${grado} Seccion ${seccion} - Registro de Asistencia - ${fechaExport}`,...Array(nCols-1).fill('')]); merges.push({s:{r:1,c:0},e:{r:1,c:nCols-1}}); styleMap[1]='subtitle';
+    const [y1, m1, d1] = desde.split('-');
+    const [y2, m2, d2] = hasta.split('-');
+    const pText = (desde === hasta) ? `Día: ${d1}/${m1}/${y1}` : `Periodo: ${d1}/${m1}/${y1} al ${d2}/${m2}/${y2}`;
+    aoa.push([`${nivel} ${grado} Seccion ${seccion} - Registro de Asistencia - ${pText}`,...Array(nCols-1).fill('')]); merges.push({s:{r:1,c:0},e:{r:1,c:nCols-1}}); styleMap[1]='subtitle';
     aoa.push(Array(nCols).fill(''));
     aoa.push(['DNI','Alumno',...diasHabiles.map(d=>d.label),'P','T','A']); styleMap[aoa.length-1]='header';
 
@@ -7951,7 +7955,10 @@ async function exportXLSX() {
     const aoa=[],merges=[],styles={};
 
     aoa.push([nombreColegio,...Array(COLS.length-1).fill('')]); merges.push({s:{r:0,c:0},e:{r:0,c:COLS.length-1}}); styles[0]='title';
-    aoa.push([`${q} - Registro de Asistencia - ${fechaExport}`,...Array(COLS.length-1).fill('')]); merges.push({s:{r:1,c:0},e:{r:1,c:COLS.length-1}}); styles[1]='subtitle';
+    const [y1, m1, d1] = desde.split('-');
+    const [y2, m2, d2] = hasta.split('-');
+    const pText = (desde === hasta) ? `Día: ${d1}/${m1}/${y1}` : `Periodo: ${d1}/${m1}/${y1} al ${d2}/${m2}/${y2}`;
+    aoa.push([`${q} - Registro de Asistencia - ${pText}`,...Array(COLS.length-1).fill('')]); merges.push({s:{r:1,c:0},e:{r:1,c:COLS.length-1}}); styles[1]='subtitle';
     aoa.push(Array(COLS.length).fill(''));
     aoa.push(COLS); styles[aoa.length-1]='header';
 
@@ -8074,9 +8081,13 @@ async function exportPDFRegistro() {
     const nivel=alumnosAula[0]?.turno||'';
 
     function drawPH(){
+      const [y1, m1, d1] = desde.split('-');
+      const [y2, m2, d2] = hasta.split('-');
+      const pText = (desde === hasta) ? `Día: ${d1}/${m1}/${y1}` : `Periodo: ${d1}/${m1}/${y1} al ${d2}/${m2}/${y2}`;
+      
       curY = pdfHeaderColegio(doc, PW, logoB64, {
         subtitulo: 'Registro de Asistencia',
-        infoExtra: `${nivel} ${grado} Sección ${seccion}  ·  ${fechaExport}  Pág. ${pageNum}`,
+        infoExtra: `${nivel} ${grado} Sección ${seccion}  ·  ${pText}  ·  Pág. ${pageNum}`,
       });
     }
     function drawTH(){
