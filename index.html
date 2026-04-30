@@ -8483,32 +8483,55 @@ async function exportExcelAlumnos() {
   }
 
   const aoa = [];
-  const COLS = ['#', 'DNI', 'Apellidos', 'Nombres', 'Grado', 'Sección', 'Nivel', 'Apoderado 1', 'Celular 1', 'Apoderado 2', 'Celular 2'];
-  aoa.push([COLEGIO_NOMBRE]);
-  aoa.push(['Lista de Alumnos - ' + new Date().toLocaleDateString('es-PE')]);
-  aoa.push([]);
+  const merges = [];
+  const COLS = ['#', 'DNI', 'Apellidos', 'Nombres', 'Grado', 'Sección', 'Nivel'];
+
+  const fechaExport = new Date().toLocaleDateString('es-PE',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const subtitulo = (nivel && nivel !== 'TODOS' ? nivel : '') +
+    (grado && grado !== 'TODOS' ? ' — ' + grado : '') +
+    (seccion && seccion !== 'TODOS' ? ' ' + seccion : '') +
+    (q ? ' — "' + q + '"' : '') || 'Lista General';
+
+  aoa.push([COLEGIO_NOMBRE, ...Array(COLS.length-1).fill('')]);
+  merges.push({s:{r:0,c:0}, e:{r:0,c:COLS.length-1}});
+  aoa.push([`Lista de Alumnos - ${subtitulo.trim()} - ${fechaExport}`, ...Array(COLS.length-1).fill('')]);
+  merges.push({s:{r:1,c:0}, e:{r:1,c:COLS.length-1}});
+  aoa.push(Array(COLS.length).fill(''));
   aoa.push(COLS);
 
-  alumnos.forEach((a, i) => {
+  let grupoActual = null;
+  let contadorGrupo = 0;
+  alumnos.forEach((a) => {
+    const grupoKey = (a.turno||'') + '|' + (a.grado||'') + '|' + (a.seccion||'');
+    if(grupoKey !== grupoActual) {
+      grupoActual = grupoKey;
+      contadorGrupo = 0;
+      const label = `${a.turno||''} — ${a.grado||''} Sección ${a.seccion||''}`.trim();
+      aoa.push([label, ...Array(COLS.length-1).fill('')]);
+      merges.push({s:{r:aoa.length-1,c:0}, e:{r:aoa.length-1,c:COLS.length-1}});
+    }
+    contadorGrupo++;
     aoa.push([
-      i + 1,
-      a.id,
-      a.apellidos,
-      a.nombres,
-      a.grado,
-      a.seccion,
-      a.turno,
-      a.apoderado1_nombre || '',
-      a.apoderado1_celular || '',
-      a.apoderado2_nombre || '',
-      a.apoderado2_celular || ''
+      contadorGrupo,
+      a.id || '',
+      a.apellidos || '',
+      a.nombres || '',
+      a.grado || '',
+      a.seccion || '',
+      a.turno || '',
     ]);
   });
 
+  aoa.push(Array(COLS.length).fill(''));
+  aoa.push([`Total: ${alumnos.length} alumno${alumnos.length!==1?'s':''}`, ...Array(COLS.length-1).fill('')]);
+  merges.push({s:{r:aoa.length-1,c:0}, e:{r:aoa.length-1,c:COLS.length-1}});
+
   const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges'] = merges;
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Alumnos');
-  XLSX.writeFile(wb, `alumnos_${grado||'lista'}_${seccion||''}_${hoy()}.xlsx`);
+  const sufijo = grado && grado !== 'TODOS' ? `_${grado}${seccion && seccion !== 'TODOS' ? seccion : ''}` : '_general';
+  XLSX.writeFile(wb, `alumnos${sufijo}_${hoy()}.xlsx`);
   toast('Excel exportado','success');
 }
 
