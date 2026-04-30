@@ -145,8 +145,22 @@ const DB = {
     else if (filtros.desde && filtros.hasta) base = 'rango:' + filtros.desde + '_' + filtros.hasta;
 
     const extra = [];
+    if (filtros.turno)  extra.push('n=' + filtros.turno);
+    if (filtros.grado)  extra.push('g=' + filtros.grado);
+    if (filtros.seccion) extra.push('s=' + filtros.seccion);
     if (filtros.tipo)   extra.push('t=' + filtros.tipo);
     if (filtros.estado) extra.push('e=' + filtros.estado);
+    if (filtros.columns && filtros.columns !== '*') extra.push('c=' + filtros.columns);
+    if (filtros.alumnoIds && Array.isArray(filtros.alumnoIds)) {
+      const ids = filtros.alumnoIds.map(x => String(x)).sort();
+      let h = 2166136261;
+      const str = ids.join(',');
+      for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      extra.push('ids=' + (h >>> 0) + ':' + ids.length);
+    }
     return extra.length ? (base + '|' + extra.join('&')) : base;
   },
 
