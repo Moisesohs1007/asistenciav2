@@ -929,13 +929,6 @@ function showSectionDirect(id) {
 // ============================================================
 // SPLASH SCREEN
 // ============================================================
-const FRASES_SPLASH = [
-  '"El futuro pertenece a quienes creen en la belleza de sus sueños."',
-  '"Invertir en conocimiento siempre paga el mejor interés."',
-  '"La disciplina es el puente entre las metas y los logros."',
-  '"Cada día es una nueva oportunidad para aprender algo nuevo."',
-];
-
 function iniciarSplash() {
   const splash = document.getElementById('splash-screen');
   if(!splash) return;
@@ -947,12 +940,7 @@ function iniciarSplash() {
   // Eslogan del colegio (si está vacío, frase aleatoria de respaldo)
   const fraseEl = document.getElementById('splash-frase');
   if(fraseEl) {
-    if(COLEGIO_ESLOGAN && COLEGIO_ESLOGAN.trim()) {
-      fraseEl.textContent = COLEGIO_ESLOGAN;
-    } else {
-      const idx = Math.floor(Math.random() * FRASES_SPLASH.length);
-      fraseEl.textContent = FRASES_SPLASH[idx];
-    }
+    fraseEl.textContent = (COLEGIO_ESLOGAN && COLEGIO_ESLOGAN.trim()) ? COLEGIO_ESLOGAN : '';
   }
 
   // Nombre dividido en dos líneas
@@ -5940,7 +5928,7 @@ async function guardarImagenesBanner() {
   }
 }
 
-var _bannerImgsDefault = ["img/banner-default-1.jpg"];
+var _bannerImgsDefault = ["img/banner-default-1.jpg", "img/banner-default-2.jpg", "img/banner-default-4.jpg", "img/banner-default-5.jpg"];
 
 function aplicarImagenesBanner() {
   var imgs = _bannerImgs.length ? _bannerImgs : _bannerImgsDefault;
