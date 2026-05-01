@@ -81,7 +81,7 @@ function _aplicarConfigColegio(cfg) {
   if (headerTxt) {
     const partes = nombre.match(/^(Institución Educativa|I\.E\.P\.?|I\.E\.)\s+(.+)$/i);
     headerTxt.innerHTML = partes
-      ? `I.E.P.<span> "${partes[2].replace(/^["']+|["']+$/g,'')}"</span>`
+      ? `I.E.<span> "${partes[2].replace(/^["']+|["']+$/g,'')}"</span>`
       : nombre;
   }
   const headerEslogan = document.getElementById('header-eslogan-txt');
@@ -7096,7 +7096,7 @@ function msbInit() {
   } catch(e){}
   // Nombre colegio
   const schoolEl = document.getElementById('msb-school-name');
-  if(schoolEl) try { schoolEl.textContent = COLEGIO_NOMBRE || 'I.E.P.'; } catch(e){}
+  if(schoolEl) try { schoolEl.textContent = COLEGIO_NOMBRE || 'I.E.'; } catch(e){}
   // Nombre usuario
   msbUpdateUser();
   // Visibilidad usuarios según rol

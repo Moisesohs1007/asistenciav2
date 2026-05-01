@@ -3001,7 +3001,7 @@
       <div class="form-grid">
         <div class="form-group form-full">
           <label>Nombre del colegio</label>
-          <input type="text" id="cfg-colegio-nombre" placeholder="Ej: I.E.P. San Martín">
+          <input type="text" id="cfg-colegio-nombre" placeholder="Ej: I.E. San Martín">
         </div>
         <div class="form-group form-full">
           <label>Eslogan</label>
@@ -5137,7 +5137,7 @@ function _aplicarConfigColegio(cfg) {
   if (headerTxt) {
     const partes = nombre.match(/^(Institución Educativa|I\.E\.P\.?|I\.E\.)\s+(.+)$/i);
     headerTxt.innerHTML = partes
-      ? `I.E.P.<span> "${partes[2].replace(/^["']+|["']+$/g,'')}"</span>`
+      ? `I.E.<span> "${partes[2].replace(/^["']+|["']+$/g,'')}"</span>`
       : nombre;
   }
   const headerEslogan = document.getElementById('header-eslogan-txt');
@@ -12841,7 +12841,7 @@ function rexBuildDocHTML(logoSrc, wmOpacity) {
   const t = _escHtml((_rexState?.tutor||'').trim() || '—');
   const obs = _escHtml((_rexState?.obs||'').trim() || '—');
   const msg = _escHtml(((_rexState?.msg||'').trim() || (design.footerText||'').trim()) || '—');
-  const sch = _escHtml((COLEGIO_NOMBRE||'I.E.P.').trim() || 'I.E.P.');
+  const sch = _escHtml((COLEGIO_NOMBRE||'I.E.').trim() || 'I.E.');
   const eslRaw = String(COLEGIO_ESLOGAN||'').trim();
   const esl = _escHtml(eslRaw ? (eslRaw.startsWith('"') ? eslRaw : `"${eslRaw}"`) : '');
   const op = Math.max(0.05, Math.min(0.15, (wmOpacity||10)/100));
@@ -17470,7 +17470,7 @@ async function setupRender() {
         <div class="form-grid">
           <div class="form-group form-full">
             <label>Nombre del colegio</label>
-            <input id="setup-nombre" type="text" value="${_escAttr(_setupState.nombreColegio||'')}" placeholder="Ej: I.E.P. San Martín">
+            <input id="setup-nombre" type="text" value="${_escAttr(_setupState.nombreColegio||'')}" placeholder="Ej: I.E. San Martín">
           </div>
           <div class="form-group form-full">
             <label>Eslogan</label>
@@ -19101,7 +19101,7 @@ function msbInit() {
   } catch(e){}
   // Nombre colegio
   const schoolEl = document.getElementById('msb-school-name');
-  if(schoolEl) try { schoolEl.textContent = COLEGIO_NOMBRE || 'I.E.P.'; } catch(e){}
+  if(schoolEl) try { schoolEl.textContent = COLEGIO_NOMBRE || 'I.E.'; } catch(e){}
   // Nombre usuario
   msbUpdateUser();
   const map = {
