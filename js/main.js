@@ -3470,7 +3470,9 @@ async function sendWhatsApp(telefono, mensaje, imageUrl = null) {
     const { data: { session } } = await _sb.auth.getSession();
     const jwt = session?.access_token;
     if(!jwt) { toast('Inicia sesión para enviar WhatsApp','warning'); return false; }
-    const baseImg = imageUrl || new URL(COLEGIO_LOGO || 'img/logo-colegio.png', window.location.href).href;
+    const img = (typeof imageUrl === 'string' ? imageUrl.trim() : '');
+    const payload = { telefono: num, mensaje };
+    if(img) payload.urlImagen = img;
     const res = await fetch(`${SUPABASE_URL}/functions/v1/enviar-whatsapp`, {
       method: 'POST',
       headers: {
@@ -3478,7 +3480,7 @@ async function sendWhatsApp(telefono, mensaje, imageUrl = null) {
         'Authorization': `Bearer ${jwt}`,
         'apikey': SUPABASE_ANON_KEY
       },
-      body: JSON.stringify({ telefono: num, mensaje, urlImagen: baseImg })
+      body: JSON.stringify(payload)
     });
     const body = await res.json().catch(() => ({}));
     if(!res.ok) {
