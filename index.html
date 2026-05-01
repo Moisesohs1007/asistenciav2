@@ -562,7 +562,18 @@
   }
   @media(max-width:700px) {
     .sro-spinner { width: 56px; height: 56px; }
-    .sro-circle svg { width: 80px; height: 80px; }
+    .sro-circle svg { width: 72px; height: 72px; }
+    #scan-result-overlay { padding: 14px 12px; gap: 10px; justify-content: flex-start; }
+    .sro-name {
+      font-size: clamp(0.9rem, 4.2vw, 1.05rem);
+      line-height: 1.12;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .sro-msg { font-size: 0.9rem; }
+    .sro-sub { font-size: 0.78rem; }
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -830,6 +841,14 @@
   tbody td { padding: 11px 14px; }
   .td-name { font-weight: 600; }
   .td-id { color: var(--muted); font-size: 0.78rem; }
+
+  @media(max-width:700px){
+    #sec-materiales .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    #sec-materiales table { min-width: 620px; }
+    .rep-rankings-grid { grid-template-columns: 1fr !important; }
+    #com-dest-wrap { overflow-x: auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    #com-dest-wrap table { min-width: 720px; }
+  }
 
   /* TOAST */
   #toast-container {
@@ -4104,7 +4123,7 @@
     <div class="com-layout">
       <div class="card" style="padding:0;overflow:hidden;">
         <div class="card-title" style="padding:14px 14px 10px;"><span class="dot"></span>Destinatarios</div>
-        <div style="max-height:520px;overflow:auto;">
+        <div id="com-dest-wrap" style="max-height:520px;overflow:auto;">
           <table class="table" style="width:100%;">
             <thead>
               <tr>
@@ -4796,7 +4815,7 @@
     </div>
 
     <!-- Rankings -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+    <div class="rep-rankings-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
       <div class="card">
         <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Top tardanzas</div>
         <div id="top-tardanzas"></div>
@@ -10289,9 +10308,25 @@ async function initComunicado() {
     onComEnviarAChange();
     _comInit = true;
   }
-  if(_normRol(currentRol) === 'profesor') {
-    await _autoSelectTutoria('com-nivel', 'com-grado', 'com-seccion');
+  _comSel = new Set();
+  const nivelSel = document.getElementById('com-nivel');
+  const gradoSel = document.getElementById('com-grado');
+  const seccSel  = document.getElementById('com-seccion');
+  const search   = document.getElementById('com-search');
+  if(nivelSel) nivelSel.value = '';
+  if(gradoSel) {
+    gradoSel.value = '';
+    gradoSel.innerHTML = '<option value="">Todos</option>';
+    gradoSel.disabled = true;
+    gradoSel.style.opacity = '0.45';
   }
+  if(seccSel) {
+    seccSel.value = '';
+    seccSel.innerHTML = '<option value="">Todas</option>';
+    seccSel.disabled = true;
+    seccSel.style.opacity = '0.45';
+  }
+  if(search) search.value = '';
   renderComLista();
 }
 
@@ -10413,6 +10448,16 @@ function renderComLista() {
   const tbody = document.getElementById('com-tbody');
   if(!tbody) return;
   _comUpdateAulaAll();
+  const nivel = (document.getElementById('com-nivel')?.value || '');
+  const grado = (document.getElementById('com-grado')?.value || '');
+  const seccion = (document.getElementById('com-seccion')?.value || '');
+  const q = (document.getElementById('com-search')?.value || '').trim();
+  const hayInteraccion = !!(nivel || grado || seccion || q);
+  if(!hayInteraccion) {
+    tbody.innerHTML = '<tr><td colspan="6" style="padding:14px;color:var(--muted);text-align:center;">Usa los filtros o busca un alumno para mostrar destinatarios</td></tr>';
+    document.getElementById('com-count').textContent = String(_comSel.size);
+    return;
+  }
   const rows = _comFiltrados();
   tbody.innerHTML = rows.map(a=>{
     const id = a.id;
