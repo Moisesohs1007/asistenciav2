@@ -5135,8 +5135,8 @@ async function _buildGradoIdx() { return {}; } // mantenido por compatibilidad
 function _aplicarConfigColegio(cfg) {
   if (!cfg) return;
   const nombre = String(cfg.nombreColegio || COLEGIO_NOMBRE || '').trim();
-  const eslogan = String(cfg.esloganColegio || cfg.eslogan || COLEGIO_ESLOGAN || '').trim();
-  const logo = String(cfg.logoColegio || cfg.logoUrl || COLEGIO_LOGO || '').trim();
+  const eslogan = String(cfg.eslogan || cfg.esloganColegio || COLEGIO_ESLOGAN || '').trim();
+  const logo = String(cfg.logoUrl || cfg.logoColegio || COLEGIO_LOGO || '').trim();
   const anio = String(cfg.anio || COLEGIO_ANIO || '').trim();
 
   const prevLogo = String(window.COLEGIO_LOGO || '').trim();
@@ -17332,17 +17332,26 @@ const CONFIG_DEFAULTS = {
 
 let configCache = null;
 
+function _normalizarConfig(cfg) {
+  if(!cfg || typeof cfg !== 'object') return cfg;
+  if(Object.prototype.hasOwnProperty.call(cfg, 'eslogan')) cfg.esloganColegio = cfg.eslogan;
+  if(Object.prototype.hasOwnProperty.call(cfg, 'logoUrl')) cfg.logoColegio = cfg.logoUrl;
+  if(Object.prototype.hasOwnProperty.call(cfg, 'nombre') && !Object.prototype.hasOwnProperty.call(cfg, 'nombreColegio')) cfg.nombreColegio = cfg.nombre;
+  if(Object.prototype.hasOwnProperty.call(cfg, 'apoDomain')) cfg.apo_domain = cfg.apoDomain;
+  return cfg;
+}
+
 async function getConfig() {
   if(configCache) return configCache;
   // Intentar desde localStorage
   const lsConfig = LSC.get('config');
-  if(lsConfig) { configCache = lsConfig; _aplicarConfigColegio(configCache); return configCache; }
+  if(lsConfig) { configCache = _normalizarConfig(lsConfig); _aplicarConfigColegio(configCache); return configCache; }
   try {
     const doc = await db.collection('config').doc('general').get();
-    configCache = doc.exists ? { ...CONFIG_DEFAULTS, ...doc.data() } : { ...CONFIG_DEFAULTS };
+    configCache = doc.exists ? _normalizarConfig({ ...CONFIG_DEFAULTS, ...doc.data() }) : _normalizarConfig({ ...CONFIG_DEFAULTS });
     LSC.set('config', configCache, LSC.TTL_CONFIG);
   } catch(e) {
-    configCache = { ...CONFIG_DEFAULTS };
+    configCache = _normalizarConfig({ ...CONFIG_DEFAULTS });
   }
   _aplicarConfigColegio(configCache);
   return configCache;
@@ -17739,19 +17748,19 @@ async function renderConfig() {
   const schNombre = document.getElementById('cfg-school-nombre');
   const schEslogan= document.getElementById('cfg-school-eslogan');
   const schAnio   = document.getElementById('cfg-school-anio');
-  if(schLogo)    schLogo.src           = String(cfg.logoColegio || COLEGIO_LOGO || '');
+  if(schLogo)    schLogo.src           = String(cfg.logoUrl || cfg.logoColegio || COLEGIO_LOGO || '');
   if(schNombre)  schNombre.textContent = String(cfg.nombreColegio || COLEGIO_NOMBRE || '');
-  if(schEslogan) schEslogan.textContent= String(cfg.esloganColegio || COLEGIO_ESLOGAN || '');
+  if(schEslogan) schEslogan.textContent= String(cfg.eslogan || cfg.esloganColegio || COLEGIO_ESLOGAN || '');
   if(schAnio)    schAnio.textContent   = String(cfg.anio || COLEGIO_ANIO || '');
 
   const inNom = document.getElementById('cfg-colegio-nombre');
   if(inNom) inNom.value = String(cfg.nombreColegio || COLEGIO_NOMBRE || '');
   const inEsl = document.getElementById('cfg-colegio-eslogan');
-  if(inEsl) inEsl.value = String(cfg.esloganColegio || COLEGIO_ESLOGAN || '');
+  if(inEsl) inEsl.value = String(cfg.eslogan || cfg.esloganColegio || COLEGIO_ESLOGAN || '');
   const inAn = document.getElementById('cfg-colegio-anio');
   if(inAn) inAn.value = String(cfg.anio || COLEGIO_ANIO || '');
   const prevLogo = document.getElementById('cfg-colegio-logo-preview');
-  const logoSrc = String(cfg.logoColegio || COLEGIO_LOGO || '');
+  const logoSrc = String(cfg.logoUrl || cfg.logoColegio || COLEGIO_LOGO || '');
   if(prevLogo && logoSrc) { prevLogo.src = logoSrc; prevLogo.style.display = 'block'; }
 
   // Niveles y horarios
