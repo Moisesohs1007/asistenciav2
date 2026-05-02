@@ -5131,6 +5131,14 @@ function _cmpAlumnoReporte(a, b) {
 
 async function _buildGradoIdx() { return {}; } // mantenido por compatibilidad
 
+function _cfgVal(cfg, k1, k2, fallback) {
+  if(cfg && typeof cfg === 'object') {
+    if(k1 && Object.prototype.hasOwnProperty.call(cfg, k1)) return cfg[k1];
+    if(k2 && Object.prototype.hasOwnProperty.call(cfg, k2)) return cfg[k2];
+  }
+  return fallback;
+}
+
 // Aplica nombre, eslogan, logo y año del colegio en toda la app (fuente: config/general)
 function _aplicarConfigColegio(cfg) {
   if (!cfg) return;
