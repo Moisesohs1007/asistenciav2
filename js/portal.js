@@ -586,8 +586,9 @@ function renderResumen() {
   var cont = document.getElementById('lista-ultimos');
   if(!ult.length) { cont.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Sin registros en este periodo</div>'; return; }
   cont.innerHTML = ult.map(function(r) {
-    var det = (r.horaIngreso ? ('Ingreso: ' + r.horaIngreso) : (r.horaSalida ? '' : ''));
-    if(r.horaSalida) det += (det ? ' - ' : '') + ('Salida: ' + r.horaSalida);
+    var hi = r.horaIngreso || '-';
+    var hs = r.horaSalida  || '-';
+    var det = (hi === '-' && hs === '-') ? 'Sin registro' : ('Ingreso: ' + hi + ' - Salida: ' + hs);
     return '<div class="registro-row"><div style="display:flex;align-items:center;gap:10px;"><span>'+ico(r.estado)+'</span><div><div style="font-size:0.83rem;font-weight:600;">'+fStr(r.fecha)+'</div><div style="font-size:0.74rem;color:var(--muted);">'+det+'</div></div></div>'+badge(r.estado)+'</div>';
   }).join('');
 }
@@ -617,8 +618,9 @@ function renderHistorial() {
 
   cont.innerHTML = list.map(function(r) {
     var estado = (r.estado || 'Ausente').trim();
-    var det = (r.horaIngreso ? ('🟢 Ingreso: ' + r.horaIngreso) : (r.horaSalida ? '' : '⭕ Sin registro'));
-    if(r.horaSalida) det += (det ? ' · ' : '') + ('🔴 Salida: ' + r.horaSalida);
+    var hi = r.horaIngreso || '-';
+    var hs = r.horaSalida  || '-';
+    var det = (hi === '-' && hs === '-') ? '⭕ Sin registro' : ('🟢 Ingreso: ' + hi + ' · 🔴 Salida: ' + hs);
     return '<div class="card" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
       + '<div style="display:flex;align-items:center;gap:10px;">'
       + '<span style="font-size:1.1rem;">'+ico(estado)+'</span>'
