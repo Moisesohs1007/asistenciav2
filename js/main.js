@@ -5692,6 +5692,14 @@ function _normalizarConfig(cfg) {
   return cfg;
 }
 
+function _cfgVal(cfg, k1, k2, fallback) {
+  if(cfg && typeof cfg === 'object') {
+    if(k1 && Object.prototype.hasOwnProperty.call(cfg, k1)) return cfg[k1];
+    if(k2 && Object.prototype.hasOwnProperty.call(cfg, k2)) return cfg[k2];
+  }
+  return fallback;
+}
+
 async function getConfig() {
   if(configCache) return configCache;
   // Intentar desde localStorage
@@ -5804,10 +5812,10 @@ async function renderConfig() {
   const schNombre = document.getElementById('cfg-school-nombre');
   const schEslogan= document.getElementById('cfg-school-eslogan');
   const schAnio   = document.getElementById('cfg-school-anio');
-  if(schLogo)    schLogo.src           = String(cfg.logoUrl || cfg.logoColegio || COLEGIO_LOGO || '');
-  if(schNombre)  schNombre.textContent = String(cfg.nombreColegio || COLEGIO_NOMBRE || '');
-  if(schEslogan) schEslogan.textContent= String(cfg.eslogan || cfg.esloganColegio || COLEGIO_ESLOGAN || '');
-  if(schAnio)    schAnio.textContent   = String(cfg.anio || COLEGIO_ANIO || '');
+  if(schLogo)    schLogo.src           = String(_cfgVal(cfg, 'logoUrl', 'logoColegio', COLEGIO_LOGO) || '');
+  if(schNombre)  schNombre.textContent = String(_cfgVal(cfg, 'nombreColegio', 'nombre', COLEGIO_NOMBRE) || '');
+  if(schEslogan) schEslogan.textContent= String(_cfgVal(cfg, 'eslogan', 'esloganColegio', COLEGIO_ESLOGAN) || '');
+  if(schAnio)    schAnio.textContent   = String(_cfgVal(cfg, 'anio', null, COLEGIO_ANIO) || '');
 
   // Niveles y horarios
   const nivelesEl = document.getElementById('cfg-niveles-list');
