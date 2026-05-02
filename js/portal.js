@@ -620,7 +620,7 @@ function renderHistorial() {
     var estado = (r.estado || 'Ausente').trim();
     var hi = r.horaIngreso || '-';
     var hs = r.horaSalida  || '-';
-    var det = (hi === '-' && hs === '-') ? '⭕ Sin registro' : ('🟢 Ingreso: ' + hi + ' · 🔴 Salida: ' + hs);
+    var det = (hi === '-' && hs === '-') ? '⭕ Sin registro' : ('🟢 Ingreso: ' + hi + ' · 🔵 Salida: ' + hs);
     return '<div class="card" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
       + '<div style="display:flex;align-items:center;gap:10px;">'
       + '<span style="font-size:1.1rem;">'+ico(estado)+'</span>'
