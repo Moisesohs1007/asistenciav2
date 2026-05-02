@@ -1,4 +1,4 @@
-const CACHE_NAME = 'asistencia-v2-1.0.2';
+const CACHE_NAME = 'asistencia-v2-1.0.3';
 const ASSETS = [
   './index.html',
   './apoderado.html',
@@ -8,7 +8,8 @@ const ASSETS = [
   './js/main.js',
   './js/portal.js',
   './js/auth.js',
-  './js/supabase-client.js'
+  './js/supabase-client.js',
+  './img/wa-logo.png'
 ];
 
 // Instalar y cachear archivos base

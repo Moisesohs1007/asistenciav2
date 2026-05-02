@@ -8982,7 +8982,7 @@ async function probarFactiliza() {
 // WHATSAPP — ENCABEZADO Y PIE INSTITUCIONAL
 // ============================================================
 function _waEncabezado() {
-  const linea1 = `🏫 *${COLEGIO_NOMBRE}*`;
+  const linea1 = `*${COLEGIO_NOMBRE}*`;
   const linea2 = COLEGIO_ESLOGAN ? `_${COLEGIO_ESLOGAN}_` : '';
   return linea2 ? `${linea1}\n${linea2}` : linea1;
 }
@@ -9005,7 +9005,7 @@ async function sendWhatsApp(telefono, mensaje, imageUrl = null) {
     const { data: { session } } = await _sb.auth.getSession();
     const jwt = session?.access_token;
     if(!jwt) { toast('Inicia sesión para enviar WhatsApp','warning'); return false; }
-    const img = (typeof imageUrl === 'string' ? imageUrl.trim() : '');
+    const img = (typeof imageUrl === 'string' ? imageUrl.trim() : '') || new URL('img/wa-logo.png', window.location.href).href;
     const payload = { telefono: num, mensaje };
     if(img) payload.urlImagen = img;
     const res = await fetch(`${SUPABASE_URL}/functions/v1/enviar-whatsapp`, {

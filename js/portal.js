@@ -930,6 +930,7 @@ async function sendWhatsAppApo(telefono, mensaje) {
     if(!jwt) return false;
     var num = '51' + telefono.replace(/\D/g,'');
     if(num.length < 11) return false;
+    var logoUrl = new URL('img/wa-logo.png', window.location.href).href;
     const res = await fetch(`${SUPABASE_URL}/functions/v1/enviar-whatsapp`, {
       method: 'POST',
       headers: {
@@ -937,7 +938,7 @@ async function sendWhatsAppApo(telefono, mensaje) {
         'Authorization': `Bearer ${jwt}`,
         'apikey': SUPABASE_ANON_KEY
       },
-      body: JSON.stringify({ telefono: num, mensaje })
+      body: JSON.stringify({ telefono: num, mensaje, urlImagen: logoUrl })
     });
     if(res.ok) return true;
     const body = await res.json().catch(() => ({}));
