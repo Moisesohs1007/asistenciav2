@@ -24,15 +24,17 @@ serve(async (req) => {
     const password = typeof body.password === 'string' ? body.password : '';
     const colegioId = typeof body.colegioId === 'string' ? body.colegioId.trim() : '';
     const dni = typeof body.dni === 'string' ? body.dni.trim() : '';
+    const emailReal = typeof body.emailReal === 'string' ? body.emailReal.trim().toLowerCase() : '';
 
-    if (!email || !password || !colegioId) {
-      return jsonResponse({ error: 'Faltan parámetros requeridos (email, password, colegioId)', code: 'bad-request' }, 400);
+    if (!password || !colegioId || !dni) {
+      return jsonResponse({ error: 'Faltan parámetros requeridos (dni, password, colegioId)', code: 'bad-request' }, 400);
     }
     if (password.length < 6) {
       return jsonResponse({ error: 'La contraseña debe tener al menos 6 caracteres', code: 'auth/weak-password' }, 400);
     }
-    if (!/^[^@]+@[^@]+\.[^@]+$/.test(email)) {
-      return jsonResponse({ error: 'Correo inválido', code: 'auth/invalid-email' }, 400);
+    const alumnoId = dni.replace(/\D/g, '');
+    if (!/^\d{8}$/.test(alumnoId)) {
+      return jsonResponse({ error: 'DNI inválido', code: 'bad-request' }, 400);
     }
 
     const supabaseAdmin = createClient(
@@ -51,18 +53,13 @@ serve(async (req) => {
     }
 
     const apoDomain = String((colegio as any).apo_domain || '').trim().toLowerCase();
-    const esFicticio = !!apoDomain && email.endsWith(apoDomain);
-
-    let alumnoId = '';
-    if (esFicticio) {
-      const localPart = email.split('@')[0] || '';
-      alumnoId = localPart.replace(/\D/g, '');
-    } else {
-      alumnoId = dni.replace(/\D/g, '');
+    if (!apoDomain) {
+      return jsonResponse({ error: 'Colegio sin apo_domain configurado', code: 'bad-request' }, 400);
     }
 
-    if (!/^\d{8}$/.test(alumnoId)) {
-      return jsonResponse({ error: 'DNI inválido', code: 'bad-request' }, 400);
+    const emailVirtual = `${alumnoId}@${apoDomain}`;
+    if (email && email !== emailVirtual) {
+      return jsonResponse({ error: 'Email no permitido para apoderados', code: 'not-allowed' }, 403);
     }
 
     const { data: alumno, error: alumnoError } = await supabaseAdmin
@@ -77,7 +74,7 @@ serve(async (req) => {
     }
 
     const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
+      email: emailVirtual,
       password,
       email_confirm: true,
       app_metadata: { colegio_id: colegioId, rol: 'apoderado', alumno_id: alumnoId },
@@ -89,11 +86,11 @@ serve(async (req) => {
       return jsonResponse({ error: msg, code }, code === 'auth/email-already-in-use' ? 409 : 500);
     }
 
-    // Si el apoderado se creó con correo real, registrar emailReal para que el portal pueda ubicar el DNI
-    if (!esFicticio) {
+    // Guardar correo real solo como contacto (opcional)
+    if (emailReal && /^[^@]+@[^@]+\.[^@]+$/.test(emailReal)) {
       try {
         const { error: upErr } = await supabaseAdmin.from('apoderados').upsert(
-          { colegio_id: colegioId, id: alumnoId, alumno_id: alumnoId, email_real: email, primer_ingreso: true },
+          { colegio_id: colegioId, id: alumnoId, alumno_id: alumnoId, email_real: emailReal, primer_ingreso: true },
           { onConflict: 'colegio_id,id' }
         );
         if (upErr) {

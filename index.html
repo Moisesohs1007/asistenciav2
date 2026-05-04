@@ -17,8 +17,8 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="compat.js?v=112"></script>
-<script src="db_supabase.js?v=112"></script>
+<script src="compat.js?v=113"></script>
+<script src="db_supabase.js?v=113"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
@@ -2559,14 +2559,14 @@
     </div>
     <div style="padding:16px 18px;">
       <div style="font-size:0.85rem;color:var(--muted);margin-bottom:12px;">
-        Si no tienes correo, el sistema creará uno automáticamente con tu DNI.
+        El correo es opcional y se usará solo para recibir información. El ingreso al sistema es con DNI y contraseña.
       </div>
       <label style="display:flex;gap:10px;align-items:center;margin:10px 0 12px 0;">
-        <input type="checkbox" id="apo-no-correo" checked onchange="onToggleApoCorreo()">
-        <span>No tengo correo / usar correo del sistema</span>
+        <input type="checkbox" id="apo-tiene-correo" onchange="onToggleApoCorreo()">
+        <span>Tengo correo electrónico</span>
       </label>
       <div class="form-group" style="margin:0;">
-        <label>Correo real (opcional)</label>
+        <label>Correo electrónico (opcional)</label>
         <input type="email" id="apo-correo-real" placeholder="correo@ejemplo.com" disabled style="width:100%;box-sizing:border-box;opacity:0.6;">
       </div>
       <div id="apo-crear-error" style="display:none;margin-top:10px;color:#f87171;font-size:0.85rem;"></div>
@@ -5639,13 +5639,12 @@ window.doLoginApoderado = async function() {
         try {
           const tmpApp  = firebase.initializeApp(firebaseConfig, 'new_apo_' + Date.now());
           const tmpAuth = tmpApp.auth();
-          // Mostrar modal para elegir correo real o correo del sistema
-          const emailCreado = await _crearCuentaApoderadoInteractivo({ dni, pass: dni, tmpAuth, tmpApp });
+          const emailReal = await _crearCuentaApoderadoInteractivo({ dni, pass: dni, tmpAuth, tmpApp });
+          await tmpAuth.createUserWithEmailAndPassword(emailVirtual, dni, { dni, emailReal });
           await tmpAuth.signOut();
           await tmpApp.delete();
           cuentaCreada = true;
-          // Login con el correo final (real o del sistema)
-          await auth.signInWithEmailAndPassword(emailCreado, dni);
+          await auth.signInWithEmailAndPassword(emailVirtual, dni);
           _loginIntentos = 0;
           return;
         } catch(createErr) {
@@ -5682,12 +5681,12 @@ let _apoCreateState = null;
 function _openModalCrearApo() {
   const m = document.getElementById('modal-crear-apo');
   if(!m) return;
-  const chk = document.getElementById('apo-no-correo');
+  const chk = document.getElementById('apo-tiene-correo');
   const inp = document.getElementById('apo-correo-real');
   const err = document.getElementById('apo-crear-error');
   if(err) err.style.display = 'none';
   if(inp) inp.value = '';
-  if(chk) chk.checked = true;
+  if(chk) chk.checked = false;
   if(inp) { inp.disabled = true; inp.style.opacity = '0.6'; }
   m.style.display = 'flex';
   _modalLockOn();
@@ -5699,12 +5698,12 @@ function _closeModalCrearApo() {
   _modalLockOff();
 }
 function onToggleApoCorreo() {
-  const chk = document.getElementById('apo-no-correo');
+  const chk = document.getElementById('apo-tiene-correo');
   const inp = document.getElementById('apo-correo-real');
   if(!chk || !inp) return;
-  inp.disabled = !!chk.checked;
-  inp.style.opacity = chk.checked ? '0.6' : '1';
-  if(!chk.checked) setTimeout(() => inp.focus(), 50);
+  inp.disabled = !chk.checked;
+  inp.style.opacity = chk.checked ? '1' : '0.6';
+  if(chk.checked) setTimeout(() => inp.focus(), 50);
 }
 async function _crearCuentaApoderadoInteractivo({ dni, pass, tmpAuth, tmpApp }) {
   _apoCreateState = { dni, pass, tmpAuth, tmpApp };
@@ -5720,27 +5719,18 @@ async function confirmarCrearApoCuenta() {
   const errEl = document.getElementById('apo-crear-error');
   if(errEl) errEl.style.display = 'none';
 
-  const chk = document.getElementById('apo-no-correo');
-  const usarSistema = !!(chk && chk.checked);
+  const chk = document.getElementById('apo-tiene-correo');
+  const tieneCorreo = !!(chk && chk.checked);
   const emailReal = String(document.getElementById('apo-correo-real')?.value || '').trim().toLowerCase();
 
-  let email = '';
-  if(usarSistema) {
-    email = `${st.dni}${_apoDomainAt()}`;
-  } else {
-    if(!emailReal) { if(errEl){ errEl.textContent='Ingresa un correo real o marca "No tengo correo"'; errEl.style.display='block'; } return; }
+  if(tieneCorreo) {
+    if(!emailReal) { if(errEl){ errEl.textContent='Ingresa tu correo o desmarca la opción'; errEl.style.display='block'; } return; }
     if(!/^[^@]+@[^@]+\.[^@]+$/.test(emailReal)) { if(errEl){ errEl.textContent='Correo inválido'; errEl.style.display='block'; } return; }
-    email = emailReal;
   }
 
-  try {
-    await st.tmpAuth.createUserWithEmailAndPassword(email, st.pass, { dni: st.dni });
-    _closeModalCrearApo();
-    _apoCreateState = null;
-    st.resolve(email);
-  } catch(e) {
-    if(errEl){ errEl.textContent = 'Error: ' + (e?.message || e?.code || ''); errEl.style.display='block'; }
-  }
+  _closeModalCrearApo();
+  _apoCreateState = null;
+  st.resolve(tieneCorreo ? emailReal : '');
 }
 function cancelarCrearApoCuenta() {
   const st = _apoCreateState;

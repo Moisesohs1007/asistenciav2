@@ -703,6 +703,7 @@ class _SecondaryAuth {
     // _SecondaryAuth solo crea apoderados (self-registro sin token)
     // La Edge Function verifica el DNI en la tabla alumnos
     const dni = typeof extra.dni === 'string' ? extra.dni.trim() : '';
+    const emailReal = typeof extra.emailReal === 'string' ? extra.emailReal.trim().toLowerCase() : '';
     const res = await fetch(`${SUPABASE_URL}/functions/v1/crear-usuario`, {
       method: 'POST',
       headers: {
@@ -710,7 +711,7 @@ class _SecondaryAuth {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'apikey': SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ email, password: pass, colegioId: COLEGIO_ID, dni }),
+      body: JSON.stringify({ email, password: pass, colegioId: COLEGIO_ID, dni, emailReal }),
     });
     const result = await res.json();
     if (!res.ok) {
