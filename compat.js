@@ -253,11 +253,20 @@ async function _getConfig(docId) {
       })
     };
   }
-  const { data, error } = await _sb
+  let data = null;
+  let error = null;
+  ({ data, error } = await _sb
     .from('colegios')
     .select('id,nombre,anio,eslogan,logo_url,apo_domain,niveles,grados,secciones,banner_imagenes,rol_examenes_config')
     .eq('id', COLEGIO_ID)
-    .single();
+    .single());
+  if (error && String(error.message || '').includes('rol_examenes_config')) {
+    ({ data, error } = await _sb
+      .from('colegios')
+      .select('id,nombre,anio,eslogan,logo_url,apo_domain,niveles,grados,secciones,banner_imagenes')
+      .eq('id', COLEGIO_ID)
+      .single());
+  }
   if (error || !data) return { exists: false, data: () => ({}) };
   // general: devuelve todo el colegio como config
   return {
@@ -274,7 +283,7 @@ async function _getConfig(docId) {
       bannerImagenes: Array.isArray(data.banner_imagenes) ? data.banner_imagenes : JSON.parse(data.banner_imagenes || '[]'),
       rolExamenesConfig: (data.rol_examenes_config && typeof data.rol_examenes_config === 'object')
         ? data.rol_examenes_config
-        : JSON.parse(data.rol_examenes_config || '{}'),
+        : (data.rol_examenes_config ? JSON.parse(data.rol_examenes_config || '{}') : {}),
     })
   };
 }
@@ -300,8 +309,13 @@ async function _setConfig(docId, data, options = {}) {
     if (data.rolExamenesConfig !== undefined) update.rol_examenes_config = data.rolExamenesConfig;
   }
   if (!Object.keys(update).length) return;
-  const { error } = await _sb.from('colegios').update(update).eq('id', COLEGIO_ID);
-  if (error) throw new Error(error.message);
+  let res = await _sb.from('colegios').update(update).eq('id', COLEGIO_ID);
+  if (res.error && String(res.error.message || '').includes('rol_examenes_config')) {
+    const retry = { ...update };
+    delete retry.rol_examenes_config;
+    res = await _sb.from('colegios').update(retry).eq('id', COLEGIO_ID);
+  }
+  if (res.error) throw new Error(res.error.message);
 }
 
 // ============================================================
