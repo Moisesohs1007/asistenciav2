@@ -287,10 +287,10 @@ async function _setConfig(docId, data, options = {}) {
     if (data.instancia !== undefined) update.factiliza_instancia = data.instancia;
   } else {
     // general
-    if (data.niveles   !== undefined) update.niveles   = JSON.stringify(data.niveles);
-    if (data.grados    !== undefined) update.grados    = JSON.stringify(data.grados);
-    if (data.secciones !== undefined) update.secciones = JSON.stringify(data.secciones);
-    if (data.bannerImagenes !== undefined) update.banner_imagenes = JSON.stringify(data.bannerImagenes);
+    if (data.niveles   !== undefined) update.niveles   = data.niveles;
+    if (data.grados    !== undefined) update.grados    = data.grados;
+    if (data.secciones !== undefined) update.secciones = data.secciones;
+    if (data.bannerImagenes !== undefined) update.banner_imagenes = data.bannerImagenes;
     if (data.nombreColegio !== undefined) update.nombre = data.nombreColegio;
     if (data.nombre !== undefined) update.nombre = data.nombre;
     if (data.anio   !== undefined) update.anio   = data.anio;
@@ -300,7 +300,6 @@ async function _setConfig(docId, data, options = {}) {
     if (data.rolExamenesConfig !== undefined) update.rol_examenes_config = data.rolExamenesConfig;
   }
   if (!Object.keys(update).length) return;
-  update.updated_at = new Date().toISOString();
   const { error } = await _sb.from('colegios').update(update).eq('id', COLEGIO_ID);
   if (error) throw new Error(error.message);
 }
