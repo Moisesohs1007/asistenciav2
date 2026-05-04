@@ -17361,7 +17361,26 @@ async function getConfig() {
   if(configCache) return configCache;
   // Intentar desde localStorage
   const lsConfig = LSC.get('config');
-  if(lsConfig) { configCache = _normalizarConfig(lsConfig); _aplicarConfigColegio(configCache); return configCache; }
+  if(lsConfig) {
+    configCache = _normalizarConfig(lsConfig);
+    _aplicarConfigColegio(configCache);
+    Promise.resolve().then(async function() {
+      try {
+        const doc = await db.collection('config').doc('general').get();
+        if(!doc || !doc.exists) return;
+        const fresh = _normalizarConfig({ ...CONFIG_DEFAULTS, ...doc.data() });
+        if(JSON.stringify(fresh) === JSON.stringify(configCache)) return;
+        configCache = fresh;
+        LSC.set('config', configCache, LSC.TTL_CONFIG);
+        _aplicarConfigColegio(configCache);
+        const secConfig = document.getElementById('sec-config');
+        if(secConfig && secConfig.style.display !== 'none' && secConfig.style.display !== '') {
+          renderConfig();
+        }
+      } catch(e) {}
+    });
+    return configCache;
+  }
   try {
     const doc = await db.collection('config').doc('general').get();
     configCache = doc.exists ? _normalizarConfig({ ...CONFIG_DEFAULTS, ...doc.data() }) : _normalizarConfig({ ...CONFIG_DEFAULTS });
