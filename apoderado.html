@@ -401,6 +401,22 @@
       <input type="text" id="inp-apo-apellidos" placeholder="Ej: García López">
     </div>
     <div class="form-group">
+      <label>Grado de consanguinidad <span style="color:var(--danger);">*</span></label>
+      <select id="inp-apo-consanguinidad">
+        <option value="">Seleccionar</option>
+        <option value="padre">Padre</option>
+        <option value="madre">Madre</option>
+        <option value="tutor_legal">Tutor legal</option>
+        <option value="abuelo">Abuelo</option>
+        <option value="tio">Tío</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+    <div class="form-group" id="wrap-apo-consanguinidad-otro" style="display:none;">
+      <label>Especificar (opcional)</label>
+      <input type="text" id="inp-apo-consanguinidad-otro" placeholder="Ej: Hermana / Prima / Apoderado temporal">
+    </div>
+    <div class="form-group">
       <label>Celular / WhatsApp <span style="color:var(--danger);">*</span></label>
       <input type="tel" id="inp-telefono" placeholder="Ej: 987654321" inputmode="numeric" maxlength="9">
     </div>
@@ -419,6 +435,22 @@
     <div class="form-group">
       <label>Apellidos</label>
       <input type="text" id="inp-apo2-apellidos" placeholder="Ej: Pérez Díaz">
+    </div>
+    <div class="form-group">
+      <label>Grado de consanguinidad</label>
+      <select id="inp-apo2-consanguinidad">
+        <option value="">Seleccionar</option>
+        <option value="padre">Padre</option>
+        <option value="madre">Madre</option>
+        <option value="tutor_legal">Tutor legal</option>
+        <option value="abuelo">Abuelo</option>
+        <option value="tio">Tío</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+    <div class="form-group" id="wrap-apo2-consanguinidad-otro" style="display:none;">
+      <label>Especificar (opcional)</label>
+      <input type="text" id="inp-apo2-consanguinidad-otro" placeholder="Ej: Hermana / Prima / Apoderado temporal">
     </div>
     <div class="form-group">
       <label>Celular / WhatsApp</label>

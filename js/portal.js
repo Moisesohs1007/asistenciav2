@@ -144,12 +144,17 @@ function continuarCargaApoderado(user, dni) {
       document.getElementById('apo-app').style.display = 'block';
       document.getElementById('inp-apo-nombres').value    = apoData.nombres    || alumno.apoderadoNombres    || '';
       document.getElementById('inp-apo-apellidos').value  = apoData.apellidos  || alumno.apoderadoApellidos  || '';
+      document.getElementById('inp-apo-consanguinidad').value = apoData.consanguinidad || '';
+      document.getElementById('inp-apo-consanguinidad-otro').value = apoData.consanguinidadDetalle || '';
       document.getElementById('inp-telefono').value       = apoData.telefono   || alumno.telefono            || '';
       document.getElementById('inp-apo-correo').value     = apoData.emailReal  || '';
       document.getElementById('inp-apo2-nombres').value   = apoData.nombres2   || alumno.apoderado2Nombres   || '';
       document.getElementById('inp-apo2-apellidos').value = apoData.apellidos2 || alumno.apoderado2Apellidos || '';
+      document.getElementById('inp-apo2-consanguinidad').value = apoData.consanguinidad2 || '';
+      document.getElementById('inp-apo2-consanguinidad-otro').value = apoData.consanguinidadDetalle2 || '';
       document.getElementById('inp-apo2-telefono').value  = apoData.telefono2  || alumno.telefono2           || '';
       document.getElementById('inp-apo2-correo').value    = apoData.emailReal2 || '';
+      _bindConsanguinidadSelects();
       document.getElementById('modal-cambiar-pass').style.display = 'flex';
     } else {
       var lastTab = null;
@@ -500,6 +505,7 @@ function setApoTabActive(tabId, subId) {
 document.addEventListener('DOMContentLoaded', function() {
   var nav = document.getElementById('apo-nav-tabs');
   if(nav) nav.addEventListener('mouseleave', function(){ setTimeout(closeApoDropdowns, 80); });
+  _bindConsanguinidadSelects();
 });
 
 // Cerrar al click fuera
@@ -509,6 +515,19 @@ document.addEventListener('click', function(e) {
   var menu = document.getElementById('apo-user-menu');
   if(btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) menu.style.display = 'none';
 });
+
+function _bindConsanguinidadSelects() {
+  function bind(selId, wrapId) {
+    var sel = document.getElementById(selId);
+    var wrap = document.getElementById(wrapId);
+    if(!sel || !wrap) return;
+    function apply() { wrap.style.display = sel.value === 'otro' ? '' : 'none'; }
+    sel.addEventListener('change', apply);
+    apply();
+  }
+  bind('inp-apo-consanguinidad', 'wrap-apo-consanguinidad-otro');
+  bind('inp-apo2-consanguinidad', 'wrap-apo2-consanguinidad-otro');
+}
 
 function showTab(tab) {
   ['resumen','historial','incidentes','agenda','carnet','comunicados','contacto'].forEach(function(t) {
@@ -983,10 +1002,14 @@ function guardarNuevaPass() {
   var confirmarPass = document.getElementById('inp-confirmar-pass').value;
   var nombres   = document.getElementById('inp-apo-nombres').value.trim();
   var apellidos = document.getElementById('inp-apo-apellidos').value.trim();
+  var consang = document.getElementById('inp-apo-consanguinidad').value;
+  var consangOtro = document.getElementById('inp-apo-consanguinidad-otro').value.trim();
   var telefono  = document.getElementById('inp-telefono').value.trim();
   var correo    = document.getElementById('inp-apo-correo').value.trim();
   var nombres2   = document.getElementById('inp-apo2-nombres').value.trim();
   var apellidos2 = document.getElementById('inp-apo2-apellidos').value.trim();
+  var consang2 = document.getElementById('inp-apo2-consanguinidad').value;
+  var consangOtro2 = document.getElementById('inp-apo2-consanguinidad-otro').value.trim();
   var telefono2  = document.getElementById('inp-apo2-telefono').value.trim();
   var correo2    = document.getElementById('inp-apo2-correo').value.trim();
   var errEl = document.getElementById('err-cambiar-pass');
@@ -996,10 +1019,12 @@ function guardarNuevaPass() {
   if(nuevaPass !== confirmarPass) { errEl.textContent='Las contraseñas no coinciden'; errEl.style.display='block'; return; }
   if(!nombres)   { errEl.textContent='Ingresa tus nombres'; errEl.style.display='block'; return; }
   if(!apellidos) { errEl.textContent='Ingresa tus apellidos'; errEl.style.display='block'; return; }
+  if(!consang)   { errEl.textContent='Selecciona el grado de consanguinidad'; errEl.style.display='block'; return; }
   if(!telefono || !/^\d{9}$/.test(telefono)) { errEl.textContent='Ingresa un celular de 9 dígitos'; errEl.style.display='block'; return; }
   if(correo && !/^[^@]+@[^@]+\.[^@]+$/.test(correo)) { errEl.textContent='El correo del apoderado 1 no es válido'; errEl.style.display='block'; return; }
   if(telefono2 && !/^\d{9}$/.test(telefono2)) { errEl.textContent='El celular del apoderado 2 debe tener 9 dígitos'; errEl.style.display='block'; return; }
   if(correo2 && !/^[^@]+@[^@]+\.[^@]+$/.test(correo2)) { errEl.textContent='El correo del apoderado 2 no es válido'; errEl.style.display='block'; return; }
+  if(consang2 && !nombres2 && !apellidos2 && !telefono2 && !correo2) { consang2 = ''; consangOtro2 = ''; }
 
   var btn = document.getElementById('btn-guardar-pass');
   btn.disabled = true;
@@ -1023,10 +1048,14 @@ function guardarNuevaPass() {
     actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
   };
   if(correo)     dataApo.emailReal  = correo;
+  dataApo.consanguinidad = consang;
+  if(consang === 'otro' && consangOtro) dataApo.consanguinidadDetalle = consangOtro;
   if(nombres2)   dataApo.nombres2   = nombres2;
   if(apellidos2) dataApo.apellidos2 = apellidos2;
   if(telefono2)  dataApo.telefono2  = telefono2;
   if(correo2)    dataApo.emailReal2 = correo2;
+  if(consang2) dataApo.consanguinidad2 = consang2;
+  if(consang2 === 'otro' && consangOtro2) dataApo.consanguinidadDetalle2 = consangOtro2;
 
   // Cargar config general PRIMERO
   Promise.all([
