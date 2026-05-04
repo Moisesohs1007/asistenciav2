@@ -3526,8 +3526,10 @@ function toggleModoCarnets(activo) {
   });
   // Deshabilitar/habilitar Nuevo Alumno e Importar CSV/Excel
   const btnNuevo = document.getElementById('btn-nuevo-alumno');
+  const btnPlantilla = document.getElementById('btn-plantilla-alumnos');
   const btnImportarXL = document.getElementById('btn-importar-excel');
   if(btnNuevo)      { btnNuevo.disabled = activo;      btnNuevo.style.opacity = activo ? '0.35' : '';  btnNuevo.style.pointerEvents = activo ? 'none' : ''; }
+  if(btnPlantilla)  { btnPlantilla.disabled = activo;  btnPlantilla.style.opacity = activo ? '0.35' : '';  btnPlantilla.style.pointerEvents = activo ? 'none' : ''; }
   if(btnImportarXL) { btnImportarXL.disabled = activo; btnImportarXL.style.opacity = activo ? '0.35' : '1'; btnImportarXL.style.pointerEvents = activo ? 'none' : ''; }
 }
 

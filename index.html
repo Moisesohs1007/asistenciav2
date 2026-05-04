@@ -2900,6 +2900,7 @@
       <span id="alumnos-count" style="color:var(--muted);font-size:0.85rem;"></span>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-primary" id="btn-nuevo-alumno" onclick="openModalAlumno()">+ Nuevo Alumno</button>
+        <button class="btn btn-ghost" id="btn-plantilla-alumnos" onclick="downloadAlumnosTemplate()">⬇ Plantilla Excel</button>
         <button class="btn btn-ghost" id="btn-importar-excel" onclick="importExcel()">📊 Importar Excel</button>
         <button class="btn btn-ghost" onclick="exportPDFAlumnos()">🖨 Exportar PDF</button>
         <button class="btn btn-ghost" onclick="exportExcelAlumnos()">📊 Exportar Excel</button>
@@ -6114,8 +6115,10 @@ function aplicarPermisos(rol) {
     const canManageAlumnos = _isAdminDirectorOrCoord();
     const b1 = document.getElementById('btn-nuevo-alumno');
     const b2 = document.getElementById('btn-importar-excel');
+    const b3 = document.getElementById('btn-plantilla-alumnos');
     if(b1) b1.style.display = canManageAlumnos ? '' : 'none';
     if(b2) b2.style.display = canManageAlumnos ? '' : 'none';
+    if(b3) b3.style.display = (_normRol(currentRol) === 'admin') ? '' : 'none';
   } catch(e) {}
 
   // Restaurar última sección activa si existe y está permitida
@@ -16666,6 +16669,87 @@ async function downloadUsuariosTemplate() {
     const a = document.createElement('a');
     a.href = url;
     a.download = 'plantilla_usuarios.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 500);
+  } catch(e) {
+    toast('No se pudo generar la plantilla','error');
+  }
+}
+
+async function downloadAlumnosTemplate() {
+  try {
+    const ExcelJS = await ensureExcelJS();
+    const cfg = await getConfig();
+    const gradosAll = [...new Set(Object.values(cfg.grados || {}).flat().map(x => String(x || '').trim()).filter(Boolean))];
+    const secciones = (cfg.secciones || []).map(x => String(x || '').trim()).filter(Boolean);
+    const niveles = [...new Set([
+      ...Object.keys(cfg.grados || {}).map(x => String(x || '').trim()).filter(Boolean),
+      ...((cfg.niveles || []).map ? (cfg.niveles || []).map(x => String(x || '').trim()) : [])
+    ])].filter(Boolean);
+    const nivelesFinal = niveles.length ? niveles : ['Inicial','Primaria','Secundaria'];
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('alumnos');
+    const wsl = wb.addWorksheet('listas');
+
+    wsl.getCell('A1').value = 'Niveles';
+    nivelesFinal.forEach((n, i) => { wsl.getCell(2 + i, 1).value = n; });
+    wsl.getCell('B1').value = 'Grados';
+    (gradosAll.length ? gradosAll : ['1']).forEach((g, i) => { wsl.getCell(2 + i, 2).value = g; });
+    wsl.getCell('C1').value = 'Secciones';
+    (secciones.length ? secciones : ['A']).forEach((s, i) => { wsl.getCell(2 + i, 3).value = s; });
+
+    const headers = [
+      'dni','nombres','apellidos','turno','grado','seccion',
+      'foto','apoderadoNombres','apoderadoApellidos','telefono','correoApoderado'
+    ];
+    ws.addRow(headers);
+    ws.getRow(1).font = { bold: true };
+    ws.views = [{ state: 'frozen', ySplit: 1 }];
+    ws.columns = [
+      { key: 'dni', width: 14, style: { numFmt: '@' } },
+      { key: 'nombres', width: 22 },
+      { key: 'apellidos', width: 22 },
+      { key: 'turno', width: 14 },
+      { key: 'grado', width: 14 },
+      { key: 'seccion', width: 10 },
+      { key: 'foto', width: 34 },
+      { key: 'apoderadoNombres', width: 20 },
+      { key: 'apoderadoApellidos', width: 20 },
+      { key: 'telefono', width: 16, style: { numFmt: '@' } },
+      { key: 'correoApoderado', width: 28 },
+    ];
+
+    ws.addRow([
+      '33348249','Moises','Perez',
+      nivelesFinal[0] || 'Primaria',
+      (gradosAll[0] || '5'),
+      (secciones[0] || 'B'),
+      '',
+      'Rosa','Perez','999888777',''
+    ]);
+
+    const maxRows = 1000;
+    const nivelEnd = Math.max(2, 1 + (nivelesFinal.length || 1));
+    const gradoEnd = Math.max(2, 1 + (gradosAll.length || 1));
+    const seccEnd = Math.max(2, 1 + (secciones.length || 1));
+
+    for(let r = 2; r <= maxRows; r++) {
+      ws.getCell(`D${r}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`listas!$A$2:$A$${nivelEnd}`] };
+      ws.getCell(`E${r}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`listas!$B$2:$B$${gradoEnd}`] };
+      ws.getCell(`F${r}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`listas!$C$2:$C$${seccEnd}`] };
+    }
+
+    wsl.state = 'veryHidden';
+
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'plantilla_alumnos.xlsx';
     document.body.appendChild(a);
     a.click();
     a.remove();
