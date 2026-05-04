@@ -17,8 +17,8 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="compat.js?v=109"></script>
-<script src="db_supabase.js?v=109"></script>
+<script src="compat.js?v=112"></script>
+<script src="db_supabase.js?v=112"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
@@ -2547,6 +2547,34 @@
     <button class="btn btn-primary" onclick="guardarMisDatos()" style="width:100%;justify-content:center;padding:12px;">
       Guardar cambios
     </button>
+  </div>
+</div>
+
+<!-- MODAL: Crear acceso apoderado (correo real opcional) -->
+<div class="modal-bg" id="modal-crear-apo" style="display:none;">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:520px;">
+    <div class="modal-header">
+      <div class="modal-title">👨‍👩‍👧 Crear acceso de apoderado</div>
+      <button class="modal-close" onclick="cancelarCrearApoCuenta()">✕</button>
+    </div>
+    <div style="padding:16px 18px;">
+      <div style="font-size:0.85rem;color:var(--muted);margin-bottom:12px;">
+        Si no tienes correo, el sistema creará uno automáticamente con tu DNI.
+      </div>
+      <label style="display:flex;gap:10px;align-items:center;margin:10px 0 12px 0;">
+        <input type="checkbox" id="apo-no-correo" checked onchange="onToggleApoCorreo()">
+        <span>No tengo correo / usar correo del sistema</span>
+      </label>
+      <div class="form-group" style="margin:0;">
+        <label>Correo real (opcional)</label>
+        <input type="email" id="apo-correo-real" placeholder="correo@ejemplo.com" disabled style="width:100%;box-sizing:border-box;opacity:0.6;">
+      </div>
+      <div id="apo-crear-error" style="display:none;margin-top:10px;color:#f87171;font-size:0.85rem;"></div>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button class="btn btn-primary" onclick="confirmarCrearApoCuenta()" style="flex:1;justify-content:center;">✅ Crear y continuar</button>
+        <button class="btn btn-ghost" onclick="cancelarCrearApoCuenta()" style="flex:1;justify-content:center;">Cancelar</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -5085,7 +5113,11 @@ const LOGO_B64 = 'img/logo-colegio.png';
 // COLEGIO_NOMBRE, COLEGIO_ESLOGAN, COLEGIO_LOGO, COLEGIO_ANIO ya están definidos
 // Dominio virtual de apoderados — cambiar aquí si se despliega en otro colegio
 // IMPORTANTE: también actualizar firestore.rules (función esEmailApoderado e isApoderado)
-const APO_DOMAIN      = '@apo.marello.pe';
+function _apoDomainAt() {
+  const v = String(window.APO_DOMAIN || '').trim().toLowerCase();
+  if(v) return v.startsWith('@') ? v : ('@' + v);
+  return '@apo.jad.pe';
+}
 
 function getLogo() {
   return COLEGIO_LOGO;
@@ -5587,7 +5619,7 @@ window.doLoginApoderado = async function() {
   document.getElementById('login-loading').style.display  = 'block';
 
   try {
-    const emailVirtual = `${dni}${APO_DOMAIN}`;
+    const emailVirtual = `${dni}${_apoDomainAt()}`;
 
     // Intentar login normal primero
     try {
@@ -5607,10 +5639,15 @@ window.doLoginApoderado = async function() {
         try {
           const tmpApp  = firebase.initializeApp(firebaseConfig, 'new_apo_' + Date.now());
           const tmpAuth = tmpApp.auth();
-          await tmpAuth.createUserWithEmailAndPassword(emailVirtual, dni);
+          // Mostrar modal para elegir correo real o correo del sistema
+          const emailCreado = await _crearCuentaApoderadoInteractivo({ dni, pass: dni, tmpAuth, tmpApp });
           await tmpAuth.signOut();
           await tmpApp.delete();
           cuentaCreada = true;
+          // Login con el correo final (real o del sistema)
+          await auth.signInWithEmailAndPassword(emailCreado, dni);
+          _loginIntentos = 0;
+          return;
         } catch(createErr) {
           if(createErr.code === 'auth/email-already-in-use') {
             // Cuenta existe pero contraseña incorrecta
@@ -5618,13 +5655,7 @@ window.doLoginApoderado = async function() {
           }
           throw createErr;
         }
-        if(cuentaCreada) {
-          // Hacer login — onAuthStateChanged redirige a apoderado.html
-          // apoderado.html ya verifica que el alumno exista y maneja el primer ingreso
-          await auth.signInWithEmailAndPassword(emailVirtual, dni);
-          _loginIntentos = 0;
-          return;
-        }
+        if(cuentaCreada) return;
       }
       throw loginErr;
     }
@@ -5646,6 +5677,77 @@ window.doLoginApoderado = async function() {
     errEl.style.display = 'block';
   }
 };
+
+let _apoCreateState = null;
+function _openModalCrearApo() {
+  const m = document.getElementById('modal-crear-apo');
+  if(!m) return;
+  const chk = document.getElementById('apo-no-correo');
+  const inp = document.getElementById('apo-correo-real');
+  const err = document.getElementById('apo-crear-error');
+  if(err) err.style.display = 'none';
+  if(inp) inp.value = '';
+  if(chk) chk.checked = true;
+  if(inp) { inp.disabled = true; inp.style.opacity = '0.6'; }
+  m.style.display = 'flex';
+  _modalLockOn();
+}
+function _closeModalCrearApo() {
+  const m = document.getElementById('modal-crear-apo');
+  if(!m) return;
+  m.style.display = 'none';
+  _modalLockOff();
+}
+function onToggleApoCorreo() {
+  const chk = document.getElementById('apo-no-correo');
+  const inp = document.getElementById('apo-correo-real');
+  if(!chk || !inp) return;
+  inp.disabled = !!chk.checked;
+  inp.style.opacity = chk.checked ? '0.6' : '1';
+  if(!chk.checked) setTimeout(() => inp.focus(), 50);
+}
+async function _crearCuentaApoderadoInteractivo({ dni, pass, tmpAuth, tmpApp }) {
+  _apoCreateState = { dni, pass, tmpAuth, tmpApp };
+  _openModalCrearApo();
+  return new Promise((resolve, reject) => {
+    _apoCreateState.resolve = resolve;
+    _apoCreateState.reject = reject;
+  });
+}
+async function confirmarCrearApoCuenta() {
+  const st = _apoCreateState;
+  if(!st) return;
+  const errEl = document.getElementById('apo-crear-error');
+  if(errEl) errEl.style.display = 'none';
+
+  const chk = document.getElementById('apo-no-correo');
+  const usarSistema = !!(chk && chk.checked);
+  const emailReal = String(document.getElementById('apo-correo-real')?.value || '').trim().toLowerCase();
+
+  let email = '';
+  if(usarSistema) {
+    email = `${st.dni}${_apoDomainAt()}`;
+  } else {
+    if(!emailReal) { if(errEl){ errEl.textContent='Ingresa un correo real o marca "No tengo correo"'; errEl.style.display='block'; } return; }
+    if(!/^[^@]+@[^@]+\.[^@]+$/.test(emailReal)) { if(errEl){ errEl.textContent='Correo inválido'; errEl.style.display='block'; } return; }
+    email = emailReal;
+  }
+
+  try {
+    await st.tmpAuth.createUserWithEmailAndPassword(email, st.pass, { dni: st.dni });
+    _closeModalCrearApo();
+    _apoCreateState = null;
+    st.resolve(email);
+  } catch(e) {
+    if(errEl){ errEl.textContent = 'Error: ' + (e?.message || e?.code || ''); errEl.style.display='block'; }
+  }
+}
+function cancelarCrearApoCuenta() {
+  const st = _apoCreateState;
+  _apoCreateState = null;
+  _closeModalCrearApo();
+  if(st && st.reject) st.reject({ code: 'cancelled', message: 'Cancelado' });
+}
 
 // Crear cuenta apoderado en Firebase Auth
 // Mostrar modal cambio de contraseña obligatorio
@@ -5824,8 +5926,18 @@ function doLogout() {
 // Escuchar cambios de sesión
 auth.onAuthStateChanged(async user => {
   if(user) {
-    // Detectar si es apoderado (email virtual) o personal
-    if(user.email && user.email.includes(APO_DOMAIN)) {
+    // Detectar si es apoderado por rol en JWT (correo real o ficticio)
+    let esApo = false;
+    try {
+      const tok = await user.getIdToken(true);
+      let b64 = tok.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+      b64 += '='.repeat((4 - (b64.length % 4)) % 4);
+      const payload = JSON.parse(atob(b64));
+      const rol = (payload?.app_metadata?.rol || payload?.user_metadata?.rol || '').toString().toLowerCase();
+      esApo = rol === 'apoderado';
+    } catch(e) {}
+    if(!esApo && user.email && user.email.includes(_apoDomainAt())) esApo = true;
+    if(esApo) {
       // ── ES APODERADO — redirigir a apoderado.html ──
       window.location.href = 'apoderado.html';
       return;
@@ -7111,7 +7223,7 @@ async function verificarCuentasHuerfanas() {
       el.innerHTML = '<span style="color:var(--success);">✅ No hay cuentas huérfanas en Firestore.</span>';
     } else {
       el.innerHTML = '<div style="color:#f59e0b;margin-bottom:8px;">⚠️ Se encontraron <strong>' + huerfanos.length + '</strong> documentos de apoderados huérfanos en Firestore:</div>' +
-        huerfanos.map(d => '<div style="font-family:monospace;font-size:0.78rem;color:var(--muted);padding:2px 0;">• DNI: ' + d.id + ' → <code>' + d.id + APO_DOMAIN + '</code></div>').join('') +
+        huerfanos.map(d => '<div style="font-family:monospace;font-size:0.78rem;color:var(--muted);padding:2px 0;">• DNI: ' + d.id + ' → <code>' + d.id + _apoDomainAt() + '</code></div>').join('') +
         '<button class="btn" style="margin-top:10px;background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);font-size:0.8rem;" onclick="limpiarApoderadosHuerfanos()">🗑 Limpiar documentos huérfanos de Firestore</button>';
     }
   } catch(e) {
@@ -19308,7 +19420,7 @@ function updateBottomNavActive(id) {
 // Portal apoderado → apoderado.html
 
 async function crearCuentaApoderado(alumno, opts) {
-  const email = `${alumno.id}${APO_DOMAIN}`;
+  const email = `${alumno.id}${_apoDomainAt()}`;
   const showExistsModal = !(opts && opts.showExistsModal === false);
 
   const pass  = alumno.id;
@@ -19404,7 +19516,7 @@ async function crearCuentasApoderadosMasivo() {
       const a = alumnos[i];
       const pct = Math.round(((i+1)/alumnos.length)*100);
       statusEl.textContent = `Procesando ${i+1}/${alumnos.length} (${pct}%): ${a.apellidos} ${a.nombres}...`;
-      const email = `${a.id}${APO_DOMAIN}`;
+      const email = `${a.id}${_apoDomainAt()}`;
       try {
         const appName = 'bulk_' + a.id + '_' + Date.now();
         const tmpApp  = firebase.initializeApp(firebaseConfig, appName);
@@ -19456,7 +19568,7 @@ async function crearCuentasApoderadosMasivo() {
 
 async function resetPassApoderado(dni) {
   if(!confirm(`¿Resetear la contraseña del apoderado DNI ${dni}?\n\nLa nueva contraseña será el DNI: ${dni}`)) return;
-  const email = `${dni}${APO_DOMAIN}`;
+  const email = `${dni}${_apoDomainAt()}`;
   toast('Procesando...', 'info');
   try {
     const tmpApp  = firebase.initializeApp(firebaseConfig, 'reset_' + Date.now());

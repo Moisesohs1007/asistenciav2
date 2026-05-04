@@ -25,7 +25,7 @@ window.COLEGIO_NOMBRE  = 'I.E. Nº 1049 Juana Alarco De Dammert';
 window.COLEGIO_ESLOGAN = '';
 window.COLEGIO_LOGO    = 'img/logo-colegio.png'; // reemplaza este archivo para cambiar el logo
 window.COLEGIO_ANIO    = '2026';
-window.APO_DOMAIN      = '@apo.marello.pe';      // dominio de cuentas de apoderados
+window.APO_DOMAIN      = '@apo.jad.pe';          // dominio de cuentas de apoderados (se actualiza desde config/general)
 
 // ── Conexión Supabase — no editar ────────────────────────────
 const SUPABASE_URL      = 'https://bqnhlzwdibcmstqzspmj.supabase.co';
@@ -269,6 +269,10 @@ async function _getConfig(docId) {
   }
   if (error || !data) return { exists: false, data: () => ({}) };
   // general: devuelve todo el colegio como config
+  try {
+    const d = String(data.apo_domain || '').trim().toLowerCase();
+    if(d) window.APO_DOMAIN = '@' + d.replace(/^@+/, '');
+  } catch(e) {}
   return {
     exists: true,
     data: () => ({
@@ -695,9 +699,10 @@ function _mapUser(sbUser) {
 // En Supabase esto requiere una Edge Function con service_role key.
 // ============================================================
 class _SecondaryAuth {
-  async createUserWithEmailAndPassword(email, pass) {
+  async createUserWithEmailAndPassword(email, pass, extra = {}) {
     // _SecondaryAuth solo crea apoderados (self-registro sin token)
     // La Edge Function verifica el DNI en la tabla alumnos
+    const dni = typeof extra.dni === 'string' ? extra.dni.trim() : '';
     const res = await fetch(`${SUPABASE_URL}/functions/v1/crear-usuario`, {
       method: 'POST',
       headers: {
@@ -705,7 +710,7 @@ class _SecondaryAuth {
         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'apikey': SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ email, password: pass, colegioId: COLEGIO_ID }),
+      body: JSON.stringify({ email, password: pass, colegioId: COLEGIO_ID, dni }),
     });
     const result = await res.json();
     if (!res.ok) {

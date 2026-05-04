@@ -30,10 +30,12 @@ function getConfigCache() {
       var eslogan = String(_configCache.esloganColegio || _configCache.eslogan || window.COLEGIO_ESLOGAN || '').trim();
       var logo = String(_configCache.logoColegio || _configCache.logoUrl || window.COLEGIO_LOGO || '').trim();
       var anio = String(_configCache.anio || window.COLEGIO_ANIO || '').trim();
+      var apoDom = String(_configCache.apoDomain || _configCache.apo_domain || '').trim().toLowerCase();
       if(nombre) window.COLEGIO_NOMBRE = nombre;
       window.COLEGIO_ESLOGAN = eslogan;
       if(logo) window.COLEGIO_LOGO = logo;
       if(anio) window.COLEGIO_ANIO = anio;
+      if(apoDom) window.APO_DOMAIN = '@' + apoDom.replace(/^@+/, '');
       window.__branding = { nombre: window.COLEGIO_NOMBRE, eslogan: window.COLEGIO_ESLOGAN, logo: window.COLEGIO_LOGO, anio: window.COLEGIO_ANIO };
     } catch(e) {}
     return _configCache;
@@ -75,15 +77,31 @@ auth.onAuthStateChanged(function(user) {
     dni = user.email.replace(APO_DOMAIN, '');
     console.log('[APO] email virtual, dni:', dni);
   } else {
-    console.log('[APO] correo real, buscando emailReal:', user.email);
-    db.collection('apoderados').where('emailReal', '==', user.email).limit(1).get().then(function(snap) {
-      console.log('[APO] emailReal snap.empty:', snap.empty, 'docs:', snap.docs.length);
-      if(snap.empty) { auth.signOut(); window.location.href = 'index.html'; return; }
-      var dniReal = snap.docs[0].id;
-      console.log('[APO] dniReal:', dniReal);
-      continuarCargaApoderado(user, dniReal);
-    }).catch(function(e) {
-      console.error('[APO] ERROR emailReal query:', e.message);
+    console.log('[APO] correo real, intentando alumno_id desde JWT...');
+    user.getIdToken(true).then(function(tok) {
+      try {
+        var b64 = tok.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+        b64 += '='.repeat((4 - (b64.length % 4)) % 4);
+        var payload = JSON.parse(atob(b64));
+        var aid = (payload && payload.app_metadata && payload.app_metadata.alumno_id) ? String(payload.app_metadata.alumno_id).trim() : '';
+        if(/^\d{8}$/.test(aid)) {
+          console.log('[APO] alumno_id desde JWT:', aid);
+          continuarCargaApoderado(user, aid);
+          return;
+        }
+      } catch(e) {}
+      console.log('[APO] JWT sin alumno_id, buscando emailReal:', user.email);
+      db.collection('apoderados').where('emailReal', '==', user.email).limit(1).get().then(function(snap) {
+        console.log('[APO] emailReal snap.empty:', snap.empty, 'docs:', snap.docs.length);
+        if(snap.empty) { auth.signOut(); window.location.href = 'index.html'; return; }
+        var dniReal = snap.docs[0].id;
+        console.log('[APO] dniReal:', dniReal);
+        continuarCargaApoderado(user, dniReal);
+      }).catch(function(e) {
+        console.error('[APO] ERROR emailReal query:', e.message);
+        auth.signOut(); window.location.href = 'index.html';
+      });
+    }).catch(function() {
       auth.signOut(); window.location.href = 'index.html';
     });
     return;

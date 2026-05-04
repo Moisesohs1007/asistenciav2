@@ -8,9 +8,11 @@ const LOGO_B64 = 'img/logo-colegio.png';
 // ═══════════════════════════════════════════════════════
 // Nombre, eslogan y logo vienen de compat.js (editar solo ahí)
 // COLEGIO_NOMBRE, COLEGIO_ESLOGAN, COLEGIO_LOGO, COLEGIO_ANIO ya están definidos
-// Dominio virtual de apoderados — cambiar aquí si se despliega en otro colegio
-// IMPORTANTE: también actualizar firestore.rules (función esEmailApoderado e isApoderado)
-const APO_DOMAIN      = '@apo.marello.pe';
+function _apoDomainAt() {
+  const v = String(window.APO_DOMAIN || '').trim().toLowerCase();
+  if(v) return v.startsWith('@') ? v : ('@' + v);
+  return '@apo.jad.pe';
+}
 
 function getLogo() {
   return COLEGIO_LOGO;
@@ -63,12 +65,14 @@ function _aplicarConfigColegio(cfg) {
   const eslogan = String(cfg.esloganColegio || cfg.eslogan || COLEGIO_ESLOGAN || '').trim();
   const logo = String(cfg.logoColegio || cfg.logoUrl || COLEGIO_LOGO || '').trim();
   const anio = String(cfg.anio || COLEGIO_ANIO || '').trim();
+  const apoDom = String(cfg.apoDomain || cfg.apo_domain || '').trim().toLowerCase();
 
   const prevLogo = String(window.COLEGIO_LOGO || '').trim();
   window.COLEGIO_NOMBRE = nombre || window.COLEGIO_NOMBRE;
   window.COLEGIO_ESLOGAN = eslogan;
   if(logo) window.COLEGIO_LOGO = logo;
   if(anio) window.COLEGIO_ANIO = anio;
+  if(apoDom) window.APO_DOMAIN = '@' + apoDom.replace(/^@+/, '');
   window.__branding = { nombre: window.COLEGIO_NOMBRE, eslogan: window.COLEGIO_ESLOGAN, logo: window.COLEGIO_LOGO, anio: window.COLEGIO_ANIO };
   if(prevLogo && logo && prevLogo !== logo) {
     try { _logoB64 = null; } catch(e) {}
@@ -381,7 +385,7 @@ window.doLoginApoderado = async function() {
   document.getElementById('login-loading').style.display  = 'block';
 
   try {
-    const emailVirtual = `${dni}${APO_DOMAIN}`;
+    const emailVirtual = `${dni}${_apoDomainAt()}`;
 
     // Intentar login normal primero
     try {
@@ -616,7 +620,7 @@ function doLogout() {
 auth.onAuthStateChanged(async user => {
   if(user) {
     // Detectar si es apoderado (email virtual) o personal
-    if(user.email && user.email.includes(APO_DOMAIN)) {
+    if(user.email && user.email.includes(_apoDomainAt())) {
       // ── ES APODERADO — redirigir a apoderado.html ──
       window.location.href = 'apoderado.html';
       return;
@@ -1871,7 +1875,7 @@ async function verificarCuentasHuerfanas() {
       el.innerHTML = '<span style="color:var(--success);">✅ No hay cuentas huérfanas en Firestore.</span>';
     } else {
       el.innerHTML = '<div style="color:#f59e0b;margin-bottom:8px;">⚠️ Se encontraron <strong>' + huerfanos.length + '</strong> documentos de apoderados huérfanos en Firestore:</div>' +
-        huerfanos.map(d => '<div style="font-family:monospace;font-size:0.78rem;color:var(--muted);padding:2px 0;">• DNI: ' + d.id + ' → <code>' + d.id + APO_DOMAIN + '</code></div>').join('') +
+        huerfanos.map(d => '<div style="font-family:monospace;font-size:0.78rem;color:var(--muted);padding:2px 0;">• DNI: ' + d.id + ' → <code>' + d.id + _apoDomainAt() + '</code></div>').join('') +
         '<button class="btn" style="margin-top:10px;background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);font-size:0.8rem;" onclick="limpiarApoderadosHuerfanos()">🗑 Limpiar documentos huérfanos de Firestore</button>';
     }
   } catch(e) {
@@ -7217,7 +7221,7 @@ function updateBottomNavActive(id) {
 // Portal apoderado → apoderado.html
 
 async function crearCuentaApoderado(alumno) {
-  const email = `${alumno.id}${APO_DOMAIN}`;
+  const email = `${alumno.id}${_apoDomainAt()}`;
 
   const pass  = alumno.id;
   let intentos = 0;
@@ -7311,7 +7315,7 @@ async function crearCuentasApoderadosMasivo() {
       const a = alumnos[i];
       const pct = Math.round(((i+1)/alumnos.length)*100);
       statusEl.textContent = `Procesando ${i+1}/${alumnos.length} (${pct}%): ${a.apellidos} ${a.nombres}...`;
-      const email = `${a.id}${APO_DOMAIN}`;
+      const email = `${a.id}${_apoDomainAt()}`;
       try {
         const appName = 'bulk_' + a.id + '_' + Date.now();
         const tmpApp  = firebase.initializeApp(firebaseConfig, appName);
@@ -7363,7 +7367,7 @@ async function crearCuentasApoderadosMasivo() {
 
 async function resetPassApoderado(dni) {
   if(!confirm(`¿Resetear la contraseña del apoderado DNI ${dni}?\n\nLa nueva contraseña será el DNI: ${dni}`)) return;
-  const email = `${dni}${APO_DOMAIN}`;
+  const email = `${dni}${_apoDomainAt()}`;
   toast('Procesando...', 'info');
   try {
     const tmpApp  = firebase.initializeApp(firebaseConfig, 'reset_' + Date.now());

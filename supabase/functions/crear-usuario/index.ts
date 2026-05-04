@@ -23,6 +23,7 @@ serve(async (req) => {
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
     const password = typeof body.password === 'string' ? body.password : '';
     const colegioId = typeof body.colegioId === 'string' ? body.colegioId.trim() : '';
+    const dni = typeof body.dni === 'string' ? body.dni.trim() : '';
 
     if (!email || !password || !colegioId) {
       return jsonResponse({ error: 'Faltan parámetros requeridos (email, password, colegioId)', code: 'bad-request' }, 400);
@@ -50,14 +51,18 @@ serve(async (req) => {
     }
 
     const apoDomain = String((colegio as any).apo_domain || '').trim().toLowerCase();
-    if (apoDomain && !email.endsWith(apoDomain)) {
-      return jsonResponse({ error: 'No permitido', code: 'not-allowed' }, 403);
+    const esFicticio = !!apoDomain && email.endsWith(apoDomain);
+
+    let alumnoId = '';
+    if (esFicticio) {
+      const localPart = email.split('@')[0] || '';
+      alumnoId = localPart.replace(/\D/g, '');
+    } else {
+      alumnoId = dni.replace(/\D/g, '');
     }
 
-    const localPart = email.split('@')[0] || '';
-    const alumnoId = localPart.replace(/\D/g, '');
-    if (!alumnoId || alumnoId.length < 6) {
-      return jsonResponse({ error: 'No permitido', code: 'not-allowed' }, 403);
+    if (!/^\d{8}$/.test(alumnoId)) {
+      return jsonResponse({ error: 'DNI inválido', code: 'bad-request' }, 400);
     }
 
     const { data: alumno, error: alumnoError } = await supabaseAdmin
@@ -82,6 +87,21 @@ serve(async (req) => {
       const msg = (createError as any)?.message || 'Error creando usuario';
       const code = msg.toLowerCase().includes('already') ? 'auth/email-already-in-use' : 'auth/unknown';
       return jsonResponse({ error: msg, code }, code === 'auth/email-already-in-use' ? 409 : 500);
+    }
+
+    // Si el apoderado se creó con correo real, registrar emailReal para que el portal pueda ubicar el DNI
+    if (!esFicticio) {
+      try {
+        const { error: upErr } = await supabaseAdmin.from('apoderados').upsert(
+          { colegio_id: colegioId, id: alumnoId, alumno_id: alumnoId, email_real: email, primer_ingreso: true },
+          { onConflict: 'colegio_id,id' }
+        );
+        if (upErr) {
+          // No bloquear la creación si la tabla/columna no existe
+        }
+      } catch (_) {
+        // Ignorar
+      }
     }
 
     return jsonResponse({ user: { id: created.user.id, email: created.user.email } }, 200);
