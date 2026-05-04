@@ -1,4 +1,4 @@
-const CACHE_NAME = 'asistencia-v2-1.0.8';
+const CACHE_NAME = 'asistencia-v2-1.0.9';
 const ASSETS = [
   './index.html',
   './apoderado.html',
@@ -9,6 +9,8 @@ const ASSETS = [
   './js/portal.js',
   './js/auth.js',
   './js/supabase-client.js',
+  './compat.js?v=109',
+  './db_supabase.js?v=109',
   './img/wa-logo.png'
 ];
 
