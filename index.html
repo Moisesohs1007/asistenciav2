@@ -19558,52 +19558,32 @@ async function crearCuentasApoderadosMasivo() {
 
 async function resetPassApoderado(dni) {
   if(!confirm(`¿Resetear la contraseña del apoderado DNI ${dni}?\n\nLa nueva contraseña será el DNI: ${dni}`)) return;
-  const email = `${dni}${_apoDomainAt()}`;
   toast('Procesando...', 'info');
   try {
-    const tmpApp  = firebase.initializeApp(firebaseConfig, 'reset_' + Date.now());
-    const tmpAuth = tmpApp.auth();
-    let   exito   = false;
+    const user = auth.currentUser;
+    if(!user) throw new Error('Sin sesión');
+    const token = await user.getIdToken(true);
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/reset-apoderado`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'apikey': SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ colegioId: COLEGIO_ID, dni })
+    });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok) throw new Error(data.error || data.code || 'No se pudo resetear');
+
     try {
-      await tmpAuth.createUserWithEmailAndPassword(email, dni);
-      exito = true; // Cuenta nueva creada con DNI
-    } catch(e) {
-      if(e.code === 'auth/email-already-in-use') {
-        // Usar REST API para cambiar contraseña
-        const intentos = [dni];
-        for(const pass of intentos) {
-          try {
-            const loginRes = await fetch(
-              `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseConfig.apiKey}`,
-              { method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ email, password: pass, returnSecureToken: true }) }
-            );
-            const loginData = await loginRes.json();
-            if(!loginData.idToken) continue;
-            const updateRes = await fetch(
-              `https://identitytoolkit.googleapis.com/v1/accounts:update?key=${firebaseConfig.apiKey}`,
-              { method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ idToken: loginData.idToken, password: dni, returnSecureToken: true }) }
-            );
-            const updateData = await updateRes.json();
-            if(updateData.idToken) { exito = true; break; }
-          } catch(e2) {}
-        }
-      } else { throw e; }
-    }
-    await tmpAuth.signOut();
-    await tmpApp.delete();
-    await db.collection('apoderados').doc(dni).set({
-      primerIngreso: true, alumnoId: dni,
-      reseteadoEn: firebase.firestore.FieldValue.serverTimestamp(),
-      passBackup: firebase.firestore.FieldValue.delete()
-    }, { merge: true });
-    if(exito) {
-      toast(`✅ Reseteado. El apoderado ingresa con DNI: ${dni}`, 'success');
-    } else {
-      toast(`⚠️ No se pudo resetear. Borra la cuenta manualmente en Firebase Console.`, 'warning');
-    }
-  } catch(e) { toast('Error: ' + e.message, 'error'); }
+      await db.collection('apoderados').doc(dni).set({
+        primerIngreso: true, alumnoId: dni,
+        reseteadoEn: firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    } catch(e2) {}
+
+    toast(`✅ Reseteado. El apoderado ingresa con DNI: ${dni}`, 'success');
+  } catch(e) { toast('Error: ' + (e?.message || e), 'error'); }
 }
 
 async function recalcularResumenMensual() {
