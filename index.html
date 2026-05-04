@@ -8899,6 +8899,56 @@ async function exportExcelAlumnos() {
   toast('Excel exportado','success');
 }
 
+function _normConsanguinidad(v) {
+  let s = String(v || '').trim().toLowerCase();
+  if(!s) return '';
+  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(e) {}
+  s = s.replace(/\s+/g, '_').replace(/[^\w_]/g, '');
+  if(s === 'tutorlegal' || s === 'tutor_legal' || s === 'tutor') return 'tutor_legal';
+  if(s === 'tia' || s === 'tio') return 'tio';
+  if(s === 'abuela' || s === 'abuelo') return 'abuelo';
+  if(['padre','madre','tutor_legal','abuelo','tio','otro'].includes(s)) return s;
+  return '';
+}
+
+async function _upsertApoderadosFromImport(p) {
+  try {
+    if(!p || !p.id) return;
+    if(!window.db || typeof window.db.collection !== 'function') return;
+
+    const c1 = _normConsanguinidad(p.consanguinidad);
+    const c2 = _normConsanguinidad(p.consanguinidad2);
+    const any =
+      !!(p.apoderadoNombres || p.apoderadoApellidos || p.telefono || p.correoApoderado ||
+      c1 || p.consanguinidadDetalle ||
+      p.apoderado2Nombres || p.apoderado2Apellidos || p.telefono2 || p.correoApoderado2 ||
+      c2 || p.consanguinidadDetalle2);
+    if(!any) return;
+
+    const data = { alumnoId: String(p.id).trim() };
+    if(p.apoderadoNombres) data.nombres = String(p.apoderadoNombres).trim();
+    if(p.apoderadoApellidos) data.apellidos = String(p.apoderadoApellidos).trim();
+    if(p.telefono) data.telefono = String(p.telefono).trim();
+    if(p.correoApoderado) data.emailReal = String(p.correoApoderado).trim();
+    if(c1) data.consanguinidad = c1;
+    if(p.consanguinidadDetalle) data.consanguinidadDetalle = String(p.consanguinidadDetalle).trim();
+
+    if(p.apoderado2Nombres) data.nombres2 = String(p.apoderado2Nombres).trim();
+    if(p.apoderado2Apellidos) data.apellidos2 = String(p.apoderado2Apellidos).trim();
+    if(p.telefono2) data.telefono2 = String(p.telefono2).trim();
+    if(p.correoApoderado2) data.emailReal2 = String(p.correoApoderado2).trim();
+    if(c2) data.consanguinidad2 = c2;
+    if(p.consanguinidadDetalle2) data.consanguinidadDetalle2 = String(p.consanguinidadDetalle2).trim();
+
+    await window.db.collection('apoderados').doc(String(p.id).trim()).set(data, { merge: true });
+  } catch(e) {
+    if(!window.__importApoWarned) {
+      window.__importApoWarned = true;
+      toast('Aviso: no se pudo guardar consanguinidad en Apoderados (revisa tabla/permiso). Se importaron alumnos igual.', 'warning');
+    }
+  }
+}
+
 function importCSV() {
   document.getElementById('csv-input').click();
 }
@@ -8917,18 +8967,70 @@ function handleCSV(e) {
       if(idx === 0 && (line.toLowerCase().includes('dni') || line.toLowerCase().includes('nombres'))) continue;
       const cols = line.split(',').map(c => c.replace(/"/g,'').trim());
       if(cols.length < 4) continue;
-      const [id, nombres, apellidos, turno, grado, seccion, foto, apoderadoNombres, apoderadoApellidos, telefono, correoApoderado] = cols;
+      const [
+        id, nombres, apellidos, turno, grado, seccion, foto,
+        apoderadoNombres, apoderadoApellidos, telefono, correoApoderado,
+        consanguinidad, consanguinidadDetalle,
+        apoderado2Nombres, apoderado2Apellidos, telefono2, correoApoderado2,
+        consanguinidad2, consanguinidadDetalle2
+      ] = cols;
       if(!id || !/^\d{8}$/.test(id)) continue;
       const limite = await getLimiteByNivel(turno||'Primaria');
-      const alumno = { id, nombres, apellidos, grado: grado||'', seccion: seccion||'A', turno: turno||'Primaria', limite, foto: foto||'', apoderadoNombres: apoderadoNombres||'', apoderadoApellidos: apoderadoApellidos||'', telefono: telefono||'', correoApoderado: correoApoderado||'' };
+      const alumno = {
+        id,
+        nombres,
+        apellidos,
+        grado: grado||'',
+        seccion: seccion||'A',
+        turno: turno||'Primaria',
+        limite,
+        foto: foto||'',
+        apoderadoNombres: apoderadoNombres||'',
+        apoderadoApellidos: apoderadoApellidos||'',
+        telefono: telefono||'',
+        apoderado2Nombres: apoderado2Nombres||'',
+        apoderado2Apellidos: apoderado2Apellidos||'',
+        telefono2: telefono2||'',
+        correoApoderado: correoApoderado||''
+      };
       if(existingIds.has(id)) {
         // Actualizar alumno existente preservando foto si CSV no trae una
         const existente = alumnosExistentes.find(a => a.id === id);
         if(!alumno.foto && existente && existente.foto) alumno.foto = existente.foto;
         await DB.saveAlumno(alumno);
+        await _upsertApoderadosFromImport({
+          id,
+          apoderadoNombres,
+          apoderadoApellidos,
+          telefono,
+          correoApoderado,
+          consanguinidad,
+          consanguinidadDetalle,
+          apoderado2Nombres,
+          apoderado2Apellidos,
+          telefono2,
+          correoApoderado2,
+          consanguinidad2,
+          consanguinidadDetalle2
+        });
         updated++;
       } else {
         await DB.saveAlumno(alumno);
+        await _upsertApoderadosFromImport({
+          id,
+          apoderadoNombres,
+          apoderadoApellidos,
+          telefono,
+          correoApoderado,
+          consanguinidad,
+          consanguinidadDetalle,
+          apoderado2Nombres,
+          apoderado2Apellidos,
+          telefono2,
+          correoApoderado2,
+          consanguinidad2,
+          consanguinidadDetalle2
+        });
         added++;
       }
     }
@@ -9011,7 +9113,13 @@ async function handleExcel(e) {
 
       for(let i = 0; i < filasValidas.length; i++) {
         const cols = filasValidas[i];
-        const [id, nombres, apellidos, turno, grado, seccion, foto, apoderadoNombres, apoderadoApellidos, telefono, correoApoderado] = cols;
+        const [
+          id, nombres, apellidos, turno, grado, seccion, foto,
+          apoderadoNombres, apoderadoApellidos, telefono, correoApoderado,
+          consanguinidad, consanguinidadDetalle,
+          apoderado2Nombres, apoderado2Apellidos, telefono2, correoApoderado2,
+          consanguinidad2, consanguinidadDetalle2
+        ] = cols;
         const limite = await getLimiteByNivel(turno || 'Primaria');
         const alumno = {
           id,
@@ -9025,15 +9133,48 @@ async function handleExcel(e) {
           apoderadoNombres:   apoderadoNombres || '',
           apoderadoApellidos: apoderadoApellidos || '',
           telefono:           telefono || '',
+          apoderado2Nombres:  apoderado2Nombres || '',
+          apoderado2Apellidos: apoderado2Apellidos || '',
+          telefono2:          telefono2 || '',
           correoApoderado:    correoApoderado || ''
         };
         if(existingIds.has(id)) {
           const existente = alumnosExistentes.find(a => a.id === id);
           if(!alumno.foto && existente?.foto) alumno.foto = existente.foto;
           await DB.saveAlumno(alumno);
+          await _upsertApoderadosFromImport({
+            id,
+            apoderadoNombres,
+            apoderadoApellidos,
+            telefono,
+            correoApoderado,
+            consanguinidad,
+            consanguinidadDetalle,
+            apoderado2Nombres,
+            apoderado2Apellidos,
+            telefono2,
+            correoApoderado2,
+            consanguinidad2,
+            consanguinidadDetalle2
+          });
           updated++;
         } else {
           await DB.saveAlumno(alumno);
+          await _upsertApoderadosFromImport({
+            id,
+            apoderadoNombres,
+            apoderadoApellidos,
+            telefono,
+            correoApoderado,
+            consanguinidad,
+            consanguinidadDetalle,
+            apoderado2Nombres,
+            apoderado2Apellidos,
+            telefono2,
+            correoApoderado2,
+            consanguinidad2,
+            consanguinidadDetalle2
+          });
           added++;
         }
         // Actualizar barra de progreso
@@ -13546,8 +13687,10 @@ function toggleModoCarnets(activo) {
   });
   // Deshabilitar/habilitar Nuevo Alumno e Importar CSV/Excel
   const btnNuevo = document.getElementById('btn-nuevo-alumno');
+  const btnPlantilla = document.getElementById('btn-plantilla-alumnos');
   const btnImportarXL = document.getElementById('btn-importar-excel');
   if(btnNuevo)      { btnNuevo.disabled = activo;      btnNuevo.style.opacity = activo ? '0.35' : '';  btnNuevo.style.pointerEvents = activo ? 'none' : ''; }
+  if(btnPlantilla)  { btnPlantilla.disabled = activo;  btnPlantilla.style.opacity = activo ? '0.35' : '';  btnPlantilla.style.pointerEvents = activo ? 'none' : ''; }
   if(btnImportarXL) { btnImportarXL.disabled = activo; btnImportarXL.style.opacity = activo ? '0.35' : '1'; btnImportarXL.style.pointerEvents = activo ? 'none' : ''; }
 }
 
@@ -16700,10 +16843,16 @@ async function downloadAlumnosTemplate() {
     (gradosAll.length ? gradosAll : ['1']).forEach((g, i) => { wsl.getCell(2 + i, 2).value = g; });
     wsl.getCell('C1').value = 'Secciones';
     (secciones.length ? secciones : ['A']).forEach((s, i) => { wsl.getCell(2 + i, 3).value = s; });
+    wsl.getCell('D1').value = 'Consanguinidad';
+    const consangVals = ['padre','madre','tutor_legal','abuelo','tio','otro'];
+    consangVals.forEach((v, i) => { wsl.getCell(2 + i, 4).value = v; });
 
     const headers = [
       'dni','nombres','apellidos','turno','grado','seccion',
-      'foto','apoderadoNombres','apoderadoApellidos','telefono','correoApoderado'
+      'foto','apoderadoNombres','apoderadoApellidos','telefono','correoApoderado',
+      'consanguinidad','consanguinidad_detalle',
+      'apoderado2Nombres','apoderado2Apellidos','telefono2','correoApoderado2',
+      'consanguinidad2','consanguinidad_detalle2'
     ];
     ws.addRow(headers);
     ws.getRow(1).font = { bold: true };
@@ -16720,6 +16869,14 @@ async function downloadAlumnosTemplate() {
       { key: 'apoderadoApellidos', width: 20 },
       { key: 'telefono', width: 16, style: { numFmt: '@' } },
       { key: 'correoApoderado', width: 28 },
+      { key: 'consanguinidad', width: 16 },
+      { key: 'consanguinidad_detalle', width: 22 },
+      { key: 'apoderado2Nombres', width: 20 },
+      { key: 'apoderado2Apellidos', width: 20 },
+      { key: 'telefono2', width: 16, style: { numFmt: '@' } },
+      { key: 'correoApoderado2', width: 28 },
+      { key: 'consanguinidad2', width: 16 },
+      { key: 'consanguinidad_detalle2', width: 22 },
     ];
 
     ws.addRow([
@@ -16728,18 +16885,24 @@ async function downloadAlumnosTemplate() {
       (gradosAll[0] || '5'),
       (secciones[0] || 'B'),
       '',
-      'Rosa','Perez','999888777',''
+      'Rosa','Perez','999888777','',
+      'madre','',
+      '','','','',
+      '',''
     ]);
 
     const maxRows = 1000;
     const nivelEnd = Math.max(2, 1 + (nivelesFinal.length || 1));
     const gradoEnd = Math.max(2, 1 + (gradosAll.length || 1));
     const seccEnd = Math.max(2, 1 + (secciones.length || 1));
+    const consangEnd = Math.max(2, 1 + (consangVals.length || 1));
 
     for(let r = 2; r <= maxRows; r++) {
       ws.getCell(`D${r}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`listas!$A$2:$A$${nivelEnd}`] };
       ws.getCell(`E${r}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`listas!$B$2:$B$${gradoEnd}`] };
       ws.getCell(`F${r}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`listas!$C$2:$C$${seccEnd}`] };
+      ws.getCell(`L${r}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`listas!$D$2:$D$${consangEnd}`] };
+      ws.getCell(`R${r}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`listas!$D$2:$D$${consangEnd}`] };
     }
 
     wsl.state = 'veryHidden';
