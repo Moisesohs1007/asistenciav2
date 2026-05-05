@@ -60,7 +60,8 @@ const DB = {
       .filter(a => {
         const seccs = asignaciones[a.grado];
         if (!Array.isArray(seccs) || !seccs.length) return true;
-        return seccs.includes(a.seccion);
+        const sec = String(a.seccion || '').trim().toUpperCase();
+        return seccs.some(x => String(x || '').trim().toUpperCase() === sec);
       });
 
     this._alumnosScopedCache[cacheKey] = result;

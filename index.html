@@ -17853,7 +17853,8 @@ function aplicarFiltroProfesor(alumnos) {
     const seccs = asig[a.grado];
     // Si no hay secciones marcadas para ese grado, ve todas las secciones de ese grado
     if(!seccs.length) return true;
-    return seccs.includes(String(a.seccion || '').toUpperCase());
+    const sec = String(a.seccion || '').trim().toUpperCase();
+    return (seccs || []).some(x => String(x || '').trim().toUpperCase() === sec);
   });
 }
 
