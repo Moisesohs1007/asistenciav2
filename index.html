@@ -15088,7 +15088,7 @@ async function renderReportes(anioCompleto=false) {
   const label   = document.getElementById('rep-periodo-label');
 
   // Cargar alumnos — profesores restringidos usan scoped (28 lecturas vs 1,300)
-  let alumnos = await getAlumnosFiltrados();
+  var alumnos = await getAlumnosFiltrados();
   if(nivel)   alumnos = alumnos.filter(a => a.turno   === nivel);
   if(grado)   alumnos = alumnos.filter(a => a.grado   === grado);
   if(seccion) alumnos = alumnos.filter(a => a.seccion === seccion);
