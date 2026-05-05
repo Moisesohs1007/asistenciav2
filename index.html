@@ -5665,27 +5665,33 @@ window.doLoginApoderado = async function() {
       const puedeSerNuevo = loginErr.code === 'auth/user-not-found' ||
                             loginErr.code === 'auth/invalid-credential';
       if(puedeSerNuevo && pass === dni) {
-        // Intentar crear la cuenta sin interacción (correo real se captura luego en el portal).
+        // Si no existe usuario y la contraseña es el DNI, es primer acceso: preguntar si tiene correo real.
         // Si ya existe lanzará auth/email-already-in-use (significa que la contraseña es incorrecta).
-        let cuentaCreada = false;
         try {
           const tmpApp  = firebase.initializeApp(firebaseConfig, 'new_apo_' + Date.now());
           const tmpAuth = tmpApp.auth();
-          await tmpAuth.createUserWithEmailAndPassword(emailVirtual, dni, { dni, emailReal: '' });
+          let emailReal = '';
+          try {
+            emailReal = await _crearCuentaApoderadoInteractivo({ dni, pass, tmpAuth, tmpApp });
+          } catch(eCancel) {
+            await tmpAuth.signOut().catch(()=>{});
+            await tmpApp.delete().catch(()=>{});
+            document.getElementById('login-loading').style.display  = 'none';
+            document.getElementById('btn-login-apoderado').disabled = false;
+            return;
+          }
+          await tmpAuth.createUserWithEmailAndPassword(emailVirtual, dni, { dni, emailReal });
           await tmpAuth.signOut();
           await tmpApp.delete();
-          cuentaCreada = true;
           await auth.signInWithEmailAndPassword(emailVirtual, dni);
           _loginIntentos = 0;
           return;
         } catch(createErr) {
           if(createErr.code === 'auth/email-already-in-use') {
-            // Cuenta existe pero contraseña incorrecta
             throw { code: 'auth/wrong-password' };
           }
           throw createErr;
         }
-        if(cuentaCreada) return;
       }
       throw loginErr;
     }
