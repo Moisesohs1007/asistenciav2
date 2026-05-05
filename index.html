@@ -10974,7 +10974,7 @@ async function _publicarComunicadosPortal(rows, titulo, tpl) {
       }
     }
 
-    if (failed) toast(`Aviso: publicados ${ok}, sin permiso ${failed} (${lastErr})`, 'warning');
+    if (failed) toast(`Aviso: publicados ${ok}, sin permiso ${failed}` + (lastErr ? ` (${lastErr})` : ''), 'warning');
     else toast(`✅ Publicado en Portal Apoderado: ${ok}`, 'success');
   } catch(e) {
     toast('Aviso: no se pudo publicar en Portal Apoderado (' + (e?.message || String(e)) + ')', 'warning');
