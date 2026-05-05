@@ -11155,12 +11155,13 @@ async function _publicarComunicadosPortal(rows, titulo, tpl) {
     const titleFinal = t ? t : 'Comunicado';
     let ok = 0, failed = 0;
     let lastErr = '';
+    const autor = String(document.getElementById('user-name-display')?.textContent || '').trim() || (currentUser?.email || '');
     for (const a of (rows || [])) {
       const g = String(a?.grado || '').trim();
       const s = String(a?.seccion || '').trim().toUpperCase();
       const detalle = _comMsg(tpl, a);
       try {
-        await db.collection('comunicados').add({
+        const payload = {
           alumnoId: a.id,
           grado: g,
           seccion: s,
@@ -11168,6 +11169,7 @@ async function _publicarComunicadosPortal(rows, titulo, tpl) {
           titulo: titleFinal,
           detalle: detalle || '',
           createdBy: (currentUser && currentUser.uid) ? currentUser.uid : null,
+          createdByName: autor || '',
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
           adjuntoTipo: _comAdjTipo || null,
           adjuntoNombre: _comAdjNombre || null,
@@ -11179,7 +11181,18 @@ async function _publicarComunicadosPortal(rows, titulo, tpl) {
           previewW: _comPreviewW || null,
           previewH: _comPreviewH || null,
           previewBase64: _comMediaB64 || null,
-        });
+        };
+        try {
+          await db.collection('comunicados').add(payload);
+        } catch(e0) {
+          const msg = String(e0?.message || e0 || '');
+          if(/created_by_name/i.test(msg)) {
+            delete payload.createdByName;
+            await db.collection('comunicados').add(payload);
+          } else {
+            throw e0;
+          }
+        }
         ok++;
       } catch (e1) {
         failed++;

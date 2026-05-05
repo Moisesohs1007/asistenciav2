@@ -628,13 +628,18 @@ function renderApoComunicados() {
     cont.innerHTML = list.slice(0, 120).map(function(it) {
       const titulo = _h(it.titulo || 'Comunicado');
       const fecha = _safeDateTimeLabel(it.createdAt || it.created_at);
+      const autor = String(it.createdByName || it.created_by_name || '').trim();
       const hasPrev = !!(it.previewBase64 || it.preview_base64);
       const badgePrev = hasPrev ? '<span style="margin-left:8px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.28);color:#34d399;border-radius:999px;padding:2px 8px;font-size:0.7rem;font-weight:800;">Adjunto</span>' : '';
       return '<div class="card" style="padding:14px 14px;margin-bottom:10px;border-radius:14px;">'
         + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">'
         +   '<div style="min-width:0;">'
         +     '<div style="font-weight:900;font-size:0.94rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + titulo + badgePrev + '</div>'
-        +     (fecha ? '<div style="margin-top:2px;color:var(--muted);font-size:0.74rem;">' + _h(fecha) + '</div>' : '')
+        +     ((fecha || autor) ? '<div style="margin-top:2px;color:var(--muted);font-size:0.74rem;">'
+              + (fecha ? _h(fecha) : '')
+              + (fecha && autor ? ' · ' : '')
+              + (autor ? ('Publicado por ' + _h(autor)) : '')
+              + '</div>' : '')
         +   '</div>'
         +   '<button class="btn-login-apo" onclick="_apoOpenDetalle(\'comunicado\',\'' + _h(String(it.id||'')) + '\')" style="max-width:none;width:auto;padding:8px 12px;border-radius:10px;font-size:0.8rem;">Detalle</button>'
         + '</div>'
@@ -672,7 +677,11 @@ function _apoOpenDetalle(kind, id) {
     if(!it) { set('Comunicado', '', 'No se encontró el comunicado.', ''); return; }
     const titulo = String(it.titulo || 'Comunicado');
     const fecha = _safeDateTimeLabel(it.createdAt || it.created_at);
-    const meta = fecha ? ('Publicado: ' + fecha) : '';
+    const autor = String(it.createdByName || it.created_by_name || '').trim();
+    const parts = [];
+    if(fecha) parts.push('Publicado: ' + fecha);
+    if(autor) parts.push('Publicado por ' + autor);
+    const meta = parts.join(' · ');
     const detalle = String(it.detalle || '');
     const b64 = it.previewBase64 || it.preview_base64 || '';
     set(titulo, meta, detalle, b64);

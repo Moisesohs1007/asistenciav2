@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.comunicados (
   titulo TEXT NOT NULL DEFAULT '',
   detalle TEXT NOT NULL DEFAULT '',
   created_by UUID,
+  created_by_name TEXT,
   adjunto_tipo TEXT,
   adjunto_nombre TEXT,
   adjunto_mime TEXT,
@@ -25,6 +26,7 @@ CREATE INDEX IF NOT EXISTS comunicados_scope_idx
 ON public.comunicados (colegio_id, alumno_id, created_at DESC);
 
 ALTER TABLE public.comunicados
+  ADD COLUMN IF NOT EXISTS created_by_name TEXT,
   ADD COLUMN IF NOT EXISTS adjunto_tipo TEXT,
   ADD COLUMN IF NOT EXISTS adjunto_nombre TEXT,
   ADD COLUMN IF NOT EXISTS adjunto_mime TEXT,
