@@ -1460,6 +1460,21 @@ function renderApoAgenda() {
       cont.innerHTML = '<div class="card" style="padding:22px 16px;text-align:center;color:var(--muted);font-size:0.83rem;">Sin eventos en este mes</div>';
       return;
     }
+    var uniq = [];
+    var seen = {};
+    (eventos || []).forEach(function(ev) {
+      var k = [
+        String(ev.fecha || ''),
+        String(ev.hora || ''),
+        String(ev.titulo || ''),
+        String(ev.detalle || ''),
+        String(ev.createdByName || ev.created_by_name || '')
+      ].join('|');
+      if(seen[k]) return;
+      seen[k] = 1;
+      uniq.push(ev);
+    });
+    eventos = uniq;
     var grupos = {};
     eventos.forEach(function(ev){
       var f = ev.fecha || '';
@@ -1473,7 +1488,9 @@ function renderApoAgenda() {
         var titulo = _h(ev.titulo || 'Evento');
         var detalle = _h(ev.detalle || '');
         var autor = _h(ev.createdByName || ev.created_by_name || '');
+        var scope = (String(ev.grado||'') === '*' && String(ev.seccion||'') === '*') ? 'Todo el colegio' : '';
         var detHtml = detalle ? ('<div style="margin-top:6px;color:var(--muted);font-size:0.82rem;line-height:1.35;">' + detalle + '</div>') : '';
+        var scopeHtml = scope ? ('<div style="margin-top:6px;color:var(--muted);font-size:0.74rem;">Evento: <strong style="color:var(--text);">' + _h(scope) + '</strong></div>') : '';
         var autHtml = autor ? ('<div style="margin-top:6px;color:var(--muted);font-size:0.74rem;">Publicado por: <strong style="color:var(--text);">' + autor + '</strong></div>') : '';
         return '<div class="card" style="padding:14px 14px;margin-top:8px;border-radius:14px;">'
           + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">'
@@ -1481,6 +1498,7 @@ function renderApoAgenda() {
           +     '<div style="font-weight:800;font-size:0.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + titulo + '</div>'
           +     (hora ? '<div style="margin-top:2px;color:var(--muted);font-size:0.78rem;">' + _h(hora) + '</div>' : '')
           +     detHtml
+          +     scopeHtml
           +     autHtml
           +   '</div>'
           + '</div>'

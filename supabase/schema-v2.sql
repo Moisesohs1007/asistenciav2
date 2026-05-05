@@ -238,22 +238,27 @@ CREATE POLICY "agenda_read_tutor" ON agenda FOR SELECT
     colegio_id = auth_colegio_id()
     AND auth_rol() = 'profesor'
     AND is_tutor()
-    AND grado = tutor_grado()
-    AND seccion = tutor_seccion()
+    AND (
+      (grado = tutor_grado() AND seccion = tutor_seccion())
+      OR (grado = '*' AND seccion = '*')
+    )
   );
 
 CREATE POLICY "agenda_read_apoderado" ON agenda FOR SELECT
   USING (
     colegio_id = auth_colegio_id()
     AND is_apoderado()
-    AND EXISTS (
-      SELECT 1
-      FROM public.alumnos a
-      WHERE a.colegio_id = agenda.colegio_id
-        AND a.id = auth_alumno_id()
-        AND a.grado = agenda.grado
-        AND a.seccion = agenda.seccion
-      LIMIT 1
+    AND (
+      (grado = '*' AND seccion = '*')
+      OR EXISTS (
+        SELECT 1
+        FROM public.alumnos a
+        WHERE a.colegio_id = agenda.colegio_id
+          AND a.id = auth_alumno_id()
+          AND a.grado = agenda.grado
+          AND a.seccion = agenda.seccion
+        LIMIT 1
+      )
     )
   );
 

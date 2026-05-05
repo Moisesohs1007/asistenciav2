@@ -4917,7 +4917,7 @@
     </div>
     <div style="display:flex;gap:10px;margin-top:14px;">
       <button class="btn btn-ghost" onclick="closeModal('modal-agenda')" style="justify-content:center;">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarAgendaEvento()" style="flex:1;justify-content:center;">Guardar</button>
+      <button class="btn btn-primary" id="age-btn-save" onclick="guardarAgendaEvento()" style="flex:1;justify-content:center;">Guardar</button>
     </div>
     <input type="hidden" id="age-event-id" value="">
   </div>
@@ -13540,6 +13540,17 @@ function _agendaAllAulas() {
   return out;
 }
 
+let _agendaSaving = false;
+function _agendaHash(s) {
+  const str = String(s || '');
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
 async function initAgenda() {
   await _agendaLoadAulaOptions();
   poblarSelectorMes('age-mes');
@@ -13675,7 +13686,22 @@ function agendaSelectDay(fecha, mapOpt) {
     Object.values(m).forEach(arr => arr.sort((a,b)=>((a.hora||'')+' '+(a.titulo||'')).localeCompare((b.hora||'')+' '+(b.titulo||''))));
     return m;
   })();
-  const evsDia = map[fecha] || [];
+  let evsDia = map[fecha] || [];
+  try {
+    const bucket = {};
+    const order = [];
+    evsDia.forEach(ev => {
+      const k = [String(ev.hora||''), String(ev.titulo||''), String(ev.detalle||''), String(ev.createdBy||ev.created_by||''), String(ev.createdByName||ev.created_by_name||'')].join('|');
+      if(!bucket[k]) { bucket[k] = { ev, n: 0 }; order.push(k); }
+      bucket[k].n++;
+    });
+    evsDia = order.map(k => {
+      const o = bucket[k];
+      if(!o || !o.ev) return null;
+      if(o.n > 1) return Object.assign({}, o.ev, { grado: '*', seccion: '*' });
+      return o.ev;
+    }).filter(Boolean);
+  } catch(e0) {}
   const canWrite = _isAgendaWriter();
   const btnNuevo = canWrite ? `<button class="btn btn-primary" onclick="openAgendaModal('${fecha}')" style="width:100%;justify-content:center;margin-bottom:10px;">+ Agregar evento</button>` : '';
   if(!evsDia.length) {
@@ -13686,7 +13712,7 @@ function agendaSelectDay(fecha, mapOpt) {
     const hora = ev.hora ? (ev.hora + ' · ') : '';
     const det = ev.detalle ? `<div class="agenda-item-meta">${ev.detalle}</div>` : '';
     const aula = (_normRol(currentRol) !== 'profesor' && ev.grado && ev.seccion)
-      ? `<div class="agenda-item-meta">Aula: ${_escHtml(ev.grado)} ${_escHtml(ev.seccion)}</div>`
+      ? `<div class="agenda-item-meta">Aula: ${_escHtml(ev.grado==='*'&&ev.seccion==='*' ? 'Todo el colegio' : (ev.grado + ' ' + ev.seccion))}</div>`
       : '';
     const actions = canWrite ? `<div class="agenda-item-actions">
       <button class="btn btn-ghost" onclick="openAgendaModal('${fecha}','${ev.id}')" style="padding:5px 10px;font-size:0.78rem;">✏ Editar</button>
@@ -13778,7 +13804,15 @@ function openAgendaModal(fecha, eventId) {
       document.getElementById('age-hora').value = ev.hora || '';
       document.getElementById('age-titulo').value = ev.titulo || '';
       document.getElementById('age-detalle').value = ev.detalle || '';
-      if(!(isTutor && tutor.ok)) _agendaFillSelects('age-grado','age-seccion', ev.grado || '', ev.seccion || '');
+      if(!(isTutor && tutor.ok)) {
+        const isAllEv = (String(ev.grado||'') === '*' && String(ev.seccion||'') === '*');
+        if(allChk) allChk.checked = !!isAllEv;
+        const gEl2 = document.getElementById('age-grado');
+        const sEl2 = document.getElementById('age-seccion');
+        if(gEl2) gEl2.disabled = !!isAllEv;
+        if(sEl2) sEl2.disabled = !!isAllEv;
+        _agendaFillSelects('age-grado','age-seccion', isAllEv ? '' : (ev.grado || ''), isAllEv ? '' : (ev.seccion || ''));
+      }
     }
   }
   m.style.display = '';
@@ -13788,67 +13822,62 @@ function openAgendaModal(fecha, eventId) {
 
 async function guardarAgendaEvento() {
   if(!_isAgendaWriter()) { toast('No permitido','warning'); return; }
+  if(_agendaSaving) return;
+  _agendaSaving = true;
+  const btnSave = document.getElementById('age-btn-save');
+  if(btnSave) { btnSave.disabled = true; btnSave.style.opacity = '0.75'; }
   const id = document.getElementById('age-event-id').value;
   const fecha = document.getElementById('age-fec').value;
   const hora = document.getElementById('age-hora').value;
   const titulo = (document.getElementById('age-titulo').value||'').trim();
   const detalle = (document.getElementById('age-detalle').value||'').trim();
-  if(!fecha || !titulo) { toast('Completa fecha y título','warning'); return; }
-  const mes = fecha.slice(0,7);
-  const r = _normRol(currentRol);
-  const tutor = _agendaTutorAula();
-  const autor = String(document.getElementById('user-name-display')?.textContent || '').trim() || (currentUser?.email || '');
-  let grado = '';
-  let seccion = '';
-  if(r === 'profesor') {
-    if(!tutor.ok) { toast('No tienes tutoría asignada','warning'); return; }
-    grado = tutor.grado;
-    seccion = tutor.seccion;
-  } else {
-    const all = !!document.getElementById('age-all-aulas')?.checked;
-    if(id && all) { toast('No se puede editar “todos” a la vez. Edita por aula.', 'warning'); return; }
-    if(all) {
-      const aulas = _agendaAllAulas();
-      if(!aulas.length) { toast('No hay aulas configuradas', 'warning'); return; }
-      const base = {
-        fecha,
-        mes,
-        hora: hora || '',
-        titulo,
-        detalle: detalle || '',
-        createdBy: (currentUser && currentUser.uid) ? currentUser.uid : null,
-        createdByName: autor || '',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      };
-      for (const au of aulas) {
-        await db.collection('agenda').add({ ...base, grado: au.grado, seccion: au.seccion });
-      }
-      _invalidarAgendaMes(mes);
-      closeModal('modal-agenda');
-      toast('✅ Evento publicado para todos', 'success');
-      _agendaSelDia = fecha;
-      await renderAgenda();
-      agendaSelectDay(fecha);
-      return;
-    }
-    grado = String(document.getElementById('age-grado')?.value || '').trim();
-    seccion = String(document.getElementById('age-seccion')?.value || '').trim().toUpperCase();
-    if(!grado || !seccion) { toast('Selecciona grado y sección','warning'); return; }
-  }
-  const data = {
-    fecha,
-    mes,
-    grado,
-    seccion,
-    hora: hora || '',
-    titulo,
-    detalle: detalle || '',
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    createdByName: autor || '',
-  };
   try {
-    if(id) {
+    if(!fecha || !titulo) { toast('Completa fecha y título','warning'); return; }
+    const mes = fecha.slice(0,7);
+    const r = _normRol(currentRol);
+    const tutor = _agendaTutorAula();
+    const autor = String(document.getElementById('user-name-display')?.textContent || '').trim() || (currentUser?.email || '');
+    let grado = '';
+    let seccion = '';
+    let isAll = false;
+    if(r === 'profesor') {
+      if(!tutor.ok) { toast('No tienes tutoría asignada','warning'); return; }
+      grado = tutor.grado;
+      seccion = tutor.seccion;
+    } else {
+      isAll = !!document.getElementById('age-all-aulas')?.checked;
+      if(isAll) {
+        grado = '*';
+        seccion = '*';
+      } else {
+        grado = String(document.getElementById('age-grado')?.value || '').trim();
+        seccion = String(document.getElementById('age-seccion')?.value || '').trim().toUpperCase();
+        if(!grado || !seccion) { toast('Selecciona grado y sección','warning'); return; }
+      }
+    }
+
+    const data = {
+      fecha,
+      mes,
+      grado,
+      seccion,
+      hora: hora || '',
+      titulo,
+      detalle: detalle || '',
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdByName: autor || '',
+    };
+
+    if(isAll) {
+      const uid = (currentUser && currentUser.uid) ? currentUser.uid : 'anon';
+      const baseKey = fecha + '|' + (hora||'') + '|' + titulo + '|' + (detalle||'');
+      const newId = id || ('all_' + fecha.replaceAll('-','') + '_' + uid + '_' + _agendaHash(baseKey));
+      await db.collection('agenda').doc(newId).set({
+        ...data,
+        createdBy: (currentUser && currentUser.uid) ? currentUser.uid : null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    } else if(id) {
       await db.collection('agenda').doc(id).update(data);
     } else {
       await db.collection('agenda').add({
@@ -13866,6 +13895,9 @@ async function guardarAgendaEvento() {
     agendaSelectDay(fecha);
   } catch(e) {
     toast('❌ Error guardando evento: ' + e.message,'error');
+  } finally {
+    _agendaSaving = false;
+    if(btnSave) { btnSave.disabled = false; btnSave.style.opacity = ''; }
   }
 }
 
