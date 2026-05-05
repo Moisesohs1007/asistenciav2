@@ -4812,6 +4812,7 @@
         <button class="btn btn-ghost" onclick="cargarReportesAnio()" style="font-size:0.8rem;padding:6px 14px;">📅 Año completo</button>
       </div>
       <button class="btn btn-ghost" id="rep-btn-pdf" onclick="exportarReportePDF()" style="font-size:0.78rem;padding:5px 12px;border-color:var(--accent2);color:var(--accent2);">⬇ PDF</button>
+      <button class="btn btn-ghost" id="rep-btn-matriz" onclick="repToggleMatriz()" style="font-size:0.78rem;padding:5px 12px;border-color:rgba(34,197,94,0.45);color:rgba(34,197,94,0.95);">📋 Matriz</button>
       <button class="btn btn-ghost" onclick="repExportCostAudit()" style="font-size:0.78rem;padding:5px 12px;border-color:rgba(34,197,94,0.45);color:rgba(34,197,94,0.95);">📊 Uso</button>
       <div id="rep-periodo-label" style="flex-basis:100%;font-size:0.78rem;color:var(--muted);margin-top:2px;"></div>
     </div>
@@ -4849,6 +4850,14 @@
     <div class="card" id="card-heatmap" style="margin-bottom:14px;">
       <div class="card-title"><span class="dot" style="background:var(--warning)"></span>Mapa de calor — asistencia por aula y día</div>
       <div id="chart-heatmap" style="overflow-x:auto;"></div>
+    </div>
+
+    <div class="card" id="card-rep-matriz" style="margin-bottom:14px;display:none;">
+      <div class="card-title"><span class="dot" style="background:rgba(34,197,94,0.9)"></span>Control de asistencia — matriz (tipo SieWeb)</div>
+      <div style="font-size:0.78rem;color:var(--muted);margin:-4px 0 10px 0;">
+        P: Presente · T: Tardanza · F: Falta
+      </div>
+      <div id="rep-matriz" style="overflow:auto;max-height:620px;border:1px solid rgba(255,255,255,0.10);border-radius:14px;background:rgba(148,163,184,0.05);"></div>
     </div>
 
     <!-- Rankings -->
@@ -15632,7 +15641,124 @@ async function renderReportes(anioCompleto=false) {
     }
   }
 
+  const matrizCard = document.getElementById('card-rep-matriz');
+  const matrizEl = document.getElementById('rep-matriz');
+  if(matrizCard && matrizEl) {
+    const can = !!alumnos.length && alumnos.length <= 60 && !!grado && !!seccion && !anioCompleto;
+    if(!can) {
+      matrizCard.style.display = 'none';
+      matrizEl.innerHTML = '';
+    } else {
+      matrizCard.style.display = '';
+      matrizEl.innerHTML = _repMatrizHTML({
+        alumnos,
+        mapDiaAlu,
+        rangoActivo,
+        desde: desdeSel,
+        hasta: hastaEff,
+        mes: mesStr
+      });
+    }
+  }
+
   } catch(e) { console.error('renderReportes:', e); }
+}
+
+let _repMatrizVisible = false;
+function repToggleMatriz() {
+  _repMatrizVisible = !_repMatrizVisible;
+  const card = document.getElementById('card-rep-matriz');
+  if(card) {
+    card.style.display = _repMatrizVisible ? '' : 'none';
+    if(_repMatrizVisible) {
+      try { card.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
+    }
+  }
+}
+
+function _repDiasPeriodoAll({ rangoActivo, desde, hasta, mes }) {
+  if(rangoActivo && desde && hasta) {
+    const start = _repIsoToDate(desde);
+    const end = _repIsoToDate(hasta);
+    const out = [];
+    if(!start || !end) return out;
+    for(let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) out.push(_repDateToIso(d));
+    return out;
+  }
+  const ms = String(mes || '').slice(0,7) || mesActual();
+  const [yy,mm] = ms.split('-').map(Number);
+  const primerDia = new Date(yy, mm-1, 1);
+  const ultimoDia = new Date(yy, mm, 0);
+  const out = [];
+  for(let d = new Date(primerDia); d <= ultimoDia; d.setDate(d.getDate()+1)) out.push(_repDateToIso(d));
+  return out;
+}
+
+function _repDowShort(d) {
+  return ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'][d.getDay()] || '';
+}
+
+function _repMatrizHTML({ alumnos, mapDiaAlu, rangoActivo, desde, hasta, mes }) {
+  const diasAll = _repDiasPeriodoAll({ rangoActivo, desde, hasta, mes });
+  const alumnosSorted = (alumnos || []).slice().sort((a,b) => ((a.apellidos||'')+' '+(a.nombres||'')).localeCompare((b.apellidos||'')+' '+(b.nombres||'')));
+  const head = `
+    <table style="border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;font-size:10px;">
+      <thead>
+        <tr>
+          <th style="position:sticky;left:0;top:0;z-index:5;background:var(--surface);padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.10);text-align:left;min-width:220px;max-width:260px;">
+            Apellidos y Nombres
+          </th>
+          ${diasAll.map(iso => {
+            const d = _repIsoToDate(iso);
+            const dow = d ? d.getDay() : 0;
+            const isW = (dow===0 || dow===6);
+            const dd = iso.slice(8,10);
+            const dowTxt = d ? _repDowShort(d) : '';
+            const bg = isW ? 'rgba(148,163,184,0.08)' : 'rgba(148,163,184,0.04)';
+            const tc = isW ? 'rgba(148,163,184,0.75)' : 'var(--muted)';
+            return `<th style="position:sticky;top:0;z-index:4;background:${bg};color:${tc};padding:4px 4px;border-bottom:1px solid rgba(255,255,255,0.10);text-align:center;min-width:22px;">
+              <div style="font-size:9px;line-height:1.05;">${dowTxt}</div>
+              <div style="font-size:9px;font-weight:700;line-height:1.05;">${dd}</div>
+            </th>`;
+          }).join('')}
+        </tr>
+      </thead>
+      <tbody>
+  `;
+  const rows = alumnosSorted.map(a => {
+    const nombre = ((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || a.id || '—';
+    const first = `<td style="position:sticky;left:0;z-index:3;background:var(--surface);padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.06);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;">
+      ${_escHtml(nombre)}
+    </td>`;
+    const cells = diasAll.map(iso => {
+      const d = _repIsoToDate(iso);
+      const dow = d ? d.getDay() : 0;
+      const isW = (dow===0 || dow===6);
+      if(isW) return `<td style="padding:0;border-bottom:1px solid rgba(255,255,255,0.04);background:rgba(148,163,184,0.06);"></td>`;
+      const st = mapDiaAlu.get(iso + '|' + a.id);
+      const code = (st === 'Tardanza') ? 'T' : (st === 'Puntual' ? 'P' : 'F');
+      const bg = code==='P' ? 'rgba(29,158,117,0.25)' : code==='T' ? 'rgba(239,159,39,0.28)' : 'rgba(226,75,74,0.28)';
+      const bd = code==='P' ? 'rgba(29,158,117,0.35)' : code==='T' ? 'rgba(239,159,39,0.40)' : 'rgba(226,75,74,0.40)';
+      const tc = code==='P' ? '#C7F9E6' : code==='T' ? '#FFE4B0' : '#FFD0D0';
+      return `<td style="padding:0;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;">
+        <div title="${iso}: ${code==='P'?'Presente':code==='T'?'Tardanza':'Falta'}"
+          style="margin:2px auto;width:18px;height:18px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:${bg};border:1px solid ${bd};color:${tc};font-weight:800;font-size:10px;">
+          ${code}
+        </div>
+      </td>`;
+    }).join('');
+    return `<tr>${first}${cells}</tr>`;
+  }).join('');
+  const foot = `
+      </tbody>
+    </table>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:10px 10px 2px 10px;font-size:10px;color:var(--muted);">
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;border-radius:3px;background:rgba(29,158,117,0.25);border:1px solid rgba(29,158,117,0.35);"></span>P Presente</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;border-radius:3px;background:rgba(239,159,39,0.28);border:1px solid rgba(239,159,39,0.40);"></span>T Tardanza</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;border-radius:3px;background:rgba(226,75,74,0.28);border:1px solid rgba(226,75,74,0.40);"></span>F Falta</span>
+    </div>
+  `;
+  return head + rows + foot;
 }
 
 let _repAlertasCache = { periodoInicio:'', periodoFin:'', mes:'', tardTh:3, ausTh:3, rows:[], alumnosById:{} };
