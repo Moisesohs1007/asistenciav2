@@ -15694,14 +15694,19 @@ async function renderReportes(anioCompleto=false) {
       } else if(!can) {
         matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">No disponible para este filtro</div>';
       } else {
-        matrizEl.innerHTML = _repMatrizHTML({
-          alumnos,
-          mapDiaAlu,
-          rangoActivo,
-          desde: desdeSel,
-          hasta: hastaEff,
-          mes: mesStr
-        });
+        try {
+          matrizEl.innerHTML = _repMatrizHTML({
+            alumnos,
+            mapDiaAlu,
+            rangoActivo,
+            desde: desdeSel,
+            hasta: hastaEff,
+            mes: mesStr
+          });
+        } catch(eM) {
+          console.error('[matriz] error:', eM);
+          matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">Error generando matriz: ' + _escHtml(eM?.message || String(eM)) + '</div>';
+        }
       }
     }
   }
