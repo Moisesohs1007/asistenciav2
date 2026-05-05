@@ -4853,7 +4853,7 @@
     </div>
 
     <div class="card" id="card-rep-matriz" style="margin-bottom:14px;display:none;">
-      <div class="card-title"><span class="dot" style="background:rgba(34,197,94,0.9)"></span>Control de asistencia — matriz (tipo SieWeb)</div>
+      <div class="card-title"><span class="dot" style="background:rgba(34,197,94,0.9)"></span>Control de asistencia — matriz</div>
       <div style="font-size:0.78rem;color:var(--muted);margin:-4px 0 10px 0;">
         P: Presente · T: Tardanza · F: Falta
       </div>
@@ -15676,20 +15676,33 @@ async function renderReportes(anioCompleto=false) {
   const matrizCard = document.getElementById('card-rep-matriz');
   const matrizEl = document.getElementById('rep-matriz');
   if(matrizCard && matrizEl) {
-    const can = !!alumnos.length && alumnos.length <= 60 && !!grado && !!seccion && !anioCompleto;
-    if(!can) {
+    if(!_repMatrizVisible) {
       matrizCard.style.display = 'none';
       matrizEl.innerHTML = '';
     } else {
       matrizCard.style.display = '';
-      matrizEl.innerHTML = _repMatrizHTML({
-        alumnos,
-        mapDiaAlu,
-        rangoActivo,
-        desde: desdeSel,
-        hasta: hastaEff,
-        mes: mesStr
-      });
+      const LIM = 120;
+      const can = !!alumnos.length && alumnos.length <= LIM && !!grado && !!seccion && !anioCompleto;
+      if(!grado || !seccion) {
+        matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Selecciona Grado y Sección para ver la matriz</div>';
+      } else if(!alumnos.length) {
+        matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">No hay alumnos en esa aula</div>';
+      } else if(alumnos.length > LIM) {
+        matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Demasiados alumnos (' + alumnos.length + '). Filtra a un aula con máximo ' + LIM + ' alumnos.</div>';
+      } else if(anioCompleto) {
+        matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">La matriz no está disponible en “Año completo”. Usa mes o rango.</div>';
+      } else if(!can) {
+        matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">No disponible para este filtro</div>';
+      } else {
+        matrizEl.innerHTML = _repMatrizHTML({
+          alumnos,
+          mapDiaAlu,
+          rangoActivo,
+          desde: desdeSel,
+          hasta: hastaEff,
+          mes: mesStr
+        });
+      }
     }
   }
 
@@ -15700,12 +15713,12 @@ let _repMatrizVisible = false;
 function repToggleMatriz() {
   _repMatrizVisible = !_repMatrizVisible;
   const card = document.getElementById('card-rep-matriz');
-  if(card) {
-    card.style.display = _repMatrizVisible ? '' : 'none';
-    if(_repMatrizVisible) {
+  if(card) card.style.display = _repMatrizVisible ? '' : 'none';
+  renderReportes(!!_repAnioCompletoActivo).then(() => {
+    if(_repMatrizVisible && card) {
       try { card.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
     }
-  }
+  });
 }
 
 function _repDiasPeriodoAll({ rangoActivo, desde, hasta, mes }) {
