@@ -4697,7 +4697,7 @@
   <!-- ===== ALERTAS ===== -->
   <div class="section" id="sec-alertas">
     <div class="page-title">Alertas automáticas</div>
-    <div class="page-sub">Tardanzas semanales y ausencias mensuales según filtros</div>
+    <div class="page-sub">Tardanzas semanales y faltas mensuales según filtros</div>
 
     <div class="card" style="padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <div style="display:flex;align-items:center;gap:6px;">
@@ -4812,7 +4812,6 @@
         <button class="btn btn-ghost" onclick="cargarReportesAnio()" style="font-size:0.8rem;padding:6px 14px;">📅 Año completo</button>
       </div>
       <button class="btn btn-ghost" id="rep-btn-pdf" onclick="exportarReportePDF()" style="font-size:0.78rem;padding:5px 12px;border-color:var(--accent2);color:var(--accent2);">⬇ PDF</button>
-      <button class="btn btn-ghost" id="rep-btn-matriz" onclick="repToggleMatriz()" style="font-size:0.78rem;padding:5px 12px;border-color:rgba(34,197,94,0.45);color:rgba(34,197,94,0.95);">📋 Matriz</button>
       <button class="btn btn-ghost" onclick="repExportCostAudit()" style="font-size:0.78rem;padding:5px 12px;border-color:rgba(34,197,94,0.45);color:rgba(34,197,94,0.95);">📊 Uso</button>
       <div id="rep-periodo-label" style="flex-basis:100%;font-size:0.78rem;color:var(--muted);margin-top:2px;"></div>
     </div>
@@ -4841,7 +4840,7 @@
       </div>
       <!-- Dona distribución -->
       <div class="card">
-        <div class="card-title"><span class="dot" style="background:var(--accent2)"></span>Distribución P / T / A</div>
+        <div class="card-title"><span class="dot" style="background:var(--accent2)"></span>Distribución P / T / F</div>
         <div id="chart-dona" style="display:flex;align-items:center;justify-content:center;gap:20px;padding:8px 0;"></div>
       </div>
     </div>
@@ -4852,12 +4851,12 @@
       <div id="chart-heatmap" style="overflow-x:auto;"></div>
     </div>
 
-    <div class="card" id="card-rep-matriz" style="margin-bottom:14px;display:none;">
+    <div class="card" id="card-rep-matriz" style="margin-bottom:14px;">
       <div class="card-title"><span class="dot" style="background:rgba(34,197,94,0.9)"></span>Control de asistencia — matriz</div>
       <div style="font-size:0.78rem;color:var(--muted);margin:-4px 0 10px 0;">
         P: Presente · T: Tardanza · F: Falta
       </div>
-      <div id="rep-matriz" style="overflow:auto;max-height:620px;border:1px solid rgba(255,255,255,0.10);border-radius:14px;background:rgba(148,163,184,0.05);"></div>
+      <div id="rep-matriz" style="overflow:auto;max-height:620px;border:1px solid rgba(255,255,255,0.12);border-radius:14px;background:rgba(148,163,184,0.06);"></div>
     </div>
 
     <!-- Rankings -->
@@ -15656,7 +15655,7 @@ async function renderReportes(anioCompleto=false) {
         id: r.alumnoId,
         faltas: Math.max(0, _dhTop - (r.puntual||0) - (r.tardanza||0))
       })).filter(r=>r.faltas>0).sort((a,b)=>b.faltas-a.faltas).slice(0,5);
-      if(!_rfA.length) topAus.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin ausencias 🎉</p>';
+      if(!_rfA.length) topAus.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin faltas 🎉</p>';
       else topAus.innerHTML=_rfA.map(({id,faltas:cnt})=>{
         const a=alumnos.find(x=>x.id===id);
         const name=a?a.apellidos+' '+a.nombres:id;
@@ -15670,7 +15669,7 @@ async function renderReportes(anioCompleto=false) {
         alumnos.forEach(a=>{ if(!pres.has(a.id)) ausMap[a.id]=(ausMap[a.id]||0)+1; });
       });
       const sortedAus=Object.entries(ausMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
-      if(!sortedAus.length) topAus.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin ausencias 🎉</p>';
+      if(!sortedAus.length) topAus.innerHTML='<p style="color:var(--muted);font-size:.85rem;">Sin faltas 🎉</p>';
       else topAus.innerHTML=sortedAus.map(([id,cnt])=>{
         const a=alumnos.find(x=>x.id===id);
         const name=a?a.apellidos+' '+a.nombres:id;
@@ -15683,54 +15682,41 @@ async function renderReportes(anioCompleto=false) {
   const matrizCard = document.getElementById('card-rep-matriz');
   const matrizEl = document.getElementById('rep-matriz');
   if(matrizCard && matrizEl) {
-    if(!_repMatrizVisible) {
-      matrizCard.style.display = 'none';
-      matrizEl.innerHTML = '';
+    matrizCard.style.display = '';
+    const LIM = 120;
+    const qMat = (document.getElementById('rep-search')?.value || '').trim();
+    const autoOk = !!nivel && !!grado && !!seccion && !anioCompleto && !qMat;
+    const can = autoOk && !!alumnos.length && alumnos.length <= LIM;
+    if(!nivel || !grado || !seccion) {
+      matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Selecciona Nivel, Grado y Sección para ver la matriz</div>';
+    } else if(qMat) {
+      matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">La matriz se muestra solo por aula (sin búsqueda por alumno)</div>';
+    } else if(!alumnos.length) {
+      matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">No hay alumnos en esa aula</div>';
+    } else if(alumnos.length > LIM) {
+      matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Demasiados alumnos (' + alumnos.length + '). Filtra a un aula con máximo ' + LIM + ' alumnos.</div>';
+    } else if(anioCompleto) {
+      matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">La matriz no está disponible en “Año completo”. Usa mes o rango.</div>';
+    } else if(!can) {
+      matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">No disponible para este filtro</div>';
     } else {
-      matrizCard.style.display = '';
-      const LIM = 120;
-      const can = !!alumnos.length && alumnos.length <= LIM && !!grado && !!seccion && !anioCompleto;
-      if(!grado || !seccion) {
-        matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Selecciona Grado y Sección para ver la matriz</div>';
-      } else if(!alumnos.length) {
-        matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">No hay alumnos en esa aula</div>';
-      } else if(alumnos.length > LIM) {
-        matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Demasiados alumnos (' + alumnos.length + '). Filtra a un aula con máximo ' + LIM + ' alumnos.</div>';
-      } else if(anioCompleto) {
-        matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">La matriz no está disponible en “Año completo”. Usa mes o rango.</div>';
-      } else if(!can) {
-        matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">No disponible para este filtro</div>';
-      } else {
-        try {
-          matrizEl.innerHTML = _repMatrizHTML({
-            alumnos,
-            mapDiaAlu,
-            rangoActivo,
-            desde: desdeSel,
-            hasta: hastaEff,
-            mes: mesStr
-          });
-        } catch(eM) {
-          console.error('[matriz] error:', eM);
-          matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">Error generando matriz: ' + _escHtml(eM?.message || String(eM)) + '</div>';
-        }
+      try {
+        matrizEl.innerHTML = _repMatrizHTML({
+          alumnos,
+          mapDiaAlu,
+          rangoActivo,
+          desde: desdeSel,
+          hasta: hastaEff,
+          mes: mesStr
+        });
+      } catch(eM) {
+        console.error('[matriz] error:', eM);
+        matrizEl.innerHTML = '<div style="padding:16px;text-align:center;color:#f87171;font-size:0.83rem;">Error generando matriz: ' + _escHtml(eM?.message || String(eM)) + '</div>';
       }
     }
   }
 
   } catch(e) { console.error('renderReportes:', e); }
-}
-
-let _repMatrizVisible = false;
-function repToggleMatriz() {
-  _repMatrizVisible = !_repMatrizVisible;
-  const card = document.getElementById('card-rep-matriz');
-  if(card) card.style.display = _repMatrizVisible ? '' : 'none';
-  renderReportes(!!_repAnioCompletoActivo).then(() => {
-    if(_repMatrizVisible && card) {
-      try { card.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch(e) {}
-    }
-  });
 }
 
 function _repDiasPeriodoAll({ rangoActivo, desde, hasta, mes }) {
@@ -15762,18 +15748,18 @@ function _repMatrizHTML({ alumnos, mapDiaAlu, rangoActivo, desde, hasta, mes }) 
     <table style="border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;font-size:10px;">
       <thead>
         <tr>
-          <th style="position:sticky;left:0;top:0;z-index:5;background:var(--surface);padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.10);text-align:left;min-width:220px;max-width:260px;">
+          <th style="position:sticky;left:0;top:0;z-index:5;background:rgba(24,95,165,0.18);padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.12);border-right:1px solid rgba(255,255,255,0.08);text-align:left;min-width:220px;max-width:260px;">
             Apellidos y Nombres
           </th>
-          ${diasAll.map(iso => {
+          ${diasAll.map((iso, ci) => {
             const d = _repIsoToDate(iso);
             const dow = d ? d.getDay() : 0;
             const isW = (dow===0 || dow===6);
             const dd = iso.slice(8,10);
             const dowTxt = d ? _repDowShort(d) : '';
-            const bg = isW ? 'rgba(148,163,184,0.08)' : 'rgba(148,163,184,0.04)';
+            const bg = isW ? 'rgba(148,163,184,0.12)' : (ci % 2 === 0 ? 'rgba(148,163,184,0.06)' : 'rgba(148,163,184,0.10)');
             const tc = isW ? 'rgba(148,163,184,0.75)' : 'var(--muted)';
-            return `<th style="position:sticky;top:0;z-index:4;background:${bg};color:${tc};padding:4px 4px;border-bottom:1px solid rgba(255,255,255,0.10);text-align:center;min-width:22px;">
+            return `<th style="position:sticky;top:0;z-index:4;background:${bg};color:${tc};padding:4px 4px;border-bottom:1px solid rgba(255,255,255,0.10);border-right:1px solid rgba(255,255,255,0.04);text-align:center;min-width:22px;">
               <div style="font-size:9px;line-height:1.05;">${dowTxt}</div>
               <div style="font-size:9px;font-weight:700;line-height:1.05;">${dd}</div>
             </th>`;
@@ -15782,22 +15768,27 @@ function _repMatrizHTML({ alumnos, mapDiaAlu, rangoActivo, desde, hasta, mes }) 
       </thead>
       <tbody>
   `;
-  const rows = alumnosSorted.map(a => {
+  const rows = alumnosSorted.map((a, ri) => {
     const nombre = ((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || a.id || '—';
-    const first = `<td style="position:sticky;left:0;z-index:3;background:var(--surface);padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.06);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;">
+    const nameBg = (ri % 2 === 0) ? 'rgba(24,95,165,0.16)' : 'rgba(24,95,165,0.22)';
+    const first = `<td style="position:sticky;left:0;z-index:3;background:${nameBg};padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.08);border-right:1px solid rgba(255,255,255,0.08);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;font-weight:700;">
       ${_escHtml(nombre)}
     </td>`;
-    const cells = diasAll.map(iso => {
+    const cells = diasAll.map((iso, ci) => {
       const d = _repIsoToDate(iso);
       const dow = d ? d.getDay() : 0;
       const isW = (dow===0 || dow===6);
-      if(isW) return `<td style="padding:0;border-bottom:1px solid rgba(255,255,255,0.04);background:rgba(148,163,184,0.06);"></td>`;
+      const baseA = (ri % 2 === 0) ? 0.05 : 0.08;
+      const colA = (ci % 2 === 0) ? 0.00 : 0.05;
+      const cellBg = isW ? 'rgba(148,163,184,0.09)' : `rgba(148,163,184,${(baseA + colA).toFixed(2)})`;
+      const borderR = '1px solid rgba(255,255,255,0.04)';
+      if(isW) return `<td style="padding:0;border-bottom:1px solid rgba(255,255,255,0.06);border-right:${borderR};background:${cellBg};"></td>`;
       const st = mapDiaAlu.get(iso + '|' + a.id);
       const code = (st === 'Tardanza') ? 'T' : (st === 'Puntual' ? 'P' : 'F');
       const bg = code==='P' ? 'rgba(29,158,117,0.25)' : code==='T' ? 'rgba(239,159,39,0.28)' : 'rgba(226,75,74,0.28)';
       const bd = code==='P' ? 'rgba(29,158,117,0.35)' : code==='T' ? 'rgba(239,159,39,0.40)' : 'rgba(226,75,74,0.40)';
       const tc = code==='P' ? '#C7F9E6' : code==='T' ? '#FFE4B0' : '#FFD0D0';
-      return `<td style="padding:0;border-bottom:1px solid rgba(255,255,255,0.04);text-align:center;">
+      return `<td style="padding:0;border-bottom:1px solid rgba(255,255,255,0.06);border-right:${borderR};background:${cellBg};text-align:center;">
         <div title="${iso}: ${code==='P'?'Presente':code==='T'?'Tardanza':'Falta'}"
           style="margin:2px auto;width:18px;height:18px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:${bg};border:1px solid ${bd};color:${tc};font-weight:800;font-size:10px;">
           ${code}
@@ -15957,7 +15948,7 @@ async function generarAlertasAsistencia() {
         alumnoIds: alumnoIdsList || undefined,
         columns: 'alumno_id,fecha,estado,tipo'
       });
-      if(status) status.textContent = 'Calculando tardanzas y ausencias...';
+      if(status) status.textContent = 'Calculando tardanzas y faltas...';
       await new Promise(r => setTimeout(r, 0));
 
       const tardCount = {};
@@ -16070,7 +16061,7 @@ async function generarAlertasAsistencia() {
         columns: 'alumno_id,fecha,estado,tipo'
       });
 
-      if(status) status.textContent = 'Calculando tardanzas y ausencias...';
+      if(status) status.textContent = 'Calculando tardanzas y faltas...';
       await new Promise(r => setTimeout(r, 0));
 
       const tardSemanaMap = {};
@@ -16200,7 +16191,7 @@ async function generarAlertasAsistencia() {
     if(wrap) { wrap.innerHTML = html.join(''); wrap.style.display = ''; }
     const cantT = rows.filter(r => r.tipo === 'TARDANZA').length;
     const cantA = rows.filter(r => r.tipo === 'AUSENCIA').length;
-    if(status) status.textContent = `✅ Alertas generadas: ${cantT} tardanzas y ${cantA} ausencias.`;
+    if(status) status.textContent = `✅ Alertas generadas: ${cantT} tardanzas y ${cantA} faltas.`;
     if(prefix === 'al') {
       const mesEl = document.getElementById('al-mes-select');
       if(mesEl) { mesEl.disabled = false; mesEl.style.opacity = '1'; }
