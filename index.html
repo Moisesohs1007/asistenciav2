@@ -4185,6 +4185,14 @@
           <input id="com-otro-tel" type="text" placeholder="Ej: 999888777 o +51999888777" oninput="this.value=this.value.replace(/[^0-9+ ]/g,'')">
         </div>
         <div class="form-group">
+        <label>Título para portal (opcional)</label>
+        <input id="com-titulo" type="text" placeholder="Ej: Reunión de padres" style="width:100%;">
+      </div>
+      <label style="display:flex;align-items:center;gap:10px;margin:8px 0 0 0;">
+        <input type="checkbox" id="com-publicar-portal" checked>
+        <span style="font-size:0.82rem;color:var(--muted);">Publicar también en el Portal Apoderado</span>
+      </label>
+      <div class="form-group">
           <label>Texto (puedes usar: {alumno}, {grado}, {seccion}, {nivel})</label>
           <textarea id="com-texto" rows="7" placeholder="Ej: Hola, se informa sobre {alumno}..." style="resize:vertical;"></textarea>
         </div>
@@ -4884,6 +4892,10 @@
           <select id="age-grado" style="min-width:160px;"></select>
           <select id="age-seccion" style="min-width:120px;"></select>
         </div>
+        <label id="age-all-wrap" style="display:none;align-items:center;gap:10px;margin-top:10px;">
+          <input type="checkbox" id="age-all-aulas">
+          <span style="font-size:0.82rem;color:var(--muted);">Enviar a todos los grados y secciones</span>
+        </label>
       </div>
       <div class="form-group form-full">
         <label>Título *</label>
@@ -10922,12 +10934,36 @@ function _comMsg(tpl, a) {
     .replaceAll('{nivel}', String(a.turno||''));
 }
 
+async function _publicarComunicadosPortal(rows, titulo, tpl) {
+  try {
+    const t = String(titulo || '').trim();
+    const titleFinal = t ? t : 'Comunicado';
+    for (const a of (rows || [])) {
+      const detalle = _comMsg(tpl, a);
+      await db.collection('comunicados').add({
+        alumnoId: a.id,
+        grado: a.grado || '',
+        seccion: a.seccion || '',
+        turno: a.turno || '',
+        titulo: titleFinal,
+        detalle: detalle || '',
+        createdBy: (currentUser && currentUser.uid) ? currentUser.uid : null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+  } catch(e) {
+    toast('Aviso: no se pudo publicar en Portal Apoderado (' + e.message + ')', 'warning');
+  }
+}
+
 async function enviarComunicado() {
   const btn = document.getElementById('com-btn-enviar');
   const st = document.getElementById('com-status');
   if(_comSel.size < 1) { toast('Selecciona al menos un alumno','warning'); return; }
   if(_comSel.size > _COM_MAX) { toast('Máximo ' + _COM_MAX + ' destinatarios','warning'); return; }
   const tpl = (document.getElementById('com-texto').value||'').trim();
+  const tituloPortal = String(document.getElementById('com-titulo')?.value || '').trim();
+  const publicarPortal = !!document.getElementById('com-publicar-portal')?.checked;
   if(!tpl) { toast('Escribe el mensaje','warning'); return; }
   if(!_comFile || !_comMediaB64) { toast('Sube 1 imagen o 1 PDF (se convertirá a imagen)','warning'); return; }
   try {
@@ -10976,6 +11012,9 @@ async function enviarComunicado() {
     const fail = results.length - ok;
     if(st) st.textContent = `Envío terminado: ${ok} ok, ${fail} fallos`;
     toast(`📢 Comunicado: ${ok} ok, ${fail} fallos`, fail ? 'warning' : 'success');
+    if(publicarPortal) {
+      await _publicarComunicadosPortal(rows, tituloPortal, tpl);
+    }
   } catch(e) {
     toast('❌ Error: ' + e.message, 'error');
     if(st) st.textContent = '';
@@ -13437,14 +13476,32 @@ function _isAgendaWriter(){
 
 let _agendaGradosAll = [];
 let _agendaSeccionesAll = [];
+let _agendaSeccionesByGrado = {};
 async function _agendaLoadAulaOptions() {
   try {
     const cfg = await getConfig();
     _agendaGradosAll = [...new Set(Object.values(cfg.grados || {}).flat().map(x => String(x || '').trim()).filter(Boolean))];
     _agendaSeccionesAll = (cfg.secciones || []).map(x => String(x || '').trim().toUpperCase()).filter(Boolean);
+    _agendaSeccionesByGrado = {};
+    try {
+      const alumnos = (window.DB && typeof DB.getAlumnos === 'function') ? await DB.getAlumnos() : [];
+      (alumnos || []).forEach(a => {
+        const g = String(a?.grado || '').trim();
+        const s = String(a?.seccion || '').trim().toUpperCase();
+        if(!g || !s) return;
+        if(!_agendaSeccionesByGrado[g]) _agendaSeccionesByGrado[g] = new Set();
+        _agendaSeccionesByGrado[g].add(s);
+      });
+      Object.keys(_agendaSeccionesByGrado).forEach(g => {
+        _agendaSeccionesByGrado[g] = Array.from(_agendaSeccionesByGrado[g]).sort();
+      });
+    } catch(e2) {
+      _agendaSeccionesByGrado = {};
+    }
   } catch(e) {
     _agendaGradosAll = [];
     _agendaSeccionesAll = [];
+    _agendaSeccionesByGrado = {};
   }
 }
 function _agendaFillSelects(gradoSelId, seccionSelId, gradoVal, seccionVal) {
@@ -13452,11 +13509,26 @@ function _agendaFillSelects(gradoSelId, seccionSelId, gradoVal, seccionVal) {
   const sEl = document.getElementById(seccionSelId);
   if(!gEl || !sEl) return;
   const gList = _agendaGradosAll.length ? _agendaGradosAll : [''];
-  const sList = _agendaSeccionesAll.length ? _agendaSeccionesAll : [''];
+  const gPick = String(gradoVal || gEl.value || '').trim();
+  const sListByG = (gPick && Array.isArray(_agendaSeccionesByGrado[gPick]) && _agendaSeccionesByGrado[gPick].length)
+    ? _agendaSeccionesByGrado[gPick]
+    : (_agendaSeccionesAll.length ? _agendaSeccionesAll : ['']);
   gEl.innerHTML = `<option value="">-- Grado --</option>` + gList.filter(Boolean).map(g => `<option value="${_escHtml(g)}">${_escHtml(g)}</option>`).join('');
-  sEl.innerHTML = `<option value="">-- Sección --</option>` + sList.filter(Boolean).map(s => `<option value="${_escHtml(s)}">${_escHtml(s)}</option>`).join('');
+  sEl.innerHTML = `<option value="">-- Sección --</option>` + sListByG.filter(Boolean).map(s => `<option value="${_escHtml(s)}">${_escHtml(s)}</option>`).join('');
   if(gradoVal) gEl.value = gradoVal;
   if(seccionVal) sEl.value = String(seccionVal || '').toUpperCase();
+}
+
+function _agendaAllAulas() {
+  const grados = (_agendaGradosAll || []).filter(Boolean);
+  const out = [];
+  grados.forEach(g => {
+    const secs = (Array.isArray(_agendaSeccionesByGrado[g]) && _agendaSeccionesByGrado[g].length)
+      ? _agendaSeccionesByGrado[g]
+      : (_agendaSeccionesAll || []);
+    (secs || []).filter(Boolean).forEach(s => out.push({ grado: g, seccion: String(s).toUpperCase() }));
+  });
+  return out;
 }
 
 async function initAgenda() {
@@ -13632,6 +13704,8 @@ function openAgendaModal(fecha, eventId) {
   if(!m) return;
   const fixedWrap = document.getElementById('age-aula-fixed-wrap');
   const pickWrap  = document.getElementById('age-aula-pick-wrap');
+  const allWrap   = document.getElementById('age-all-wrap');
+  const allChk    = document.getElementById('age-all-aulas');
   document.getElementById('age-event-id').value = eventId || '';
   document.getElementById('age-fec').value = fecha || hoy();
   document.getElementById('age-hora').value = '';
@@ -13642,15 +13716,50 @@ function openAgendaModal(fecha, eventId) {
   const isTutor = _normRol(currentRol) === 'profesor';
   if(fixedWrap) fixedWrap.style.display = (isTutor && tutor.ok) ? '' : 'none';
   if(pickWrap)  pickWrap.style.display  = (isTutor && tutor.ok) ? 'none' : '';
+  const canAll = ['admin','director','coordinador'].includes(_normRol(currentRol));
+  if(allWrap) allWrap.style.display = (!isTutor && canAll) ? 'flex' : 'none';
+  if(allChk) allChk.checked = false;
+  try {
+    const gEl0 = document.getElementById('age-grado');
+    const sEl0 = document.getElementById('age-seccion');
+    if(gEl0) gEl0.disabled = false;
+    if(sEl0) sEl0.disabled = false;
+  } catch(e0) {}
   if(isTutor && tutor.ok) {
     const el = document.getElementById('age-aula-fixed');
     if(el) el.textContent = tutor.grado + ' ' + tutor.seccion;
   } else {
-    if(!_agendaGradosAll.length || !_agendaSeccionesAll.length) {
-      _agendaLoadAulaOptions().then(() => _agendaFillSelects('age-grado','age-seccion','',''));
-    } else {
+    const apply = () => {
       _agendaFillSelects('age-grado','age-seccion','','');
-    }
+      const gEl = document.getElementById('age-grado');
+      const sEl = document.getElementById('age-seccion');
+      if(gEl && !gEl.__agendaBound) {
+        gEl.__agendaBound = true;
+        gEl.addEventListener('change', () => {
+          const g = String(gEl.value || '').trim();
+          const secs = (g && Array.isArray(_agendaSeccionesByGrado[g]) && _agendaSeccionesByGrado[g].length)
+            ? _agendaSeccionesByGrado[g]
+            : (_agendaSeccionesAll || []);
+          if(sEl) {
+            const prev = String(sEl.value || '').trim().toUpperCase();
+            sEl.innerHTML = `<option value="">-- Sección --</option>` + (secs || []).filter(Boolean).map(s => `<option value="${_escHtml(s)}">${_escHtml(s)}</option>`).join('');
+            if(prev && (secs || []).includes(prev)) sEl.value = prev;
+          }
+        });
+      }
+      if(allChk && !allChk.__agendaBound) {
+        allChk.__agendaBound = true;
+        allChk.addEventListener('change', () => {
+          const on = !!allChk.checked;
+          const gEl2 = document.getElementById('age-grado');
+          const sEl2 = document.getElementById('age-seccion');
+          if(gEl2) gEl2.disabled = on;
+          if(sEl2) sEl2.disabled = on;
+        });
+      }
+    };
+    if(!_agendaGradosAll.length) _agendaLoadAulaOptions().then(apply);
+    else apply();
   }
   if(eventId) {
     const mes = (fecha||'').slice(0,7);
@@ -13679,6 +13788,7 @@ async function guardarAgendaEvento() {
   const mes = fecha.slice(0,7);
   const r = _normRol(currentRol);
   const tutor = _agendaTutorAula();
+  const autor = String(document.getElementById('user-name-display')?.textContent || '').trim() || (currentUser?.email || '');
   let grado = '';
   let seccion = '';
   if(r === 'profesor') {
@@ -13686,6 +13796,33 @@ async function guardarAgendaEvento() {
     grado = tutor.grado;
     seccion = tutor.seccion;
   } else {
+    const all = !!document.getElementById('age-all-aulas')?.checked;
+    if(id && all) { toast('No se puede editar “todos” a la vez. Edita por aula.', 'warning'); return; }
+    if(all) {
+      const aulas = _agendaAllAulas();
+      if(!aulas.length) { toast('No hay aulas configuradas', 'warning'); return; }
+      const base = {
+        fecha,
+        mes,
+        hora: hora || '',
+        titulo,
+        detalle: detalle || '',
+        createdBy: (currentUser && currentUser.uid) ? currentUser.uid : null,
+        createdByName: autor || '',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      };
+      for (const au of aulas) {
+        await db.collection('agenda').add({ ...base, grado: au.grado, seccion: au.seccion });
+      }
+      _invalidarAgendaMes(mes);
+      closeModal('modal-agenda');
+      toast('✅ Evento publicado para todos', 'success');
+      _agendaSelDia = fecha;
+      await renderAgenda();
+      agendaSelectDay(fecha);
+      return;
+    }
     grado = String(document.getElementById('age-grado')?.value || '').trim();
     seccion = String(document.getElementById('age-seccion')?.value || '').trim().toUpperCase();
     if(!grado || !seccion) { toast('Selecciona grado y sección','warning'); return; }
@@ -13699,6 +13836,7 @@ async function guardarAgendaEvento() {
     titulo,
     detalle: detalle || '',
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    createdByName: autor || '',
   };
   try {
     if(id) {
@@ -13707,6 +13845,7 @@ async function guardarAgendaEvento() {
       await db.collection('agenda').add({
         ...data,
         createdBy: (currentUser && currentUser.uid) ? currentUser.uid : null,
+        createdByName: autor || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
     }

@@ -179,6 +179,7 @@ CREATE TABLE IF NOT EXISTS agenda (
   titulo TEXT NOT NULL,
   detalle TEXT DEFAULT '',
   created_by UUID,
+  created_by_name TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

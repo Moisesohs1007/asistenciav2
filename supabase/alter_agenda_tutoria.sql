@@ -1,7 +1,8 @@
 ALTER TABLE public.agenda
   ADD COLUMN IF NOT EXISTS grado TEXT,
   ADD COLUMN IF NOT EXISTS seccion TEXT,
-  ADD COLUMN IF NOT EXISTS created_by UUID;
+  ADD COLUMN IF NOT EXISTS created_by UUID,
+  ADD COLUMN IF NOT EXISTS created_by_name TEXT;
 
 UPDATE public.agenda
 SET grado = COALESCE(grado, ''),

@@ -568,7 +568,80 @@ function showTab(tab) {
   if(tab === 'incidentes') renderIncidentes();
   if(tab === 'agenda')    renderApoAgenda();
   if(tab === 'carnet')     renderCarnet();
+  if(tab === 'comunicados') renderApoComunicados();
   if(tab === 'contacto')   renderContacto();
+}
+
+let _comunicadosCache = null;
+let _comunicadosCacheTime = 0;
+const _COMUNICADOS_TTL = 2 * 60 * 1000;
+
+function _comunicadosCacheValido() {
+  return !!_comunicadosCache && (Date.now() - _comunicadosCacheTime) < _COMUNICADOS_TTL;
+}
+
+function _safeDateTimeLabel(v) {
+  if(!v) return '';
+  try {
+    const d = new Date(String(v));
+    if(isNaN(d.getTime())) return String(v);
+    return d.toLocaleString('es-PE', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  } catch(e) {
+    return String(v || '');
+  }
+}
+
+function cargarComunicadosApo() {
+  if(_comunicadosCacheValido()) return Promise.resolve(_comunicadosCache);
+  return db.collection('comunicados')
+    .where('alumnoId','==', alumno.id)
+    .orderBy('createdAt')
+    .limit(200)
+    .get()
+    .then(function(snap) {
+      const list = (snap.docs || []).map(function(d) {
+        const it = d.data() || {};
+        it.id = d.id;
+        return it;
+      });
+      list.sort(function(a,b){
+        const ta = String(a.createdAt || a.created_at || '');
+        const tb = String(b.createdAt || b.created_at || '');
+        return tb.localeCompare(ta);
+      });
+      _comunicadosCache = list;
+      _comunicadosCacheTime = Date.now();
+      return list;
+    });
+}
+
+function renderApoComunicados() {
+  const cont = document.getElementById('apo-comunicados-list');
+  if(!cont) return;
+  cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:0.83rem;">Cargando...</div>';
+  cargarComunicadosApo().then(function(list) {
+    if(!list || !list.length) {
+      cont.innerHTML = '<div class="card" style="padding:22px 16px;text-align:center;color:var(--muted);font-size:0.83rem;">Sin comunicados</div>';
+      return;
+    }
+    cont.innerHTML = list.slice(0, 80).map(function(it) {
+      const titulo = _h(it.titulo || 'Comunicado');
+      const detalle = _h(it.detalle || '');
+      const fecha = _safeDateTimeLabel(it.createdAt || it.created_at);
+      const detHtml = detalle ? ('<div style="margin-top:6px;color:var(--muted);font-size:0.82rem;line-height:1.35;white-space:pre-wrap;">' + detalle + '</div>') : '';
+      return '<div class="card" style="padding:14px 14px;margin-bottom:10px;border-radius:14px;">'
+        + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">'
+        +   '<div style="min-width:0;">'
+        +     '<div style="font-weight:900;font-size:0.94rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + titulo + '</div>'
+        +     (fecha ? '<div style="margin-top:2px;color:var(--muted);font-size:0.74rem;">' + _h(fecha) + '</div>' : '')
+        +     detHtml
+        +   '</div>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+  }).catch(function(e) {
+    cont.innerHTML = '<div class="card" style="padding:22px 16px;text-align:center;color:#f87171;font-size:0.83rem;">Error al cargar comunicados: ' + _h(e.message) + '</div>';
+  });
 }
 
 function filtrarMes(lista, mes) {
@@ -1399,13 +1472,16 @@ function renderApoAgenda() {
         var hora = (ev.hora || '').trim();
         var titulo = _h(ev.titulo || 'Evento');
         var detalle = _h(ev.detalle || '');
+        var autor = _h(ev.createdByName || ev.created_by_name || '');
         var detHtml = detalle ? ('<div style="margin-top:6px;color:var(--muted);font-size:0.82rem;line-height:1.35;">' + detalle + '</div>') : '';
+        var autHtml = autor ? ('<div style="margin-top:6px;color:var(--muted);font-size:0.74rem;">Publicado por: <strong style="color:var(--text);">' + autor + '</strong></div>') : '';
         return '<div class="card" style="padding:14px 14px;margin-top:8px;border-radius:14px;">'
           + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">'
           +   '<div style="min-width:0;">'
           +     '<div style="font-weight:800;font-size:0.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + titulo + '</div>'
           +     (hora ? '<div style="margin-top:2px;color:var(--muted);font-size:0.78rem;">' + _h(hora) + '</div>' : '')
           +     detHtml
+          +     autHtml
           +   '</div>'
           + '</div>'
           + '</div>';
