@@ -10580,6 +10580,9 @@ const _COM_MAX_MSG = 80;
 let _comFile = null;
 let _comMediaB64 = '';
 let _comMediaName = '';
+let _comSendB64 = '';
+let _comSendName = '';
+let _comSendType = 'image';
 
 async function initComunicado() {
   if(!_comAlumnos) {
@@ -10820,7 +10823,7 @@ function comLimpiarComunicado() {
   if(status) status.textContent = '';
   const file = document.getElementById('com-img');
   if(file) file.value = '';
-  _comFile = null; _comMediaB64 = ''; _comMediaName = '';
+  _comFile = null; _comMediaB64 = ''; _comMediaName = ''; _comSendB64 = ''; _comSendName = ''; _comSendType = 'image';
   const prev = document.getElementById('com-img-preview');
   const img  = document.getElementById('com-img-preview-img');
   if(img) img.src = '';
@@ -10869,6 +10872,11 @@ function _fileToDataUrl(file) {
   });
 }
 
+async function _fileToBase64(file) {
+  const url = await _fileToDataUrl(file);
+  return String(url || '').split(',')[1] || '';
+}
+
 async function _imageFileToJpegBase64(file) {
   const url = await _fileToDataUrl(file);
   const img = await new Promise((resolve, reject) => {
@@ -10909,6 +10917,9 @@ function onComImgChange() {
   _comFile = f;
   _comMediaB64 = '';
   _comMediaName = '';
+  _comSendB64 = '';
+  _comSendName = '';
+  _comSendType = 'image';
   const prev = document.getElementById('com-img-preview');
   const img = document.getElementById('com-img-preview-img');
   if(!f) { if(prev) prev.style.display = 'none'; return; }
@@ -10919,10 +10930,16 @@ function onComImgChange() {
         if(img) img.src = '';
         _comMediaB64 = await _pdfFileToJpegBase64(f);
         _comMediaName = (String(f.name||'documento').replace(/\.pdf$/i,'') || 'documento') + '.jpg';
+        _comSendB64 = await _fileToBase64(f);
+        _comSendName = (String(f.name||'documento').replace(/[^\w.\- ]+/g,'').trim() || 'documento') + (String(f.name||'').toLowerCase().endsWith('.pdf') ? '' : '.pdf');
+        _comSendType = 'document';
         if(img) img.src = 'data:image/jpeg;base64,' + _comMediaB64;
       } else if(String(f.type||'').startsWith('image/')) {
         _comMediaB64 = await _imageFileToJpegBase64(f);
         _comMediaName = (String(f.name||'imagen').replace(/\.(png|jpg|jpeg|webp)$/i,'') || 'imagen') + '.jpg';
+        _comSendB64 = _comMediaB64;
+        _comSendName = _comMediaName;
+        _comSendType = 'image';
         if(img) img.src = 'data:image/jpeg;base64,' + _comMediaB64;
       } else {
         throw new Error('Formato no permitido');
@@ -10932,6 +10949,9 @@ function onComImgChange() {
       _comFile = null;
       _comMediaB64 = '';
       _comMediaName = '';
+      _comSendB64 = '';
+      _comSendName = '';
+      _comSendType = 'image';
       if(prev) prev.style.display = 'none';
     }
   })();
@@ -10990,7 +11010,7 @@ async function enviarComunicado() {
   const tituloPortal = String(document.getElementById('com-titulo')?.value || '').trim();
   const publicarPortal = !!document.getElementById('com-publicar-portal')?.checked;
   if(!tpl) { toast('Escribe el mensaje','warning'); return; }
-  if(!_comFile || !_comMediaB64) { toast('Sube 1 imagen o 1 PDF (se convertirá a imagen)','warning'); return; }
+  if(!_comFile || !_comSendB64) { toast('Sube 1 imagen o 1 PDF','warning'); return; }
   try {
     if(btn) { btn.disabled = true; btn.style.opacity = '0.75'; }
     if(st) st.textContent = 'Preparando envío...';
@@ -11024,7 +11044,7 @@ async function enviarComunicado() {
         'Authorization': `Bearer ${jwt}`,
         'apikey': SUPABASE_ANON_KEY
       },
-      body: JSON.stringify({ mediaBase64: _comMediaB64, filename: _comMediaName, items })
+      body: JSON.stringify({ mediatype: _comSendType, mediaBase64: _comSendB64, filename: _comSendName, items })
     });
     const body = await res.json().catch(() => ({}));
     if(!res.ok) {

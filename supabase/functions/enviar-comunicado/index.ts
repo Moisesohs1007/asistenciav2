@@ -28,6 +28,10 @@ serve(async (req) => {
     const urlImagen = typeof body.urlImagen === 'string' ? body.urlImagen : undefined;
     const mediaBase64 = typeof body.mediaBase64 === 'string' ? body.mediaBase64 : '';
     const filename = typeof body.filename === 'string' ? body.filename : '';
+    const mediatypeIn = typeof body.mediatype === 'string' ? body.mediatype : '';
+    const mediatype = (mediatypeIn === 'document' || mediatypeIn === 'image' || mediatypeIn === 'video' || mediatypeIn === 'audio')
+      ? mediatypeIn
+      : ((filename || '').toLowerCase().endsWith('.pdf') ? 'document' : 'image');
     const items = Array.isArray(body.items) ? body.items : [];
 
     if (!items.length) {
@@ -142,7 +146,7 @@ serve(async (req) => {
         const resNew = await fetch(`${factilizaBase}/api/v1/message/sendMedia/${instanciaSafe}`, {
           method: 'POST',
           headers: factilizaHeaders,
-          body: JSON.stringify({ number: num, mediatype: 'image', media: mediaBase64, filename, caption: mensaje }),
+          body: JSON.stringify({ number: num, mediatype, media: mediaBase64, filename, caption: mensaje }),
         });
         if (resNew.status !== 404 || !urlImagen) return resNew;
       }
