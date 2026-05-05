@@ -166,32 +166,143 @@ CREATE POLICY "resumen_apoderado_read" ON resumen_mensual FOR SELECT
   );
 
 -- 6. AGENDA ESCOLAR (EVENTOS)
--- Lectura: staff y apoderados del mismo colegio
--- Escritura: solo staff (admin/director/profesor/portero) del mismo colegio
+-- Lectura: admin/director/coordinador, tutores (solo su tutoría) y apoderados (solo del aula del alumno)
+-- Escritura: admin/director/coordinador (cualquier aula) y tutor (solo su tutoría)
 CREATE TABLE IF NOT EXISTS agenda (
   id TEXT PRIMARY KEY,
   colegio_id TEXT NOT NULL REFERENCES colegios(id) ON DELETE CASCADE,
+  grado TEXT NOT NULL DEFAULT '',
+  seccion TEXT NOT NULL DEFAULT '',
   fecha TEXT NOT NULL,          -- YYYY-MM-DD
   mes TEXT NOT NULL,            -- YYYY-MM
   hora TEXT DEFAULT '',         -- HH:MM (opcional)
   titulo TEXT NOT NULL,
   detalle TEXT DEFAULT '',
+  created_by UUID,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS agenda_colegio_mes_idx ON agenda (colegio_id, mes);
 CREATE INDEX IF NOT EXISTS agenda_colegio_fecha_idx ON agenda (colegio_id, fecha);
+CREATE INDEX IF NOT EXISTS agenda_colegio_mes_grado_seccion_fecha_idx ON agenda (colegio_id, mes, grado, seccion, fecha);
 
 ALTER TABLE agenda ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "agenda_read" ON agenda;
 DROP POLICY IF EXISTS "agenda_write" ON agenda;
 
-CREATE POLICY "agenda_read" ON agenda FOR SELECT
-  USING (colegio_id = auth_colegio_id() AND (is_staff() OR is_apoderado()));
+CREATE OR REPLACE FUNCTION is_admin_or_director_or_coord()
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT auth_rol() IN ('admin','director','coordinador')
+$$;
 
-CREATE POLICY "agenda_write" ON agenda FOR ALL
-  USING (colegio_id = auth_colegio_id() AND is_staff());
+CREATE OR REPLACE FUNCTION is_tutor()
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.usuarios u
+    WHERE u.colegio_id = auth_colegio_id()
+      AND u.id = auth.uid()
+      AND COALESCE(u.es_tutor, FALSE) = TRUE
+  )
+$$;
+
+CREATE OR REPLACE FUNCTION tutor_grado()
+RETURNS TEXT LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT COALESCE((
+    SELECT u.tutor_grado
+    FROM public.usuarios u
+    WHERE u.colegio_id = auth_colegio_id()
+      AND u.id = auth.uid()
+    LIMIT 1
+  ), '')
+$$;
+
+CREATE OR REPLACE FUNCTION tutor_seccion()
+RETURNS TEXT LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT COALESCE((
+    SELECT u.tutor_seccion
+    FROM public.usuarios u
+    WHERE u.colegio_id = auth_colegio_id()
+      AND u.id = auth.uid()
+    LIMIT 1
+  ), '')
+$$;
+
+CREATE POLICY "agenda_read_admin" ON agenda FOR SELECT
+  USING (colegio_id = auth_colegio_id() AND is_admin_or_director_or_coord());
+
+CREATE POLICY "agenda_read_tutor" ON agenda FOR SELECT
+  USING (
+    colegio_id = auth_colegio_id()
+    AND auth_rol() = 'profesor'
+    AND is_tutor()
+    AND grado = tutor_grado()
+    AND seccion = tutor_seccion()
+  );
+
+CREATE POLICY "agenda_read_apoderado" ON agenda FOR SELECT
+  USING (
+    colegio_id = auth_colegio_id()
+    AND is_apoderado()
+    AND EXISTS (
+      SELECT 1
+      FROM public.alumnos a
+      WHERE a.colegio_id = agenda.colegio_id
+        AND a.id = auth_alumno_id()
+        AND a.grado = agenda.grado
+        AND a.seccion = agenda.seccion
+      LIMIT 1
+    )
+  );
+
+CREATE POLICY "agenda_insert_admin" ON agenda FOR INSERT
+  WITH CHECK (colegio_id = auth_colegio_id() AND is_admin_or_director_or_coord());
+
+CREATE POLICY "agenda_insert_tutor" ON agenda FOR INSERT
+  WITH CHECK (
+    colegio_id = auth_colegio_id()
+    AND auth_rol() = 'profesor'
+    AND is_tutor()
+    AND grado = tutor_grado()
+    AND seccion = tutor_seccion()
+    AND created_by = auth.uid()
+  );
+
+CREATE POLICY "agenda_update_admin" ON agenda FOR UPDATE
+  USING (colegio_id = auth_colegio_id() AND is_admin_or_director_or_coord())
+  WITH CHECK (colegio_id = auth_colegio_id() AND is_admin_or_director_or_coord());
+
+CREATE POLICY "agenda_update_tutor" ON agenda FOR UPDATE
+  USING (
+    colegio_id = auth_colegio_id()
+    AND auth_rol() = 'profesor'
+    AND is_tutor()
+    AND created_by = auth.uid()
+    AND grado = tutor_grado()
+    AND seccion = tutor_seccion()
+  )
+  WITH CHECK (
+    colegio_id = auth_colegio_id()
+    AND auth_rol() = 'profesor'
+    AND is_tutor()
+    AND created_by = auth.uid()
+    AND grado = tutor_grado()
+    AND seccion = tutor_seccion()
+  );
+
+CREATE POLICY "agenda_delete_admin" ON agenda FOR DELETE
+  USING (colegio_id = auth_colegio_id() AND is_admin_or_director_or_coord());
+
+CREATE POLICY "agenda_delete_tutor" ON agenda FOR DELETE
+  USING (
+    colegio_id = auth_colegio_id()
+    AND auth_rol() = 'profesor'
+    AND is_tutor()
+    AND created_by = auth.uid()
+    AND grado = tutor_grado()
+    AND seccion = tutor_seccion()
+  );
 
 -- 7. AUDITORÍA IA (PROMPTS AUTOMÁTICOS)
 -- Inserción: solo service role (desde Edge Functions)
