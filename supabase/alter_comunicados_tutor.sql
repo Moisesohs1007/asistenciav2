@@ -52,6 +52,76 @@ RETURNS TEXT LANGUAGE sql STABLE SECURITY DEFINER AS $$
   ), '')
 $$;
 
+-- Asignaciones (usuarios.asignaciones): { "3": ["A","B"], "4": [] } (array vacío => todo el grado)
+CREATE OR REPLACE FUNCTION profesor_asignaciones()
+RETURNS JSONB LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT COALESCE((
+    SELECT u.asignaciones
+    FROM public.usuarios u
+    WHERE u.colegio_id = auth_colegio_id()
+      AND u.id = auth.uid()
+    LIMIT 1
+  ), '{}'::jsonb)
+$$;
+
+CREATE OR REPLACE FUNCTION profesor_restringir()
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT COALESCE((
+    SELECT u.restringir
+    FROM public.usuarios u
+    WHERE u.colegio_id = auth_colegio_id()
+      AND u.id = auth.uid()
+    LIMIT 1
+  ), FALSE)
+$$;
+
+CREATE OR REPLACE FUNCTION profesor_ver_todas_aulas()
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT COALESCE((
+    SELECT (u.permisos_extra->>'verTodasAulas')::boolean
+    FROM public.usuarios u
+    WHERE u.colegio_id = auth_colegio_id()
+      AND u.id = auth.uid()
+    LIMIT 1
+  ), FALSE)
+$$;
+
+CREATE OR REPLACE FUNCTION profesor_puede_aula(p_grado TEXT, p_seccion TEXT)
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  WITH u AS (
+    SELECT
+      COALESCE(u.restringir, FALSE) AS restringir,
+      COALESCE(u.asignaciones, '{}'::jsonb) AS asig,
+      COALESCE(u.permisos_extra, '{}'::jsonb) AS px,
+      COALESCE(u.es_tutor, FALSE) AS es_tutor,
+      COALESCE(u.tutor_grado, '') AS tg,
+      UPPER(COALESCE(u.tutor_seccion, '')) AS ts
+    FROM public.usuarios u
+    WHERE u.colegio_id = auth_colegio_id()
+      AND u.id = auth.uid()
+    LIMIT 1
+  )
+  SELECT
+    CASE
+      WHEN COALESCE((u.px->>'verTodasAulas')::boolean, FALSE) THEN TRUE
+      WHEN NOT u.restringir THEN TRUE
+      WHEN u.es_tutor AND u.tg = COALESCE(p_grado,'') AND u.ts = UPPER(COALESCE(p_seccion,'')) THEN TRUE
+      WHEN (u.asig ? COALESCE(p_grado,'')) THEN
+        CASE
+          WHEN jsonb_typeof(u.asig->COALESCE(p_grado,'')) <> 'array' THEN TRUE
+          WHEN jsonb_array_length(u.asig->COALESCE(p_grado,'')) = 0 THEN TRUE
+          ELSE EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements_text(u.asig->COALESCE(p_grado,'')) AS x(seccion)
+            WHERE UPPER(x.seccion) = UPPER(COALESCE(p_seccion,''))
+            LIMIT 1
+          )
+        END
+      ELSE FALSE
+    END
+  FROM u
+$$;
+
 ALTER TABLE public.comunicados ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "comunicados_read_admin" ON public.comunicados;
@@ -78,14 +148,12 @@ CREATE POLICY "comunicados_read_tutor" ON public.comunicados FOR SELECT
   USING (
     colegio_id = auth_colegio_id()
     AND auth_rol() = 'profesor'
-    AND is_tutor()
     AND EXISTS (
       SELECT 1
       FROM public.alumnos a
       WHERE a.colegio_id = comunicados.colegio_id
         AND a.id = comunicados.alumno_id
-        AND a.grado = tutor_grado()
-        AND a.seccion = tutor_seccion()
+        AND profesor_puede_aula(a.grado, a.seccion)
       LIMIT 1
     )
   );
@@ -97,15 +165,13 @@ CREATE POLICY "comunicados_insert_tutor" ON public.comunicados FOR INSERT
   WITH CHECK (
     colegio_id = auth_colegio_id()
     AND auth_rol() = 'profesor'
-    AND is_tutor()
     AND created_by = auth.uid()
     AND EXISTS (
       SELECT 1
       FROM public.alumnos a
       WHERE a.colegio_id = comunicados.colegio_id
         AND a.id = comunicados.alumno_id
-        AND a.grado = tutor_grado()
-        AND a.seccion = tutor_seccion()
+        AND profesor_puede_aula(a.grado, a.seccion)
       LIMIT 1
     )
   );
@@ -118,30 +184,26 @@ CREATE POLICY "comunicados_update_tutor" ON public.comunicados FOR UPDATE
   USING (
     colegio_id = auth_colegio_id()
     AND auth_rol() = 'profesor'
-    AND is_tutor()
     AND created_by = auth.uid()
     AND EXISTS (
       SELECT 1
       FROM public.alumnos a
       WHERE a.colegio_id = comunicados.colegio_id
         AND a.id = comunicados.alumno_id
-        AND a.grado = tutor_grado()
-        AND a.seccion = tutor_seccion()
+        AND profesor_puede_aula(a.grado, a.seccion)
       LIMIT 1
     )
   )
   WITH CHECK (
     colegio_id = auth_colegio_id()
     AND auth_rol() = 'profesor'
-    AND is_tutor()
     AND created_by = auth.uid()
     AND EXISTS (
       SELECT 1
       FROM public.alumnos a
       WHERE a.colegio_id = comunicados.colegio_id
         AND a.id = comunicados.alumno_id
-        AND a.grado = tutor_grado()
-        AND a.seccion = tutor_seccion()
+        AND profesor_puede_aula(a.grado, a.seccion)
       LIMIT 1
     )
   );
@@ -153,15 +215,13 @@ CREATE POLICY "comunicados_delete_tutor" ON public.comunicados FOR DELETE
   USING (
     colegio_id = auth_colegio_id()
     AND auth_rol() = 'profesor'
-    AND is_tutor()
     AND created_by = auth.uid()
     AND EXISTS (
       SELECT 1
       FROM public.alumnos a
       WHERE a.colegio_id = comunicados.colegio_id
         AND a.id = comunicados.alumno_id
-        AND a.grado = tutor_grado()
-        AND a.seccion = tutor_seccion()
+        AND profesor_puede_aula(a.grado, a.seccion)
       LIMIT 1
     )
   );

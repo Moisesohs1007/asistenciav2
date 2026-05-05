@@ -10946,21 +10946,34 @@ async function _publicarComunicadosPortal(rows, titulo, tpl) {
   try {
     const t = String(titulo || '').trim();
     const titleFinal = t ? t : 'Comunicado';
+    let ok = 0, failed = 0;
+    let lastErr = '';
     for (const a of (rows || [])) {
+      const g = String(a?.grado || '').trim();
+      const s = String(a?.seccion || '').trim().toUpperCase();
       const detalle = _comMsg(tpl, a);
-      await db.collection('comunicados').add({
-        alumnoId: a.id,
-        grado: a.grado || '',
-        seccion: a.seccion || '',
-        turno: a.turno || '',
-        titulo: titleFinal,
-        detalle: detalle || '',
-        createdBy: (currentUser && currentUser.uid) ? currentUser.uid : null,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      });
+      try {
+        await db.collection('comunicados').add({
+          alumnoId: a.id,
+          grado: g,
+          seccion: s,
+          turno: a.turno || '',
+          titulo: titleFinal,
+          detalle: detalle || '',
+          createdBy: (currentUser && currentUser.uid) ? currentUser.uid : null,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        ok++;
+      } catch (e1) {
+        failed++;
+        lastErr = e1?.message || String(e1);
+      }
     }
+
+    if (failed) toast(`Aviso: publicados ${ok}, sin permiso ${failed} (${lastErr})`, 'warning');
+    else toast(`✅ Publicado en Portal Apoderado: ${ok}`, 'success');
   } catch(e) {
-    toast('Aviso: no se pudo publicar en Portal Apoderado (' + e.message + ')', 'warning');
+    toast('Aviso: no se pudo publicar en Portal Apoderado (' + (e?.message || String(e)) + ')', 'warning');
   }
 }
 
