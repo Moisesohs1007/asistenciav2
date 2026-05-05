@@ -5651,6 +5651,28 @@ window.doLogin = function() {
     });
 };
 
+async function _getApoderadoPrimerIngresoState(dni) {
+  const out = { known: false, exists: false, primerIngreso: true, emailReal: '' };
+  try {
+    const snap = await db.collection('apoderados').doc(String(dni)).get();
+    out.known = true;
+    out.exists = !!(snap && snap.exists);
+    const data = out.exists ? (snap.data() || {}) : {};
+    out.primerIngreso = !out.exists || data.primerIngreso !== false;
+    out.emailReal = String(data.emailReal || '').trim().toLowerCase();
+  } catch(_) {}
+  return out;
+}
+async function _saveApoderadoEmailReal(dni, emailReal) {
+  const email = String(emailReal || '').trim().toLowerCase();
+  if(!email) return;
+  try {
+    await db.collection('apoderados').doc(String(dni)).set({
+      alumnoId: String(dni),
+      emailReal: email,
+    }, { merge: true });
+  } catch(_) {}
+}
 window.doLoginApoderado = async function() {
   const dni   = document.getElementById('login-dni-apoderado').value.trim();
   const pass  = String(document.getElementById('login-pass-apoderado').value || '').trim();
@@ -5663,9 +5685,19 @@ window.doLoginApoderado = async function() {
   try {
     const emailVirtual = `${dni}${_apoDomainAt()}`;
     let emailReal = '';
-    if(pass === dni) {
+    const primerIngresoState = (pass === dni)
+      ? await _getApoderadoPrimerIngresoState(dni)
+      : { known: false, exists: false, primerIngreso: false, emailReal: '' };
+    const debePreguntarCorreo = pass === dni && primerIngresoState.primerIngreso !== false;
+    if(debePreguntarCorreo) {
       try {
-        emailReal = await _crearCuentaApoderadoInteractivo({ dni, pass, tmpAuth: null, tmpApp: null });
+        emailReal = await _crearCuentaApoderadoInteractivo({
+          dni,
+          pass,
+          tmpAuth: null,
+          tmpApp: null,
+          emailReal: primerIngresoState.emailReal || '',
+        });
       } catch(_) {
         return;
       }
@@ -5677,6 +5709,7 @@ window.doLoginApoderado = async function() {
     // Intentar login normal primero
     try {
       await auth.signInWithEmailAndPassword(emailVirtual, pass);
+      if(debePreguntarCorreo && emailReal) await _saveApoderadoEmailReal(dni, emailReal);
       _loginIntentos = 0;
       // onAuthStateChanged redirige a apoderado.html
       return;
@@ -5685,7 +5718,7 @@ window.doLoginApoderado = async function() {
       // como para usuario inexistente. Si la contraseña es el DNI intentamos crear la cuenta.
       const puedeSerNuevo = loginErr.code === 'auth/user-not-found' ||
                             loginErr.code === 'auth/invalid-credential';
-      if(puedeSerNuevo && pass === dni) {
+      if(puedeSerNuevo && debePreguntarCorreo) {
         // Si no existe usuario y la contraseña es el DNI, es primer acceso: preguntar si tiene correo real.
         // Si ya existe lanzará auth/email-already-in-use (significa que la contraseña es incorrecta).
         try {
@@ -5726,16 +5759,20 @@ window.doLoginApoderado = async function() {
 };
 
 let _apoCreateState = null;
-function _openModalCrearApo() {
+function _openModalCrearApo(prefillEmail = '') {
   const m = document.getElementById('modal-crear-apo');
   if(!m) return;
   const chk = document.getElementById('apo-tiene-correo');
   const inp = document.getElementById('apo-correo-real');
   const err = document.getElementById('apo-crear-error');
+  const email = String(prefillEmail || '').trim().toLowerCase();
   if(err) err.style.display = 'none';
-  if(inp) inp.value = '';
-  if(chk) chk.checked = false;
-  if(inp) { inp.disabled = true; inp.style.opacity = '0.6'; }
+  if(inp) inp.value = email;
+  if(chk) chk.checked = !!email;
+  if(inp) {
+    inp.disabled = !email;
+    inp.style.opacity = email ? '1' : '0.6';
+  }
   m.style.display = 'flex';
   _modalLockOn();
 }
@@ -5753,9 +5790,10 @@ function onToggleApoCorreo() {
   inp.style.opacity = chk.checked ? '1' : '0.6';
   if(chk.checked) setTimeout(() => inp.focus(), 50);
 }
-async function _crearCuentaApoderadoInteractivo({ dni, pass, tmpAuth, tmpApp }) {
-  _apoCreateState = { dni, pass, tmpAuth, tmpApp };
-  _openModalCrearApo();
+async function _crearCuentaApoderadoInteractivo({ dni, pass, tmpAuth, tmpApp, emailReal = '' }) {
+  const prefillEmail = String(emailReal || '').trim().toLowerCase();
+  _apoCreateState = { dni, pass, tmpAuth, tmpApp, emailReal: prefillEmail };
+  _openModalCrearApo(prefillEmail);
   return new Promise((resolve, reject) => {
     _apoCreateState.resolve = resolve;
     _apoCreateState.reject = reject;
