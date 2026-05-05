@@ -5645,14 +5645,13 @@ window.doLoginApoderado = async function() {
       const puedeSerNuevo = loginErr.code === 'auth/user-not-found' ||
                             loginErr.code === 'auth/invalid-credential';
       if(puedeSerNuevo && pass === dni) {
-        // Intentar crear la cuenta — si ya existe lanzará auth/email-already-in-use
-        // (significa que la contraseña es incorrecta)
+        // Intentar crear la cuenta sin interacción (correo real se captura luego en el portal).
+        // Si ya existe lanzará auth/email-already-in-use (significa que la contraseña es incorrecta).
         let cuentaCreada = false;
         try {
           const tmpApp  = firebase.initializeApp(firebaseConfig, 'new_apo_' + Date.now());
           const tmpAuth = tmpApp.auth();
-          const emailReal = await _crearCuentaApoderadoInteractivo({ dni, pass: dni, tmpAuth, tmpApp });
-          await tmpAuth.createUserWithEmailAndPassword(emailVirtual, dni, { dni, emailReal });
+          await tmpAuth.createUserWithEmailAndPassword(emailVirtual, dni, { dni, emailReal: '' });
           await tmpAuth.signOut();
           await tmpApp.delete();
           cuentaCreada = true;
