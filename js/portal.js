@@ -348,10 +348,10 @@ function cargarRegistros(mes) {
           if(!g.estado || g.estado === '') g.estado = 'Puntual';
           return;
         }
-        g.estado = 'Ausente';
+        g.estado = 'Falta';
       });
 
-      // Inyectar dias habiles sin registro como Ausente
+      // Inyectar dias habiles sin registro como Falta
       // Genera lunes-viernes del mes hasta hoy — cero lecturas Firestore extra.
       var hoyStr = (function() {
         var d = new Date();
@@ -370,7 +370,7 @@ function cargarRegistros(mes) {
             + String(cursor.getDate()).padStart(2,'0');
           var key2 = alumno.id + '_' + fechaStr;
           if(!grupos[key2]) {
-            grupos[key2] = { fecha: fechaStr, estado: 'Ausente', horaIngreso: null, horaSalida: null };
+            grupos[key2] = { fecha: fechaStr, estado: 'Falta', horaIngreso: null, horaSalida: null };
           }
         }
         cursor.setDate(cursor.getDate() + 1);
@@ -383,7 +383,7 @@ function cargarRegistros(mes) {
       // Guardar en cache siempre — el mes actual expira en 3 min, los anteriores no expiran
       _registrosPorMes[mesNum]     = registros;
       _registrosPorMesTime[mesNum] = Date.now();
-      console.log('[APO] Procesados:', registros.length, 'dias (incl. ausentes habiles)');
+      console.log('[APO] Procesados:', registros.length, 'dias (incl. faltas hábiles)');
     }).catch(function(e) {
       console.error('cargarRegistros error:', e);
       console.log('[APO] ERROR cargarRegistros: ', e.message);
@@ -447,7 +447,7 @@ function cargarRegistrosRecientes() {
       Object.values(grupos).forEach(function(g) {
         if(g.horaIngreso) { if(!g.estado) g.estado = 'Puntual'; return; }
         if(g.horaSalida)  { if(!g.estado) g.estado = 'Puntual'; return; }
-        g.estado = 'Ausente';
+        g.estado = 'Falta';
       });
       _registrosRecientes     = Object.values(grupos)
         .sort(function(a,b){ return b.fecha.localeCompare(a.fecha); })
@@ -652,13 +652,21 @@ function fStr(f) {
   var p = f.split('-');
   return p[2]+'/'+p[1]+'/'+p[0];
 }
+function normEstado(estado) {
+  var e = String(estado || '').trim();
+  if(!e) return 'Falta';
+  if(e === 'Ausente') return 'Falta';
+  return e;
+}
 function badge(estado) {
-  if(estado==='Puntual')  return '<span class="badge badge-puntual">Puntual</span>';
-  if(estado==='Tardanza') return '<span class="badge badge-tardanza">Tardanza</span>';
-  return '<span class="badge badge-ausente">Ausente</span>';
+  var e = normEstado(estado);
+  if(e==='Puntual')  return '<span class="badge badge-puntual">Puntual</span>';
+  if(e==='Tardanza') return '<span class="badge badge-tardanza">Tardanza</span>';
+  return '<span class="badge badge-ausente">Falta</span>';
 }
 function ico(estado) {
-  return estado==='Puntual' ? '&#9989;' : estado==='Tardanza' ? '&#9888;&#65039;' : '&#10060;';
+  var e = normEstado(estado);
+  return e==='Puntual' ? '&#9989;' : e==='Tardanza' ? '&#9888;&#65039;' : '&#10060;';
 }
 
 function renderResumen() {
@@ -686,7 +694,7 @@ function renderResumen() {
     var list = filtrarMes(registros || [], mesNum);
     document.getElementById('kpi-puntual').textContent  = list.filter(function(r){return r.estado==='Puntual';}).length;
     document.getElementById('kpi-tardanza').textContent = list.filter(function(r){return r.estado==='Tardanza';}).length;
-    document.getElementById('kpi-ausente').textContent  = list.filter(function(r){return r.estado==='Ausente';}).length;
+    document.getElementById('kpi-ausente').textContent  = list.filter(function(r){return normEstado(r.estado)==='Falta';}).length;
   }
 
   // Últimas asistencias: usar _registrosRecientes (carga ligera) o fallback a registros
@@ -713,7 +721,7 @@ function renderHistorial() {
   // Filtro por estado — comparación normalizada
   if(tipo) {
     list = list.filter(function(r) {
-      var est = (r.estado || 'Ausente').trim();
+      var est = normEstado(r.estado);
       return est === tipo;
     });
   }
@@ -727,7 +735,7 @@ function renderHistorial() {
   }
 
   cont.innerHTML = list.map(function(r) {
-    var estado = (r.estado || 'Ausente').trim();
+    var estado = normEstado(r.estado);
     var hi = r.horaIngreso || '-';
     var hs = r.horaSalida  || '-';
     var det = (hi === '-' && hs === '-') ? '⭕ Sin registro' : ('🟢 Ingreso: ' + hi + ' · 🔵 Salida: ' + hs);

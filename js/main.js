@@ -2823,7 +2823,7 @@ async function exportXLSX() {
     regs.forEach(r=>{
       if(!mapa[r.dni]) mapa[r.dni]={};
       const st=(r.estado||'').toLowerCase();
-      let cod='A';
+      let cod='F';
       if(st.includes('tardanza')) cod='T';
       else if(st.includes('tiempo')||st.includes('puntual')||r.ingreso) cod='P';
       mapa[r.dni][r.fecha]=cod;
@@ -2836,14 +2836,14 @@ async function exportXLSX() {
     const nivel=alumnosAula[0]?.turno||'';
     aoa.push([`${nivel} ${grado} Seccion ${seccion} - Registro de Asistencia - ${fechaExport}`,...Array(nCols-1).fill('')]); merges.push({s:{r:1,c:0},e:{r:1,c:nCols-1}}); styleMap[1]='subtitle';
     aoa.push(Array(nCols).fill(''));
-    aoa.push(['DNI','Alumno',...diasHabiles.map(d=>d.label),'P','T','A']); styleMap[aoa.length-1]='header';
+    aoa.push(['DNI','Alumno',...diasHabiles.map(d=>d.label),'P','T','F']); styleMap[aoa.length-1]='header';
 
     alumnosAula.forEach((a,ai)=>{
       const nombre=((a.apellidos||'')+' '+(a.nombres||'')).trim();
       const row=[a.id,nombre];
       let pC=0,tC=0,aC=0;
       diasHabiles.forEach(d=>{
-        const cod=(mapa[a.id]&&mapa[a.id][d.fecha])||'A';
+        const cod=(mapa[a.id]&&mapa[a.id][d.fecha])||'F';
         row.push(cod);
         if(cod==='P') pC++; else if(cod==='T') tC++; else aC++;
       });
@@ -2860,7 +2860,7 @@ async function exportXLSX() {
     totRow.push('','','');
     aoa.push(totRow); styleMap[aoa.length-1]='summary';
     aoa.push(Array(nCols).fill(''));
-    aoa.push(['P = Puntual   T = Tardanza   A = Ausente',...Array(nCols-1).fill('')]); styleMap[aoa.length-1]='legend';
+    aoa.push(['P = Puntual   T = Tardanza   F = Falta',...Array(nCols-1).fill('')]); styleMap[aoa.length-1]='legend';
     merges.push({s:{r:aoa.length-1,c:0},e:{r:aoa.length-1,c:nCols-1}});
 
     const ws=XLSX.utils.aoa_to_sheet(aoa);
@@ -2885,7 +2885,7 @@ async function exportXLSX() {
           const v=ws[addr].v;
           if(v==='P') font={...font,color:{rgb:'16A34A'},bold:true};
           else if(v==='T') font={...font,color:{rgb:'D97706'},bold:true};
-          else if(v==='A') font={...font,color:{rgb:'DC2626'},bold:true};
+          else if(v==='F') font={...font,color:{rgb:'DC2626'},bold:true};
         }
         if((st==='even'||st==='odd')&&ci>=2+diasHabiles.length){
           if(ci===2+diasHabiles.length)   font={...font,color:{rgb:'16A34A'},bold:true};
@@ -3008,7 +3008,7 @@ async function exportPDFRegistro() {
     while(cur<=fin){const dow=cur.getDay();if(dow!==0&&dow!==6)diasHabiles.push({fecha:cur.toISOString().slice(0,10),label:diasSemana[dow].substring(0,3)+' '+String(cur.getDate()).padStart(2,'0')});cur.setDate(cur.getDate()+1);}
 
     const mapa={};
-    regs.forEach(r=>{if(!mapa[r.dni])mapa[r.dni]={};const st=(r.estado||'').toLowerCase();let cod='A';if(st.includes('tardanza'))cod='T';else if(st.includes('tiempo')||st.includes('puntual')||r.ingreso)cod='P';mapa[r.dni][r.fecha]=cod;});
+    regs.forEach(r=>{if(!mapa[r.dni])mapa[r.dni]={};const st=(r.estado||'').toLowerCase();let cod='F';if(st.includes('tardanza'))cod='T';else if(st.includes('tiempo')||st.includes('puntual')||r.ingreso)cod='P';mapa[r.dni][r.fecha]=cod;});
 
     const landscape=diasHabiles.length>12;
     const doc=new jsPDF({orientation:landscape?'landscape':'portrait',unit:'mm',format:'a4'});
@@ -3035,7 +3035,7 @@ async function exportPDFRegistro() {
       doc.text('Alumno',cx+4,curY+HEAD_H/2+2);cx+=COL_NOMBRE;
       diasHabiles.forEach(d=>{doc.text(d.label,cx+COL_DIA/2,curY+HEAD_H/2+2,{align:'center'});cx+=COL_DIA;});
       doc.setTextColor(...WHITE);
-      ['P','T','A'].forEach(l=>{doc.text(l,cx+COL_TOT/2,curY+HEAD_H/2+2,{align:'center'});cx+=COL_TOT;});
+      ['P','T','F'].forEach(l=>{doc.text(l,cx+COL_TOT/2,curY+HEAD_H/2+2,{align:'center'});cx+=COL_TOT;});
       curY+=HEAD_H;
     }
     function chk(){if(curY+ROW_H>PH-12){doc.addPage();pageNum++;drawPH();drawTH();}}
@@ -3054,7 +3054,7 @@ async function exportPDFRegistro() {
       doc.text(nom.length>26?nom.substring(0,24)+'..':nom,cx+2,curY+ROW_H/2+2);cx+=COL_NOMBRE;
       let pC=0,tC=0,aC=0;
       diasHabiles.forEach(d=>{
-        const cod=(mapa[a.id]&&mapa[a.id][d.fecha])||'A';
+        const cod=(mapa[a.id]&&mapa[a.id][d.fecha])||'F';
         if(cod==='P'){doc.setTextColor(...GREEN);pC++;}else if(cod==='T'){doc.setTextColor(...AMBER);tC++;}else{doc.setTextColor(...RED);aC++;}
         doc.setFontSize(6.5);doc.setFont('helvetica','bold');
         doc.text(cod,cx+COL_DIA/2,curY+ROW_H/2+2,{align:'center'});cx+=COL_DIA;
@@ -3083,7 +3083,7 @@ async function exportPDFRegistro() {
     curY+=4;doc.setFontSize(7);doc.setFont('helvetica','italic');
     doc.setTextColor(...GREEN);doc.text('P = Puntual',TABLE_X,curY);
     doc.setTextColor(...AMBER);doc.text('T = Tardanza',TABLE_X+22,curY);
-    doc.setTextColor(...RED);doc.text('A = Ausente',TABLE_X+46,curY);
+    doc.setTextColor(...RED);doc.text('F = Falta',TABLE_X+46,curY);
     doc.setTextColor(...MUTED);doc.text(`Total: ${alumnosAula.length} alumnos / ${diasHabiles.length} dias habiles`,TABLE_X+70,curY);
     doc.save(`asistencia_${grado}${seccion}_${hoy()}.pdf`);
 
@@ -3109,7 +3109,7 @@ async function exportPDFRegistro() {
       curY+=HEAD_H;
     }
     function chk2(){if(curY+ROW_H>PH-10){doc.addPage();pageNum++;drawH();drawTH2();}}
-    function eColor(e){if(!e)return MUTED;const v=e.toLowerCase();if(v.includes('tiempo')||v.includes('puntual'))return GREEN;if(v.includes('tardanza'))return AMBER;if(v.includes('sin registro')||v.includes('ausente'))return RED;return TEXT;}
+    function eColor(e){if(!e)return MUTED;const v=e.toLowerCase();if(v.includes('tiempo')||v.includes('puntual'))return GREEN;if(v.includes('tardanza'))return AMBER;if(v.includes('sin registro')||v.includes('falta')||v.includes('ausente'))return RED;return TEXT;}
 
     drawH();drawTH2();
     regs.forEach((r,i)=>{
@@ -3905,7 +3905,7 @@ async function exportarReportePDF() {
     { label: 'Alumnos',            value: ctx.total,          r:59,  g:130, b:246 },
     { label: 'Puntuales',          value: ctx.puntuales,      r:29,  g:158, b:117 },
     { label: 'Tardanzas',          value: ctx.tardanzas,      r:239, g:159, b:39  },
-    { label: 'Ausencias',          value: ctx.ausencias,      r:226, g:75,  b:74  },
+    { label: 'Faltas',             value: ctx.ausencias,      r:226, g:75,  b:74  },
     { label: ctx.presentesLabel,   value: ctx.presentes,      r:99,  g:102, b:241 },
   ];
   const bW = (contentW - 4 * 3) / 5;
@@ -3927,14 +3927,14 @@ async function exportarReportePDF() {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
-  doc.text('DISTRIBUCIÓN P / T / A', marginL, yPos);
+  doc.text('DISTRIBUCIÓN P / T / F', marginL, yPos);
   yPos += 6;
 
   const totalPTA = (ctx.puntuales + ctx.tardanzas + ctx.ausencias) || 1;
   const dist = [
     { label:'Puntual',  val: ctx.puntuales, r:29,  g:158, b:117 },
     { label:'Tardanza', val: ctx.tardanzas,  r:239, g:159, b:39  },
-    { label:'Ausente',  val: ctx.ausencias,  r:226, g:75,  b:74  },
+    { label:'Falta',    val: ctx.ausencias,  r:226, g:75,  b:74  },
   ];
 
   // Barra apilada horizontal (visual tipo dona simplificada)
@@ -4097,7 +4097,7 @@ async function exportarReportePDF() {
     const leyenda = [
       { label:'Puntual',  r:29,  g:158, b:117 },
       { label:'Tardanza', r:239, g:159, b:39  },
-      { label:'Ausente',  r:226, g:75,  b:74  },
+      { label:'Falta',    r:226, g:75,  b:74  },
     ];
     let xLey = marginL;
     leyenda.forEach(l => {
@@ -4447,7 +4447,7 @@ async function renderReportes(anioCompleto=false) {
     barsHtml += `<div style="display:flex;gap:10px;font-size:10px;color:var(--muted);margin-top:4px;">
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#1D9E75;margin-right:3px;"></span>Puntual</span>
       <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#EF9F27;margin-right:3px;"></span>Tardanza</span>
-      <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#E24B4A;margin-right:3px;"></span>Ausente</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#E24B4A;margin-right:3px;"></span>Falta</span>
     </div>`;
     chartBarras.innerHTML = barsHtml;
     } // end else !_soloResumen
@@ -4485,7 +4485,7 @@ async function renderReportes(anioCompleto=false) {
       <div style="display:flex;flex-direction:column;gap:8px;font-size:11px;">
         <div style="display:flex;align-items:center;gap:6px;"><div style="width:10px;height:10px;border-radius:50%;background:#1D9E75;flex-shrink:0;"></div><span>Puntual</span><span style="color:var(--muted);margin-left:auto;">${pPunt}% (${nPunt})</span></div>
         <div style="display:flex;align-items:center;gap:6px;"><div style="width:10px;height:10px;border-radius:50%;background:#EF9F27;flex-shrink:0;"></div><span>Tardanza</span><span style="color:var(--muted);margin-left:auto;">${pTard}% (${nTard})</span></div>
-        <div style="display:flex;align-items:center;gap:6px;"><div style="width:10px;height:10px;border-radius:50%;background:#E24B4A;flex-shrink:0;"></div><span>Ausente</span><span style="color:var(--muted);margin-left:auto;">${pAus}% (${nAus})</span></div>
+        <div style="display:flex;align-items:center;gap:6px;"><div style="width:10px;height:10px;border-radius:50%;background:#E24B4A;flex-shrink:0;"></div><span>Falta</span><span style="color:var(--muted);margin-left:auto;">${pAus}% (${nAus})</span></div>
       </div>`;
   }
 
@@ -4807,7 +4807,7 @@ async function generarAlertasAsistencia() {
             <table class="table" style="width:100%;">
               <thead>
                 <tr>
-                  <th>DNI</th><th>Alumno</th><th>Grado</th><th>Sección</th><th>Nivel</th><th>Día</th><th>Ausencias</th><th>Tardanza</th><th style="text-align:right;">Acción</th>
+                  <th>DNI</th><th>Alumno</th><th>Grado</th><th>Sección</th><th>Nivel</th><th>Día</th><th>Faltas</th><th>Tardanza</th><th style="text-align:right;">Acción</th>
                 </tr>
               </thead>
               <tbody>
@@ -4839,7 +4839,7 @@ async function generarAlertasAsistencia() {
     html.push(`<div style="font-size:0.82rem;color:var(--muted);">Semana: ${weekStart} a ${weekEnd} · Mes: ${mesSel} · Días hábiles (mes): ${diasHab}</div>`);
     html.push(mkUnifiedTable(rows));
     if(wrap) { wrap.innerHTML = html.join(''); wrap.style.display = ''; }
-    if(status) status.textContent = `✅ Alertas generadas: ${cantT} tardanzas y ${cantA} ausencias.`;
+    if(status) status.textContent = `✅ Alertas generadas: ${cantT} tardanzas y ${cantA} faltas.`;
   } catch(e) {
     if(status) status.textContent = '❌ ' + e.message;
     if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
@@ -4919,7 +4919,7 @@ async function enviarWhatsAppAlertaAsistencia(alumnoId) {
     const tardDias = Array.from(tard).sort();
 
     const periodoTxt = (periodoInicio === periodoFin) ? periodoInicio : (periodoInicio + ' a ' + periodoFin);
-    const msg = `${_waEncabezado()}\n\n📌 *Alerta de asistencia*\nAlumno: ${nombre}${aula ? `\nAula: ${aula}` : ''}\nPeríodo: ${periodoTxt}${mes ? `\nMes: ${mes}` : ''}\n\n❌ Ausencias: ${faltas.length}${faltas.length ? `\nDías: ${_compact(faltas.map(_diaLabel).filter(Boolean))}` : ''}\n⏰ Tardanzas: ${tardDias.length}${tardDias.length ? `\nDías: ${_compact(tardDias.map(_diaLabel).filter(Boolean))}` : ''}\n\n${_waPie()}`.trim();
+    const msg = `${_waEncabezado()}\n\n📌 *Alerta de asistencia*\nAlumno: ${nombre}${aula ? `\nAula: ${aula}` : ''}\nPeríodo: ${periodoTxt}${mes ? `\nMes: ${mes}` : ''}\n\n❌ Faltas: ${faltas.length}${faltas.length ? `\nDías: ${_compact(faltas.map(_diaLabel).filter(Boolean))}` : ''}\n⏰ Tardanzas: ${tardDias.length}${tardDias.length ? `\nDías: ${_compact(tardDias.map(_diaLabel).filter(Boolean))}` : ''}\n\n${_waPie()}`.trim();
 
     const tels = [];
     const tel1 = a ? String(a.telefono||'').trim() : '';
@@ -4962,11 +4962,11 @@ async function enviarWhatsAppAlertaAsistenciaIdx(idx) {
     const periodoTxt = (periodoInicio === periodoFin) ? periodoInicio : (periodoInicio + ' a ' + periodoFin);
     let detalle = '';
     if(row.tipo === 'TARDANZA') {
-      detalle = `⏰ Tardanzas: ${tar}${tar ? `\nDías: ${dias}` : ''}\n❌ Ausencias: 0`;
+      detalle = `⏰ Tardanzas: ${tar}${tar ? `\nDías: ${dias}` : ''}\n❌ Faltas: 0`;
     } else if(row.tipo === 'AUSENCIA') {
-      detalle = `❌ Ausencias: ${aus}${aus ? `\nDías: ${dias}` : ''}\n⏰ Tardanzas: 0`;
+      detalle = `❌ Faltas: ${aus}${aus ? `\nDías: ${dias}` : ''}\n⏰ Tardanzas: 0`;
     } else {
-      detalle = `❌ Ausencias: ${aus}${aus ? `\nDías: ${dias}` : ''}\n⏰ Tardanzas: ${tar}`;
+      detalle = `❌ Faltas: ${aus}${aus ? `\nDías: ${dias}` : ''}\n⏰ Tardanzas: ${tar}`;
     }
 
     const msg = `${_waEncabezado()}\n\n📌 *Alerta de asistencia*\nAlumno: ${nombre}${aula ? `\nAula: ${aula}` : ''}\nPeríodo: ${periodoTxt}${mes ? `\nMes: ${mes}` : ''}\n\n${detalle}\n\n${_waPie()}`.trim();
@@ -5007,7 +5007,7 @@ async function exportarAlertasAsistenciaXLSX() {
     const wb = XLSX.utils.book_new();
 
     const aoa = [
-      ['Tipo','DNI','Alumno','Grado','Sección','Nivel','Días','Ausencias','Tardanza','PeriodoInicio','PeriodoFin','Mes','UmbralTard','UmbralAus'],
+      ['Tipo','DNI','Alumno','Grado','Sección','Nivel','Días','Faltas','Tardanza','PeriodoInicio','PeriodoFin','Mes','UmbralTard','UmbralFaltas'],
       ...(rows||[]).map(r => [
         r.tipo || '',
         r.alumnoId,
