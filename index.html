@@ -5640,18 +5640,26 @@ window.doLogin = function() {
 
 window.doLoginApoderado = async function() {
   const dni   = document.getElementById('login-dni-apoderado').value.trim();
-  const pass  = document.getElementById('login-pass-apoderado').value;
+  const pass  = String(document.getElementById('login-pass-apoderado').value || '').trim();
   const errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
 
   if(!dni || !pass) { errEl.textContent = 'Ingresa el DNI y la contraseña'; errEl.style.display = 'block'; return; }
   if(!/^\d{8}$/.test(dni)) { errEl.textContent = 'El DNI debe tener 8 dígitos'; errEl.style.display = 'block'; return; }
 
-  document.getElementById('btn-login-apoderado').disabled = true;
-  document.getElementById('login-loading').style.display  = 'block';
-
   try {
     const emailVirtual = `${dni}${_apoDomainAt()}`;
+    let emailReal = '';
+    if(pass === dni) {
+      try {
+        emailReal = await _crearCuentaApoderadoInteractivo({ dni, pass, tmpAuth: null, tmpApp: null });
+      } catch(_) {
+        return;
+      }
+    }
+
+    document.getElementById('btn-login-apoderado').disabled = true;
+    document.getElementById('login-loading').style.display  = 'block';
 
     // Intentar login normal primero
     try {
@@ -5670,16 +5678,6 @@ window.doLoginApoderado = async function() {
         try {
           const tmpApp  = firebase.initializeApp(firebaseConfig, 'new_apo_' + Date.now());
           const tmpAuth = tmpApp.auth();
-          let emailReal = '';
-          try {
-            emailReal = await _crearCuentaApoderadoInteractivo({ dni, pass, tmpAuth, tmpApp });
-          } catch(eCancel) {
-            await tmpAuth.signOut().catch(()=>{});
-            await tmpApp.delete().catch(()=>{});
-            document.getElementById('login-loading').style.display  = 'none';
-            document.getElementById('btn-login-apoderado').disabled = false;
-            return;
-          }
           await tmpAuth.createUserWithEmailAndPassword(emailVirtual, dni, { dni, emailReal });
           await tmpAuth.signOut();
           await tmpApp.delete();
