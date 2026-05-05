@@ -41,7 +41,14 @@ const DB = {
     const grados = Object.keys(asignaciones || {});
     if (!grados.length) return this.getAlumnos();
 
-    const cacheKey = 'scoped:' + grados.sort().join(',');
+    const uid = (window.currentUser && window.currentUser.uid) ? window.currentUser.uid : 'anon';
+    const normAsig = {};
+    grados.sort().forEach(g => {
+      const arr = Array.isArray(asignaciones[g]) ? asignaciones[g] : [];
+      const normArr = arr.map(x => String(x || '').trim().toUpperCase()).filter(Boolean).sort();
+      normAsig[String(g)] = normArr;
+    });
+    const cacheKey = 'scoped:' + COLEGIO_ID + ':' + uid + ':' + JSON.stringify(normAsig);
     if (this._alumnosScopedCache[cacheKey]) return this._alumnosScopedCache[cacheKey];
     const lsData = LSC.get(cacheKey);
     if (lsData) { this._alumnosScopedCache[cacheKey] = lsData; return lsData; }
@@ -75,7 +82,7 @@ const DB = {
     LSC.del('alumnos');
     try {
       Object.keys(localStorage)
-        .filter(k => k.startsWith('asmqr_scoped:'))
+        .filter(k => k.startsWith('scoped:') || k.startsWith('asmqr_scoped:'))
         .forEach(k => localStorage.removeItem(k));
     } catch (e) {}
   },

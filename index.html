@@ -10607,10 +10607,11 @@ let _comSendName = '';
 let _comSendType = 'image';
 
 async function initComunicado() {
-  if(!_comAlumnos) {
-    const r = _normRol(currentRol);
-    if(r === 'profesor' || r === 'psicologo') _comAlumnos = await getAlumnosFiltrados();
-    else _comAlumnos = await DB.getAlumnos();
+  const r = _normRol(currentRol);
+  if(r === 'profesor' || r === 'psicologo') {
+    _comAlumnos = await getAlumnosFiltrados();
+  } else if(!_comAlumnos) {
+    _comAlumnos = await DB.getAlumnos();
   }
   if(!_comInit) {
     const cfg = await getConfig();
