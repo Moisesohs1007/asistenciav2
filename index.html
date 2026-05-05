@@ -15170,6 +15170,13 @@ async function renderReportes(anioCompleto=false) {
         return out;
       })();
 
+  const diasMes = diaSel
+    ? [diaSel]
+    : (rangoActivo
+        ? diasHabiles
+        : diasHabiles.filter(d => (mesStr === today.slice(0,7)) ? (d <= today) : true)
+      );
+
   // ── Reconciliación automática en background ──────────────────────────────────
   // Compara resumen_mensual con registros reales y corrige diferencias sin bloquear la UI
   // Usa datos ya cargados → 0 lecturas extra de Firestore
