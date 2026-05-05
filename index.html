@@ -15748,7 +15748,7 @@ function _repMatrizHTML({ alumnos, mapDiaAlu, rangoActivo, desde, hasta, mes }) 
     <table style="border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;font-size:10px;">
       <thead>
         <tr>
-          <th style="position:sticky;left:0;top:0;z-index:5;background:rgba(24,95,165,0.18);padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.12);border-right:1px solid rgba(255,255,255,0.08);text-align:left;min-width:220px;max-width:260px;">
+          <th style="position:sticky;left:0;top:0;z-index:30;background:rgba(24,95,165,0.40);padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.18);border-right:1px solid rgba(255,255,255,0.10);text-align:left;min-width:240px;max-width:280px;box-shadow:2px 0 0 rgba(0,0,0,0.22),0 2px 0 rgba(0,0,0,0.18);">
             Apellidos y Nombres
           </th>
           ${diasAll.map((iso, ci) => {
@@ -15757,9 +15757,9 @@ function _repMatrizHTML({ alumnos, mapDiaAlu, rangoActivo, desde, hasta, mes }) 
             const isW = (dow===0 || dow===6);
             const dd = iso.slice(8,10);
             const dowTxt = d ? _repDowShort(d) : '';
-            const bg = isW ? 'rgba(148,163,184,0.12)' : (ci % 2 === 0 ? 'rgba(148,163,184,0.06)' : 'rgba(148,163,184,0.10)');
+            const bg = isW ? 'rgba(148,163,184,0.20)' : (ci % 2 === 0 ? 'rgba(148,163,184,0.12)' : 'rgba(148,163,184,0.18)');
             const tc = isW ? 'rgba(148,163,184,0.75)' : 'var(--muted)';
-            return `<th style="position:sticky;top:0;z-index:4;background:${bg};color:${tc};padding:4px 4px;border-bottom:1px solid rgba(255,255,255,0.10);border-right:1px solid rgba(255,255,255,0.04);text-align:center;min-width:22px;">
+            return `<th style="position:sticky;top:0;z-index:20;background:${bg};color:${tc};padding:4px 4px;border-bottom:1px solid rgba(255,255,255,0.12);border-right:1px solid rgba(255,255,255,0.06);text-align:center;min-width:22px;">
               <div style="font-size:9px;line-height:1.05;">${dowTxt}</div>
               <div style="font-size:9px;font-weight:700;line-height:1.05;">${dd}</div>
             </th>`;
@@ -15770,18 +15770,18 @@ function _repMatrizHTML({ alumnos, mapDiaAlu, rangoActivo, desde, hasta, mes }) 
   `;
   const rows = alumnosSorted.map((a, ri) => {
     const nombre = ((a.apellidos||'') + ' ' + (a.nombres||'')).trim() || a.id || '—';
-    const nameBg = (ri % 2 === 0) ? 'rgba(24,95,165,0.16)' : 'rgba(24,95,165,0.22)';
-    const first = `<td style="position:sticky;left:0;z-index:3;background:${nameBg};padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.08);border-right:1px solid rgba(255,255,255,0.08);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;font-weight:700;">
-      ${_escHtml(nombre)}
+    const nameBg = (ri % 2 === 0) ? 'rgba(24,95,165,0.34)' : 'rgba(24,95,165,0.44)';
+    const first = `<td style="position:sticky;left:0;z-index:25;background:${nameBg};padding:6px 10px;border-bottom:1px solid rgba(255,255,255,0.10);border-right:1px solid rgba(255,255,255,0.10);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px;font-weight:800;box-shadow:2px 0 0 rgba(0,0,0,0.18);">
+      <span title="${_escHtml(nombre)}">${_escHtml(nombre)}</span>
     </td>`;
     const cells = diasAll.map((iso, ci) => {
       const d = _repIsoToDate(iso);
       const dow = d ? d.getDay() : 0;
       const isW = (dow===0 || dow===6);
-      const baseA = (ri % 2 === 0) ? 0.05 : 0.08;
-      const colA = (ci % 2 === 0) ? 0.00 : 0.05;
-      const cellBg = isW ? 'rgba(148,163,184,0.09)' : `rgba(148,163,184,${(baseA + colA).toFixed(2)})`;
-      const borderR = '1px solid rgba(255,255,255,0.04)';
+      const baseA = (ri % 2 === 0) ? 0.10 : 0.14;
+      const colA = (ci % 2 === 0) ? 0.00 : 0.06;
+      const cellBg = isW ? 'rgba(148,163,184,0.22)' : `rgba(148,163,184,${(baseA + colA).toFixed(2)})`;
+      const borderR = '1px solid rgba(255,255,255,0.06)';
       if(isW) return `<td style="padding:0;border-bottom:1px solid rgba(255,255,255,0.06);border-right:${borderR};background:${cellBg};"></td>`;
       const st = mapDiaAlu.get(iso + '|' + a.id);
       const code = (st === 'Tardanza') ? 'T' : (st === 'Puntual' ? 'P' : 'F');
