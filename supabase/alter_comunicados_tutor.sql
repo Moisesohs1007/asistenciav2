@@ -8,11 +8,33 @@ CREATE TABLE IF NOT EXISTS public.comunicados (
   turno TEXT NOT NULL DEFAULT '',
   titulo TEXT NOT NULL DEFAULT '',
   detalle TEXT NOT NULL DEFAULT '',
-  created_by UUID
+  created_by UUID,
+  adjunto_tipo TEXT,
+  adjunto_nombre TEXT,
+  adjunto_mime TEXT,
+  adjunto_bytes INT,
+  adjunto_paginas INT,
+  preview_mime TEXT,
+  preview_bytes INT,
+  preview_w INT,
+  preview_h INT,
+  preview_base64 TEXT
 );
 
 CREATE INDEX IF NOT EXISTS comunicados_scope_idx
 ON public.comunicados (colegio_id, alumno_id, created_at DESC);
+
+ALTER TABLE public.comunicados
+  ADD COLUMN IF NOT EXISTS adjunto_tipo TEXT,
+  ADD COLUMN IF NOT EXISTS adjunto_nombre TEXT,
+  ADD COLUMN IF NOT EXISTS adjunto_mime TEXT,
+  ADD COLUMN IF NOT EXISTS adjunto_bytes INT,
+  ADD COLUMN IF NOT EXISTS adjunto_paginas INT,
+  ADD COLUMN IF NOT EXISTS preview_mime TEXT,
+  ADD COLUMN IF NOT EXISTS preview_bytes INT,
+  ADD COLUMN IF NOT EXISTS preview_w INT,
+  ADD COLUMN IF NOT EXISTS preview_h INT,
+  ADD COLUMN IF NOT EXISTS preview_base64 TEXT;
 
 CREATE OR REPLACE FUNCTION is_admin_or_director_or_coord()
 RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$

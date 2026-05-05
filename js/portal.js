@@ -575,6 +575,7 @@ function showTab(tab) {
 let _comunicadosCache = null;
 let _comunicadosCacheTime = 0;
 const _COMUNICADOS_TTL = 2 * 60 * 1000;
+let _apoAgendaLastList = [];
 
 function _comunicadosCacheValido() {
   return !!_comunicadosCache && (Date.now() - _comunicadosCacheTime) < _COMUNICADOS_TTL;
@@ -624,24 +625,78 @@ function renderApoComunicados() {
       cont.innerHTML = '<div class="card" style="padding:22px 16px;text-align:center;color:var(--muted);font-size:0.83rem;">Sin comunicados</div>';
       return;
     }
-    cont.innerHTML = list.slice(0, 80).map(function(it) {
+    cont.innerHTML = list.slice(0, 120).map(function(it) {
       const titulo = _h(it.titulo || 'Comunicado');
-      const detalle = _h(it.detalle || '');
       const fecha = _safeDateTimeLabel(it.createdAt || it.created_at);
-      const detHtml = detalle ? ('<div style="margin-top:6px;color:var(--muted);font-size:0.82rem;line-height:1.35;white-space:pre-wrap;">' + detalle + '</div>') : '';
+      const hasPrev = !!(it.previewBase64 || it.preview_base64);
+      const badgePrev = hasPrev ? '<span style="margin-left:8px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.28);color:#34d399;border-radius:999px;padding:2px 8px;font-size:0.7rem;font-weight:800;">Adjunto</span>' : '';
       return '<div class="card" style="padding:14px 14px;margin-bottom:10px;border-radius:14px;">'
         + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">'
         +   '<div style="min-width:0;">'
-        +     '<div style="font-weight:900;font-size:0.94rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + titulo + '</div>'
+        +     '<div style="font-weight:900;font-size:0.94rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + titulo + badgePrev + '</div>'
         +     (fecha ? '<div style="margin-top:2px;color:var(--muted);font-size:0.74rem;">' + _h(fecha) + '</div>' : '')
-        +     detHtml
         +   '</div>'
+        +   '<button class="btn-login-apo" onclick="_apoOpenDetalle(\'comunicado\',\'' + _h(String(it.id||'')) + '\')" style="max-width:none;width:auto;padding:8px 12px;border-radius:10px;font-size:0.8rem;">Detalle</button>'
         + '</div>'
         + '</div>';
     }).join('');
   }).catch(function(e) {
     cont.innerHTML = '<div class="card" style="padding:22px 16px;text-align:center;color:#f87171;font-size:0.83rem;">Error al cargar comunicados: ' + _h(e.message) + '</div>';
   });
+}
+
+function _apoOpenDetalle(kind, id) {
+  const m = document.getElementById('modal-apo-detalle');
+  if(!m) return;
+  const titleEl = document.getElementById('apo-detalle-title');
+  const metaEl  = document.getElementById('apo-detalle-meta');
+  const textEl  = document.getElementById('apo-detalle-text');
+  const imgWrap = document.getElementById('apo-detalle-img-wrap');
+  const imgEl   = document.getElementById('apo-detalle-img');
+  const setImg = (b64) => {
+    const s = String(b64 || '');
+    if(imgEl) imgEl.src = s ? ('data:image/jpeg;base64,' + s) : '';
+    if(imgWrap) imgWrap.style.display = s ? '' : 'none';
+  };
+  const set = (t, meta, text, b64) => {
+    if(titleEl) titleEl.textContent = t || '';
+    if(metaEl) metaEl.textContent = meta || '';
+    if(textEl) textEl.textContent = text || '';
+    setImg(b64);
+    m.style.display = 'flex';
+  };
+
+  if(kind === 'comunicado') {
+    const list = _comunicadosCache || [];
+    const it = list.find(x => String(x.id || '') === String(id || ''));
+    if(!it) { set('Comunicado', '', 'No se encontró el comunicado.', ''); return; }
+    const titulo = String(it.titulo || 'Comunicado');
+    const fecha = _safeDateTimeLabel(it.createdAt || it.created_at);
+    const meta = fecha ? ('Publicado: ' + fecha) : '';
+    const detalle = String(it.detalle || '');
+    const b64 = it.previewBase64 || it.preview_base64 || '';
+    set(titulo, meta, detalle, b64);
+    return;
+  }
+
+  if(kind === 'agenda') {
+    const ev = (_apoAgendaLastList || []).find(x => String(x.id || '') === String(id || ''));
+    if(!ev) { set('Evento', '', 'No se encontró el evento.', ''); return; }
+    const titulo = String(ev.titulo || 'Evento');
+    const hora = String(ev.hora || '').trim();
+    const autor = String(ev.createdByName || ev.created_by_name || '').trim();
+    const scope = (String(ev.grado||'') === '*' && String(ev.seccion||'') === '*') ? 'Todo el colegio' : '';
+    const parts = [];
+    if(ev.fecha) parts.push(_fechaLarga(String(ev.fecha)));
+    if(hora) parts.push(hora);
+    if(scope) parts.push(scope);
+    if(autor) parts.push('Publicado por ' + autor);
+    const meta = parts.join(' · ');
+    const detalle = String(ev.detalle || '');
+    const b64 = ev.previewBase64 || ev.preview_base64 || '';
+    set(titulo, meta, detalle, b64);
+    return;
+  }
 }
 
 function filtrarMes(lista, mes) {
@@ -1483,6 +1538,7 @@ function renderApoAgenda() {
       uniq.push(ev);
     });
     eventos = uniq;
+    _apoAgendaLastList = eventos;
     var grupos = {};
     eventos.forEach(function(ev){
       var f = ev.fecha || '';
@@ -1494,21 +1550,21 @@ function renderApoAgenda() {
       var items = grupos[f].map(function(ev){
         var hora = (ev.hora || '').trim();
         var titulo = _h(ev.titulo || 'Evento');
-        var detalle = _h(ev.detalle || '');
         var autor = _h(ev.createdByName || ev.created_by_name || '');
         var scope = (String(ev.grado||'') === '*' && String(ev.seccion||'') === '*') ? 'Todo el colegio' : '';
-        var detHtml = detalle ? ('<div style="margin-top:6px;color:var(--muted);font-size:0.82rem;line-height:1.35;">' + detalle + '</div>') : '';
+        var hasPrev = !!(ev.previewBase64 || ev.preview_base64);
+        var badgePrev = hasPrev ? '<span style="margin-left:8px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.28);color:#34d399;border-radius:999px;padding:2px 8px;font-size:0.7rem;font-weight:800;">Adjunto</span>' : '';
         var scopeHtml = scope ? ('<div style="margin-top:6px;color:var(--muted);font-size:0.74rem;">Evento: <strong style="color:var(--text);">' + _h(scope) + '</strong></div>') : '';
         var autHtml = autor ? ('<div style="margin-top:6px;color:var(--muted);font-size:0.74rem;">Publicado por: <strong style="color:var(--text);">' + autor + '</strong></div>') : '';
         return '<div class="card" style="padding:14px 14px;margin-top:8px;border-radius:14px;">'
           + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">'
           +   '<div style="min-width:0;">'
-          +     '<div style="font-weight:800;font-size:0.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + titulo + '</div>'
+          +     '<div style="font-weight:800;font-size:0.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + titulo + badgePrev + '</div>'
           +     (hora ? '<div style="margin-top:2px;color:var(--muted);font-size:0.78rem;">' + _h(hora) + '</div>' : '')
-          +     detHtml
           +     scopeHtml
           +     autHtml
           +   '</div>'
+          +   '<button class="btn-login-apo" onclick="_apoOpenDetalle(\'agenda\',\'' + _h(String(ev.id||'')) + '\')" style="max-width:none;width:auto;padding:8px 12px;border-radius:10px;font-size:0.8rem;">Detalle</button>'
           + '</div>'
           + '</div>';
       }).join('');

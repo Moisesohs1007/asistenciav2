@@ -4913,6 +4913,19 @@
         <label>Detalle</label>
         <textarea id="age-detalle" rows="5" style="resize:vertical;" placeholder="Descripción del evento..."></textarea>
       </div>
+      <div class="form-group form-full">
+        <label>Adjunto (imagen o PDF, máx 2 MB)</label>
+        <input type="file" id="age-adj" accept="image/*,application/pdf" onchange="onAgendaAdjChange()">
+        <div id="age-adj-preview" style="display:none;margin-top:10px;padding:12px;border:1px solid rgba(255,255,255,0.12);border-radius:14px;background:rgba(148,163,184,0.06);">
+          <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+            <img id="age-adj-preview-img" src="" style="width:140px;max-width:100%;border-radius:12px;border:1px solid rgba(255,255,255,0.10);background:rgba(0,0,0,0.25);">
+            <div style="flex:1;min-width:180px;">
+              <div id="age-adj-preview-meta" style="font-size:0.78rem;color:var(--muted);"></div>
+              <button class="btn btn-ghost" type="button" onclick="agendaAdjClear()" style="margin-top:10px;padding:6px 10px;font-size:0.78rem;">Quitar adjunto</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:14px;">
       <button class="btn btn-ghost" onclick="closeModal('modal-agenda')" style="justify-content:center;">Cancelar</button>
@@ -10580,6 +10593,15 @@ const _COM_MAX_MSG = 80;
 let _comFile = null;
 let _comMediaB64 = '';
 let _comMediaName = '';
+let _comAdjTipo = '';
+let _comAdjNombre = '';
+let _comAdjMime = '';
+let _comAdjBytes = 0;
+let _comAdjPaginas = 0;
+let _comPreviewMime = 'image/jpeg';
+let _comPreviewBytes = 0;
+let _comPreviewW = 0;
+let _comPreviewH = 0;
 let _comSendB64 = '';
 let _comSendName = '';
 let _comSendType = 'image';
@@ -10877,6 +10899,84 @@ async function _fileToBase64(file) {
   return String(url || '').split(',')[1] || '';
 }
 
+const _ATTACH_MAX_BYTES = 2 * 1024 * 1024;
+const _PREVIEW_MAX_W = 900;
+const _PREVIEW_MAX_BYTES = 100 * 1024;
+
+function _blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result || '').split(',')[1] || '');
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+
+async function _canvasToPreviewJpeg(canvas, maxBytes) {
+  let q = 0.78;
+  let cur = canvas;
+  for (let i = 0; i < 12; i++) {
+    const blob = await new Promise((resolve) => cur.toBlob(resolve, 'image/jpeg', q));
+    if (!blob) throw new Error('No se pudo procesar la imagen');
+    if (blob.size <= maxBytes) {
+      const b64 = await _blobToBase64(blob);
+      return { b64, bytes: blob.size, w: cur.width, h: cur.height, mime: 'image/jpeg' };
+    }
+    if (q > 0.55) {
+      q = Math.max(0.45, q - 0.1);
+      continue;
+    }
+    const scale = 0.88;
+    const nw = Math.max(520, Math.round(cur.width * scale));
+    const nh = Math.max(520, Math.round(cur.height * scale));
+    const c2 = document.createElement('canvas');
+    c2.width = nw; c2.height = nh;
+    const ctx2 = c2.getContext('2d');
+    ctx2.drawImage(cur, 0, 0, nw, nh);
+    cur = c2;
+    q = 0.72;
+  }
+  const blob = await new Promise((resolve) => cur.toBlob(resolve, 'image/jpeg', 0.5));
+  if (!blob) throw new Error('No se pudo procesar la imagen');
+  const b64 = await _blobToBase64(blob);
+  return { b64, bytes: blob.size, w: cur.width, h: cur.height, mime: 'image/jpeg' };
+}
+
+async function _imageFileToPreview(file) {
+  const url = await _fileToDataUrl(file);
+  const img = await new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = reject;
+    im.src = url;
+  });
+  const scale = img.width > _PREVIEW_MAX_W ? (_PREVIEW_MAX_W / img.width) : 1;
+  const w = Math.max(1, Math.round(img.width * scale));
+  const h = Math.max(1, Math.round(img.height * scale));
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+  return await _canvasToPreviewJpeg(c, _PREVIEW_MAX_BYTES);
+}
+
+async function _pdfFileToPreview(file) {
+  await _loadPdfJs();
+  const buf = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(buf) }).promise;
+  const page = await pdf.getPage(1);
+  const v0 = page.getViewport({ scale: 1 });
+  const scale = Math.min(1.3, _PREVIEW_MAX_W / Math.max(1, v0.width));
+  const viewport = page.getViewport({ scale });
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(viewport.width);
+  c.height = Math.ceil(viewport.height);
+  const ctx = c.getContext('2d');
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  const meta = await _canvasToPreviewJpeg(c, _PREVIEW_MAX_BYTES);
+  return { ...meta, numPages: pdf.numPages || 1 };
+}
+
 async function _imageFileToJpegBase64(file) {
   const url = await _fileToDataUrl(file);
   const img = await new Promise((resolve, reject) => {
@@ -10917,6 +11017,15 @@ function onComImgChange() {
   _comFile = f;
   _comMediaB64 = '';
   _comMediaName = '';
+  _comAdjTipo = '';
+  _comAdjNombre = '';
+  _comAdjMime = '';
+  _comAdjBytes = 0;
+  _comAdjPaginas = 0;
+  _comPreviewMime = 'image/jpeg';
+  _comPreviewBytes = 0;
+  _comPreviewW = 0;
+  _comPreviewH = 0;
   _comSendB64 = '';
   _comSendName = '';
   _comSendType = 'image';
@@ -10925,30 +11034,65 @@ function onComImgChange() {
   if(!f) { if(prev) prev.style.display = 'none'; return; }
   (async () => {
     try {
+      if(f.size > _ATTACH_MAX_BYTES) throw new Error('Archivo supera 2 MB');
       if(prev) prev.style.display = 'block';
       if(String(f.type||'') === 'application/pdf' || String(f.name||'').toLowerCase().endsWith('.pdf')) {
         if(img) img.src = '';
-        _comMediaB64 = await _pdfFileToJpegBase64(f);
+        const prevMeta = await _pdfFileToPreview(f);
+        _comMediaB64 = prevMeta.b64 || '';
         _comMediaName = (String(f.name||'documento').replace(/\.pdf$/i,'') || 'documento') + '.jpg';
-        _comSendB64 = await _fileToBase64(f);
-        _comSendName = (String(f.name||'documento').replace(/[^\w.\- ]+/g,'').trim() || 'documento') + (String(f.name||'').toLowerCase().endsWith('.pdf') ? '' : '.pdf');
-        _comSendType = 'document';
-        if(img) img.src = 'data:image/jpeg;base64,' + _comMediaB64;
+        _comAdjTipo = 'pdf';
+        _comAdjNombre = String(f.name || 'documento.pdf');
+        _comAdjMime = String(f.type || 'application/pdf');
+        _comAdjBytes = f.size || 0;
+        _comAdjPaginas = prevMeta.numPages || 1;
+        _comPreviewBytes = prevMeta.bytes || 0;
+        _comPreviewW = prevMeta.w || 0;
+        _comPreviewH = prevMeta.h || 0;
+
+        if((_comAdjPaginas || 1) <= 1) {
+          _comSendB64 = _comMediaB64;
+          _comSendName = _comMediaName;
+          _comSendType = 'image';
+        } else {
+          _comSendB64 = await _fileToBase64(f);
+          _comSendName = (String(f.name||'documento').replace(/[^\w.\- ]+/g,'').trim() || 'documento') + (String(f.name||'').toLowerCase().endsWith('.pdf') ? '' : '.pdf');
+          _comSendType = 'document';
+        }
+        if(img) img.src = _comMediaB64 ? ('data:image/jpeg;base64,' + _comMediaB64) : '';
       } else if(String(f.type||'').startsWith('image/')) {
-        _comMediaB64 = await _imageFileToJpegBase64(f);
+        const prevMeta = await _imageFileToPreview(f);
+        _comMediaB64 = prevMeta.b64 || '';
         _comMediaName = (String(f.name||'imagen').replace(/\.(png|jpg|jpeg|webp)$/i,'') || 'imagen') + '.jpg';
+        _comAdjTipo = 'image';
+        _comAdjNombre = String(f.name || 'imagen.jpg');
+        _comAdjMime = String(f.type || 'image/jpeg');
+        _comAdjBytes = f.size || 0;
+        _comAdjPaginas = 0;
+        _comPreviewBytes = prevMeta.bytes || 0;
+        _comPreviewW = prevMeta.w || 0;
+        _comPreviewH = prevMeta.h || 0;
         _comSendB64 = _comMediaB64;
         _comSendName = _comMediaName;
         _comSendType = 'image';
-        if(img) img.src = 'data:image/jpeg;base64,' + _comMediaB64;
+        if(img) img.src = _comMediaB64 ? ('data:image/jpeg;base64,' + _comMediaB64) : '';
       } else {
         throw new Error('Formato no permitido');
       }
     } catch(e) {
-      toast('Archivo inválido: sube 1 imagen o 1 PDF', 'warning');
+      toast('Archivo inválido: sube 1 imagen o 1 PDF (máx 2 MB)', 'warning');
       _comFile = null;
       _comMediaB64 = '';
       _comMediaName = '';
+      _comAdjTipo = '';
+      _comAdjNombre = '';
+      _comAdjMime = '';
+      _comAdjBytes = 0;
+      _comAdjPaginas = 0;
+      _comPreviewMime = 'image/jpeg';
+      _comPreviewBytes = 0;
+      _comPreviewW = 0;
+      _comPreviewH = 0;
       _comSendB64 = '';
       _comSendName = '';
       _comSendType = 'image';
@@ -10986,6 +11130,16 @@ async function _publicarComunicadosPortal(rows, titulo, tpl) {
           detalle: detalle || '',
           createdBy: (currentUser && currentUser.uid) ? currentUser.uid : null,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          adjuntoTipo: _comAdjTipo || null,
+          adjuntoNombre: _comAdjNombre || null,
+          adjuntoMime: _comAdjMime || null,
+          adjuntoBytes: _comAdjBytes || null,
+          adjuntoPaginas: _comAdjPaginas || null,
+          previewMime: _comPreviewMime || 'image/jpeg',
+          previewBytes: _comPreviewBytes || null,
+          previewW: _comPreviewW || null,
+          previewH: _comPreviewH || null,
+          previewBase64: _comMediaB64 || null,
         });
         ok++;
       } catch (e1) {
@@ -13577,6 +13731,134 @@ function _agendaAllAulas() {
 }
 
 let _agendaSaving = false;
+let _ageFile = null;
+let _ageAdjTipo = '';
+let _ageAdjNombre = '';
+let _ageAdjMime = '';
+let _ageAdjBytes = 0;
+let _ageAdjPaginas = 0;
+let _agePreviewMime = 'image/jpeg';
+let _agePreviewBytes = 0;
+let _agePreviewW = 0;
+let _agePreviewH = 0;
+let _agePreviewB64 = '';
+let _ageAdjClear = false;
+
+function agendaAdjClear() {
+  _ageFile = null;
+  _ageAdjTipo = '';
+  _ageAdjNombre = '';
+  _ageAdjMime = '';
+  _ageAdjBytes = 0;
+  _ageAdjPaginas = 0;
+  _agePreviewMime = 'image/jpeg';
+  _agePreviewBytes = 0;
+  _agePreviewW = 0;
+  _agePreviewH = 0;
+  _agePreviewB64 = '';
+  _ageAdjClear = true;
+  const inp = document.getElementById('age-adj');
+  try { if(inp) inp.value = ''; } catch(e) {}
+  const prev = document.getElementById('age-adj-preview');
+  const img = document.getElementById('age-adj-preview-img');
+  const meta = document.getElementById('age-adj-preview-meta');
+  if(img) img.src = '';
+  if(meta) meta.textContent = '';
+  if(prev) prev.style.display = 'none';
+}
+
+function _agendaAdjDocFields() {
+  if(_ageAdjClear) {
+    return {
+      adjuntoTipo: null,
+      adjuntoNombre: null,
+      adjuntoMime: null,
+      adjuntoBytes: null,
+      adjuntoPaginas: null,
+      previewMime: null,
+      previewBytes: null,
+      previewW: null,
+      previewH: null,
+      previewBase64: null,
+    };
+  }
+  if(!_agePreviewB64) return {};
+  return {
+    adjuntoTipo: _ageAdjTipo || null,
+    adjuntoNombre: _ageAdjNombre || null,
+    adjuntoMime: _ageAdjMime || null,
+    adjuntoBytes: _ageAdjBytes || null,
+    adjuntoPaginas: _ageAdjPaginas || null,
+    previewMime: _agePreviewMime || 'image/jpeg',
+    previewBytes: _agePreviewBytes || null,
+    previewW: _agePreviewW || null,
+    previewH: _agePreviewH || null,
+    previewBase64: _agePreviewB64 || null,
+  };
+}
+
+function onAgendaAdjChange() {
+  const f = document.getElementById('age-adj')?.files?.[0] || null;
+  _ageFile = f;
+  _ageAdjClear = false;
+  _ageAdjTipo = '';
+  _ageAdjNombre = '';
+  _ageAdjMime = '';
+  _ageAdjBytes = 0;
+  _ageAdjPaginas = 0;
+  _agePreviewMime = 'image/jpeg';
+  _agePreviewBytes = 0;
+  _agePreviewW = 0;
+  _agePreviewH = 0;
+  _agePreviewB64 = '';
+  const prev = document.getElementById('age-adj-preview');
+  const img = document.getElementById('age-adj-preview-img');
+  const meta = document.getElementById('age-adj-preview-meta');
+  if(!f) { if(prev) prev.style.display = 'none'; return; }
+  (async () => {
+    try {
+      if(f.size > _ATTACH_MAX_BYTES) throw new Error('Archivo supera 2 MB');
+      if(prev) prev.style.display = 'block';
+      if(String(f.type||'') === 'application/pdf' || String(f.name||'').toLowerCase().endsWith('.pdf')) {
+        if(img) img.src = '';
+        const prevMeta = await _pdfFileToPreview(f);
+        _ageAdjTipo = 'pdf';
+        _ageAdjNombre = String(f.name || 'documento.pdf');
+        _ageAdjMime = String(f.type || 'application/pdf');
+        _ageAdjBytes = f.size || 0;
+        _ageAdjPaginas = prevMeta.numPages || 1;
+        _agePreviewBytes = prevMeta.bytes || 0;
+        _agePreviewW = prevMeta.w || 0;
+        _agePreviewH = prevMeta.h || 0;
+        _agePreviewB64 = prevMeta.b64 || '';
+        if(img) img.src = _agePreviewB64 ? ('data:image/jpeg;base64,' + _agePreviewB64) : '';
+      } else if(String(f.type||'').startsWith('image/')) {
+        const prevMeta = await _imageFileToPreview(f);
+        _ageAdjTipo = 'image';
+        _ageAdjNombre = String(f.name || 'imagen.jpg');
+        _ageAdjMime = String(f.type || 'image/jpeg');
+        _ageAdjBytes = f.size || 0;
+        _ageAdjPaginas = 0;
+        _agePreviewBytes = prevMeta.bytes || 0;
+        _agePreviewW = prevMeta.w || 0;
+        _agePreviewH = prevMeta.h || 0;
+        _agePreviewB64 = prevMeta.b64 || '';
+        if(img) img.src = _agePreviewB64 ? ('data:image/jpeg;base64,' + _agePreviewB64) : '';
+      } else {
+        throw new Error('Formato no permitido');
+      }
+      if(meta) {
+        const kind = _ageAdjTipo === 'pdf' ? `PDF (${_ageAdjPaginas || 1} pág.)` : 'Imagen';
+        const kb = _agePreviewBytes ? Math.round(_agePreviewBytes / 1024) : 0;
+        meta.textContent = `${kind} · Preview: ${kb} KB`;
+      }
+    } catch(e) {
+      toast('Archivo inválido: sube 1 imagen o 1 PDF (máx 2 MB)', 'warning');
+      agendaAdjClear();
+    }
+  })();
+}
+
 function _agendaHash(s) {
   const str = String(s || '');
   let h = 2166136261;
@@ -13782,6 +14064,30 @@ function openAgendaModal(fecha, eventId) {
   document.getElementById('age-hora').value = '';
   document.getElementById('age-titulo').value = '';
   document.getElementById('age-detalle').value = '';
+  _ageFile = null;
+  _ageAdjTipo = '';
+  _ageAdjNombre = '';
+  _ageAdjMime = '';
+  _ageAdjBytes = 0;
+  _ageAdjPaginas = 0;
+  _agePreviewMime = 'image/jpeg';
+  _agePreviewBytes = 0;
+  _agePreviewW = 0;
+  _agePreviewH = 0;
+  _agePreviewB64 = '';
+  _ageAdjClear = false;
+  try {
+    const inp = document.getElementById('age-adj');
+    if(inp) inp.value = '';
+  } catch(e0) {}
+  try {
+    const prev = document.getElementById('age-adj-preview');
+    const img = document.getElementById('age-adj-preview-img');
+    const meta = document.getElementById('age-adj-preview-meta');
+    if(img) img.src = '';
+    if(meta) meta.textContent = '';
+    if(prev) prev.style.display = 'none';
+  } catch(e0) {}
   document.getElementById('agenda-modal-title').textContent = eventId ? 'Editar evento' : 'Nuevo evento';
   const tutor = _agendaTutorAula();
   const isTutor = _normRol(currentRol) === 'profesor';
@@ -13840,6 +14146,30 @@ function openAgendaModal(fecha, eventId) {
       document.getElementById('age-hora').value = ev.hora || '';
       document.getElementById('age-titulo').value = ev.titulo || '';
       document.getElementById('age-detalle').value = ev.detalle || '';
+      _ageAdjTipo = String(ev.adjuntoTipo ?? ev.adjunto_tipo ?? '').trim();
+      _ageAdjNombre = String(ev.adjuntoNombre ?? ev.adjunto_nombre ?? '').trim();
+      _ageAdjMime = String(ev.adjuntoMime ?? ev.adjunto_mime ?? '').trim();
+      _ageAdjBytes = parseInt(String(ev.adjuntoBytes ?? ev.adjunto_bytes ?? '0'), 10) || 0;
+      _ageAdjPaginas = parseInt(String(ev.adjuntoPaginas ?? ev.adjunto_paginas ?? '0'), 10) || 0;
+      _agePreviewMime = String(ev.previewMime ?? ev.preview_mime ?? 'image/jpeg') || 'image/jpeg';
+      _agePreviewBytes = parseInt(String(ev.previewBytes ?? ev.preview_bytes ?? '0'), 10) || 0;
+      _agePreviewW = parseInt(String(ev.previewW ?? ev.preview_w ?? '0'), 10) || 0;
+      _agePreviewH = parseInt(String(ev.previewH ?? ev.preview_h ?? '0'), 10) || 0;
+      _agePreviewB64 = String(ev.previewBase64 ?? ev.preview_base64 ?? '');
+      try {
+        const prev = document.getElementById('age-adj-preview');
+        const img = document.getElementById('age-adj-preview-img');
+        const meta = document.getElementById('age-adj-preview-meta');
+        if(_agePreviewB64) {
+          if(prev) prev.style.display = 'block';
+          if(img) img.src = 'data:image/jpeg;base64,' + _agePreviewB64;
+          if(meta) {
+            const kind = (_ageAdjTipo === 'pdf') ? `PDF (${_ageAdjPaginas || 1} pág.)` : (_ageAdjTipo ? 'Imagen' : '');
+            const kb = _agePreviewBytes ? Math.round(_agePreviewBytes / 1024) : 0;
+            meta.textContent = kind ? `${kind} · Preview: ${kb} KB` : '';
+          }
+        }
+      } catch(e0) {}
       if(!(isTutor && tutor.ok)) {
         const isAllEv = (String(ev.grado||'') === '*' && String(ev.seccion||'') === '*');
         if(allChk) allChk.checked = !!isAllEv;
@@ -13903,6 +14233,7 @@ async function guardarAgendaEvento() {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
       createdByName: autor || '',
     };
+    const adj = _agendaAdjDocFields();
 
     if(isAll) {
       const uid = (currentUser && currentUser.uid) ? currentUser.uid : 'anon';
@@ -13910,14 +14241,16 @@ async function guardarAgendaEvento() {
       const newId = id || ('all_' + fecha.replaceAll('-','') + '_' + uid + '_' + _agendaHash(baseKey));
       await db.collection('agenda').doc(newId).set({
         ...data,
+        ...adj,
         createdBy: (currentUser && currentUser.uid) ? currentUser.uid : null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       }, { merge: true });
     } else if(id) {
-      await db.collection('agenda').doc(id).update(data);
+      await db.collection('agenda').doc(id).update({ ...data, ...adj });
     } else {
       await db.collection('agenda').add({
         ...data,
+        ...adj,
         createdBy: (currentUser && currentUser.uid) ? currentUser.uid : null,
         createdByName: autor || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),

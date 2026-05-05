@@ -2,7 +2,17 @@ ALTER TABLE public.agenda
   ADD COLUMN IF NOT EXISTS grado TEXT,
   ADD COLUMN IF NOT EXISTS seccion TEXT,
   ADD COLUMN IF NOT EXISTS created_by UUID,
-  ADD COLUMN IF NOT EXISTS created_by_name TEXT;
+  ADD COLUMN IF NOT EXISTS created_by_name TEXT,
+  ADD COLUMN IF NOT EXISTS adjunto_tipo TEXT,
+  ADD COLUMN IF NOT EXISTS adjunto_nombre TEXT,
+  ADD COLUMN IF NOT EXISTS adjunto_mime TEXT,
+  ADD COLUMN IF NOT EXISTS adjunto_bytes INT,
+  ADD COLUMN IF NOT EXISTS adjunto_paginas INT,
+  ADD COLUMN IF NOT EXISTS preview_mime TEXT,
+  ADD COLUMN IF NOT EXISTS preview_bytes INT,
+  ADD COLUMN IF NOT EXISTS preview_w INT,
+  ADD COLUMN IF NOT EXISTS preview_h INT,
+  ADD COLUMN IF NOT EXISTS preview_base64 TEXT;
 
 UPDATE public.agenda
 SET grado = COALESCE(grado, ''),
