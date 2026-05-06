@@ -371,8 +371,14 @@ class _DocRef {
     row.id = this._id;
     // apoderados usa alumno_id como FK histórica — siempre incluirlo
     if (this._col === 'apoderados') row.alumno_id = this._id;
-    const { error } = await _sb.from(this._col).upsert(row, { onConflict: 'colegio_id,id' });
-    if (error) throw new Error(error.message);
+    let res = await _sb.from(this._col).upsert(row, { onConflict: 'colegio_id,id' });
+    if (res.error) {
+      const msg = String(res.error.message || '');
+      if (msg.includes('no unique or exclusion constraint matching the ON CONFLICT specification')) {
+        res = await _sb.from(this._col).upsert(row, { onConflict: 'id' });
+      }
+    }
+    if (res.error) throw new Error(res.error.message);
   }
 
   async update(data) {
