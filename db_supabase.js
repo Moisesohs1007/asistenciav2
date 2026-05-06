@@ -31,7 +31,11 @@ const DB = {
       .select('*')
       .eq('colegio_id', COLEGIO_ID);
 
-    if (error) { console.error('[DB] getAlumnos:', error.message); return []; }
+    if (error) {
+      console.error('[DB] getAlumnos:', error.message);
+      try { if(typeof window.toast === 'function') window.toast('No se pudo cargar alumnos: revisa RLS', 'warning'); } catch(_) {}
+      return [];
+    }
     if (!data || !data.length) { try { LSC.del(cacheKey); } catch(_) {} return []; }
 
     // Normalizar nombres de campos (snake_case → camelCase para compat. con código actual)

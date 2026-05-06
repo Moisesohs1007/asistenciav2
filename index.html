@@ -13770,6 +13770,16 @@ async function _agendaLoadAulaOptions() {
     _agendaSeccionesByGrado = {};
     _agendaSeccionesAny = [];
     const cfgGradeKeys = new Set((_agendaGradosAll || []).map(g => _agendaKey(g)).filter(Boolean));
+    const cfgInicialNumToKey = {};
+    const cfgNumToKey = {};
+    (_agendaGradosAll || []).forEach(g => {
+      const gStr = String(g || '').trim();
+      const key = _agendaKey(gStr);
+      const n = _agendaNum(gStr);
+      if(!key || !n) return;
+      if(key.includes('ANOS') || key.includes('AÑOS') || key.includes('ANIOS') || key.includes('AÑOS')) cfgInicialNumToKey[n] = key;
+      cfgNumToKey[n] = key;
+    });
     try {
       const alumnos = (window.DB && typeof DB.getAlumnos === 'function') ? await DB.getAlumnos() : [];
       const anySet = new Set();
@@ -13783,6 +13793,11 @@ async function _agendaLoadAulaOptions() {
           const alt = _agendaGradeLabelFromAlumno(a);
           const altKey = _agendaKey(alt);
           if(altKey && cfgGradeKeys.has(altKey)) gKey = altKey;
+        }
+        if((!gKey || !cfgGradeKeys.has(gKey)) && _agendaNum(gRaw)) {
+          const n = _agendaNum(gRaw);
+          if(cfgInicialNumToKey[n]) gKey = cfgInicialNumToKey[n];
+          else if(cfgNumToKey[n]) gKey = cfgNumToKey[n];
         }
         if(!gKey) return;
         if(!_agendaSeccionesByGrado[gKey]) _agendaSeccionesByGrado[gKey] = new Set();
@@ -13809,13 +13824,12 @@ function _agendaSecsForGrado(grado) {
     ? _agendaSeccionesByGrado[gKey]
     : [];
   if((byG || []).length) return byG;
-  if((_agendaSeccionesAny || []).length) return _agendaSeccionesAny;
-  if((_agendaSeccionesAll || []).length) {
-    if(!_agendaWarnedNoAlumnos) {
-      _agendaWarnedNoAlumnos = true;
-      toast('⚠️ No se pudo leer alumnos para validar secciones. Revisa RLS de alumnos.', 'warning');
-    }
-    return _agendaSeccionesAll;
+  const hasAnyMap = !!(_agendaSeccionesByGrado && Object.keys(_agendaSeccionesByGrado).length);
+  if(hasAnyMap) return [];
+  if((_agendaSeccionesAll || []).length) return _agendaSeccionesAll;
+  if(!_agendaWarnedNoAlumnos) {
+    _agendaWarnedNoAlumnos = true;
+    toast('⚠️ No se pudo leer alumnos para validar secciones. Revisa RLS de alumnos.', 'warning');
   }
   return [];
 }
