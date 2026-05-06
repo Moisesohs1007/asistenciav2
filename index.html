@@ -13728,6 +13728,11 @@ function _isAgendaWriter(){
 let _agendaGradosAll = [];
 let _agendaSeccionesAll = [];
 let _agendaSeccionesByGrado = {};
+function _agendaKey(x) {
+  let s = String(x || '').trim().toUpperCase();
+  try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(_) {}
+  return s;
+}
 async function _agendaLoadAulaOptions() {
   try {
     const cfg = await getConfig();
@@ -13738,7 +13743,7 @@ async function _agendaLoadAulaOptions() {
       const alumnos = (window.DB && typeof DB.getAlumnos === 'function') ? await DB.getAlumnos() : [];
       (alumnos || []).forEach(a => {
         const g = String(a?.grado || '').trim();
-        const gKey = g.toUpperCase();
+        const gKey = _agendaKey(g);
         const s = String(a?.seccion || '').trim().toUpperCase();
         if(!gKey || !s) return;
         if(!_agendaSeccionesByGrado[gKey]) _agendaSeccionesByGrado[gKey] = new Set();
@@ -13762,15 +13767,15 @@ function _agendaFillSelects(gradoSelId, seccionSelId, gradoVal, seccionVal) {
   if(!gEl || !sEl) return;
   const gList = _agendaGradosAll.length ? _agendaGradosAll : [''];
   const gPick = String(gradoVal || gEl.value || '').trim();
-  const gKey = gPick.toUpperCase();
-  const sListByG = (gKey && Array.isArray(_agendaSeccionesByGrado[gKey]) && _agendaSeccionesByGrado[gKey].length)
+  const gKey = _agendaKey(gPick);
+  const secs = (gKey && Array.isArray(_agendaSeccionesByGrado[gKey]) && _agendaSeccionesByGrado[gKey].length)
     ? _agendaSeccionesByGrado[gKey]
     : [];
   gEl.innerHTML = `<option value="">-- Grado --</option>` + gList.filter(Boolean).map(g => `<option value="${_escHtml(g)}">${_escHtml(g)}</option>`).join('');
-  sEl.innerHTML = `<option value="">-- Sección --</option>` + sListByG.filter(Boolean).map(s => `<option value="${_escHtml(s)}">${_escHtml(s)}</option>`).join('');
+  sEl.innerHTML = `<option value="">-- Sección --</option>` + secs.filter(Boolean).map(s => `<option value="${_escHtml(s)}">${_escHtml(s)}</option>`).join('');
   if(gradoVal) gEl.value = gradoVal;
   if(seccionVal) sEl.value = String(seccionVal || '').toUpperCase();
-  const hasSecs = (sListByG || []).filter(Boolean).length > 0;
+  const hasSecs = (secs || []).filter(Boolean).length > 0;
   sEl.disabled = !hasSecs;
   sEl.style.opacity = hasSecs ? '' : '0.45';
 }
@@ -13779,7 +13784,7 @@ function _agendaAllAulas() {
   const grados = (_agendaGradosAll || []).filter(Boolean);
   const out = [];
   grados.forEach(g => {
-    const gKey = String(g || '').trim().toUpperCase();
+    const gKey = _agendaKey(g);
     const secs = (gKey && Array.isArray(_agendaSeccionesByGrado[gKey]) && _agendaSeccionesByGrado[gKey].length)
       ? _agendaSeccionesByGrado[gKey]
       : [];
@@ -14172,7 +14177,7 @@ function openAgendaModal(fecha, eventId) {
         gEl.__agendaBound = true;
         gEl.addEventListener('change', () => {
           const g = String(gEl.value || '').trim();
-          const gKey = g.toUpperCase();
+          const gKey = _agendaKey(g);
           const secs = (gKey && Array.isArray(_agendaSeccionesByGrado[gKey]) && _agendaSeccionesByGrado[gKey].length)
             ? _agendaSeccionesByGrado[gKey]
             : [];
