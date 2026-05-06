@@ -13733,19 +13733,53 @@ function _agendaKey(x) {
   try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(_) {}
   return s;
 }
+function _agendaNum(g) {
+  const m = String(g || '').match(/\d+/);
+  return m ? parseInt(m[0], 10) : 0;
+}
+function _agendaGradeLabelFromAlumno(a) {
+  const turno = String(a?.turno || '').trim().toLowerCase();
+  const n = _agendaNum(a?.grado);
+  if(!n) return '';
+  if(turno === 'inicial') {
+    if(n === 3) return '3 años';
+    if(n === 4) return '4 años';
+    if(n === 5) return '5 años';
+    return '';
+  }
+  if(n === 1) return '1er';
+  if(n === 2) return '2do';
+  if(n === 3) return '3er';
+  if(n === 4) return '4to';
+  if(n === 5) return '5to';
+  if(n === 6) return '6to';
+  if(n === 7) return '7mo';
+  if(n === 8) return '8vo';
+  if(n === 9) return '9no';
+  if(n === 10) return '10mo';
+  if(n === 11) return '11mo';
+  return '';
+}
 async function _agendaLoadAulaOptions() {
   try {
     const cfg = await getConfig();
     _agendaGradosAll = [...new Set(Object.values(cfg.grados || {}).flat().map(x => String(x || '').trim()).filter(Boolean))];
     _agendaSeccionesAll = (cfg.secciones || []).map(x => String(x || '').trim().toUpperCase()).filter(Boolean);
     _agendaSeccionesByGrado = {};
+    const cfgGradeKeys = new Set((_agendaGradosAll || []).map(g => _agendaKey(g)).filter(Boolean));
     try {
       const alumnos = (window.DB && typeof DB.getAlumnos === 'function') ? await DB.getAlumnos() : [];
       (alumnos || []).forEach(a => {
-        const g = String(a?.grado || '').trim();
-        const gKey = _agendaKey(g);
+        const gRaw = String(a?.grado || '').trim();
+        let gKey = _agendaKey(gRaw);
         const s = String(a?.seccion || '').trim().toUpperCase();
-        if(!gKey || !s) return;
+        if(!s) return;
+        if(!gKey || !cfgGradeKeys.has(gKey)) {
+          const alt = _agendaGradeLabelFromAlumno(a);
+          const altKey = _agendaKey(alt);
+          if(altKey && cfgGradeKeys.has(altKey)) gKey = altKey;
+        }
+        if(!gKey) return;
         if(!_agendaSeccionesByGrado[gKey]) _agendaSeccionesByGrado[gKey] = new Set();
         _agendaSeccionesByGrado[gKey].add(s);
       });
@@ -13980,13 +14014,19 @@ function _addMonths(ym, delta) {
 function agendaPrevMes() {
   const sel = document.getElementById('age-mes');
   if(!sel) return;
-  sel.value = _addMonths(sel.value, -1);
+  const v = _addMonths(sel.value, -1);
+  const ok = Array.from(sel.options || []).some(o => String(o.value) === v);
+  if(!ok) return;
+  sel.value = v;
   renderAgenda();
 }
 function agendaNextMes() {
   const sel = document.getElementById('age-mes');
   if(!sel) return;
-  sel.value = _addMonths(sel.value, 1);
+  const v = _addMonths(sel.value, 1);
+  const ok = Array.from(sel.options || []).some(o => String(o.value) === v);
+  if(!ok) return;
+  sel.value = v;
   renderAgenda();
 }
 
@@ -14682,23 +14722,33 @@ function poblarSelectorMes(selectId, valorDefault) {
   const sel = document.getElementById(selectId);
   if(!sel) return;
   const hoyMes = mesActual();
-  // Año lectivo: marzo(3) a diciembre(12)
-  // Admin/director ven todos los meses del año lectivo transcurridos
-  // Otros roles: máximo 3 meses, pero solo desde marzo
-  const mesActualNum = new Date().getMonth() + 1; // 1-12
-  const MES_INICIO_LECTIVO = 3; // marzo
-  const mesesLectivos = Math.max(0, mesActualNum - MES_INICIO_LECTIVO + 1); // cuántos meses lectivos han pasado
-  const cantMeses = (currentRol === 'admin' || currentRol === 'director')
-    ? mesesLectivos
-    : Math.min(3, mesesLectivos);
   const meses = [];
-  for(let i = 0; i < cantMeses; i++) {
-    const d = new Date();
-    d.setDate(1);
-    d.setMonth(d.getMonth() - i);
-    const val = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-    const label = d.toLocaleDateString('es-PE', { month: 'long' });
-    meses.push({ val, label: label.charAt(0).toUpperCase() + label.slice(1) });
+  const MES_INICIO_LECTIVO = 3; // marzo
+  if(selectId === 'age-mes') {
+    const y = new Date().getFullYear();
+    for(let mm = MES_INICIO_LECTIVO; mm <= 12; mm++) {
+      const d = new Date(y, mm-1, 1);
+      const val = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+      const label = d.toLocaleDateString('es-PE', { month: 'long' });
+      meses.push({ val, label: label.charAt(0).toUpperCase() + label.slice(1) });
+    }
+  } else {
+    // Año lectivo: marzo(3) a diciembre(12)
+    // Admin/director ven todos los meses del año lectivo transcurridos
+    // Otros roles: máximo 3 meses, pero solo desde marzo
+    const mesActualNum = new Date().getMonth() + 1; // 1-12
+    const mesesLectivos = Math.max(0, mesActualNum - MES_INICIO_LECTIVO + 1); // cuántos meses lectivos han pasado
+    const cantMeses = (currentRol === 'admin' || currentRol === 'director')
+      ? mesesLectivos
+      : Math.min(3, mesesLectivos);
+    for(let i = 0; i < cantMeses; i++) {
+      const d = new Date();
+      d.setDate(1);
+      d.setMonth(d.getMonth() - i);
+      const val = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+      const label = d.toLocaleDateString('es-PE', { month: 'long' });
+      meses.push({ val, label: label.charAt(0).toUpperCase() + label.slice(1) });
+    }
   }
   sel.innerHTML = meses.map(m =>
     `<option value="${m.val}" ${m.val === (valorDefault||hoyMes) ? 'selected' : ''}>${m.label}</option>`
