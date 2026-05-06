@@ -13738,10 +13738,11 @@ async function _agendaLoadAulaOptions() {
       const alumnos = (window.DB && typeof DB.getAlumnos === 'function') ? await DB.getAlumnos() : [];
       (alumnos || []).forEach(a => {
         const g = String(a?.grado || '').trim();
+        const gKey = g.toUpperCase();
         const s = String(a?.seccion || '').trim().toUpperCase();
-        if(!g || !s) return;
-        if(!_agendaSeccionesByGrado[g]) _agendaSeccionesByGrado[g] = new Set();
-        _agendaSeccionesByGrado[g].add(s);
+        if(!gKey || !s) return;
+        if(!_agendaSeccionesByGrado[gKey]) _agendaSeccionesByGrado[gKey] = new Set();
+        _agendaSeccionesByGrado[gKey].add(s);
       });
       Object.keys(_agendaSeccionesByGrado).forEach(g => {
         _agendaSeccionesByGrado[g] = Array.from(_agendaSeccionesByGrado[g]).sort();
@@ -13761,22 +13762,27 @@ function _agendaFillSelects(gradoSelId, seccionSelId, gradoVal, seccionVal) {
   if(!gEl || !sEl) return;
   const gList = _agendaGradosAll.length ? _agendaGradosAll : [''];
   const gPick = String(gradoVal || gEl.value || '').trim();
-  const sListByG = (gPick && Array.isArray(_agendaSeccionesByGrado[gPick]) && _agendaSeccionesByGrado[gPick].length)
-    ? _agendaSeccionesByGrado[gPick]
-    : (_agendaSeccionesAll.length ? _agendaSeccionesAll : ['']);
+  const gKey = gPick.toUpperCase();
+  const sListByG = (gKey && Array.isArray(_agendaSeccionesByGrado[gKey]) && _agendaSeccionesByGrado[gKey].length)
+    ? _agendaSeccionesByGrado[gKey]
+    : [];
   gEl.innerHTML = `<option value="">-- Grado --</option>` + gList.filter(Boolean).map(g => `<option value="${_escHtml(g)}">${_escHtml(g)}</option>`).join('');
   sEl.innerHTML = `<option value="">-- Sección --</option>` + sListByG.filter(Boolean).map(s => `<option value="${_escHtml(s)}">${_escHtml(s)}</option>`).join('');
   if(gradoVal) gEl.value = gradoVal;
   if(seccionVal) sEl.value = String(seccionVal || '').toUpperCase();
+  const hasSecs = (sListByG || []).filter(Boolean).length > 0;
+  sEl.disabled = !hasSecs;
+  sEl.style.opacity = hasSecs ? '' : '0.45';
 }
 
 function _agendaAllAulas() {
   const grados = (_agendaGradosAll || []).filter(Boolean);
   const out = [];
   grados.forEach(g => {
-    const secs = (Array.isArray(_agendaSeccionesByGrado[g]) && _agendaSeccionesByGrado[g].length)
-      ? _agendaSeccionesByGrado[g]
-      : (_agendaSeccionesAll || []);
+    const gKey = String(g || '').trim().toUpperCase();
+    const secs = (gKey && Array.isArray(_agendaSeccionesByGrado[gKey]) && _agendaSeccionesByGrado[gKey].length)
+      ? _agendaSeccionesByGrado[gKey]
+      : [];
     (secs || []).filter(Boolean).forEach(s => out.push({ grado: g, seccion: String(s).toUpperCase() }));
   });
   return out;
@@ -14082,7 +14088,7 @@ function agendaSelectDay(fecha, mapOpt) {
     const hora = ev.hora ? (ev.hora + ' · ') : '';
     const det = ev.detalle ? `<div class="agenda-item-meta">${ev.detalle}</div>` : '';
     const aula = (_normRol(currentRol) !== 'profesor' && ev.grado && ev.seccion)
-      ? `<div class="agenda-item-meta">Aula: ${_escHtml(ev.grado==='*'&&ev.seccion==='*' ? 'Todo el colegio' : (ev.grado + ' ' + ev.seccion))}</div>`
+      ? `<div class="agenda-item-meta">Aula: ${_escHtml(ev.grado==='*'&&ev.seccion==='*' ? 'Todo el colegio (todas las aulas)' : (ev.grado + ' ' + ev.seccion))}</div>`
       : '';
     const actions = canWrite ? `<div class="agenda-item-actions">
       <button class="btn btn-ghost" onclick="openAgendaModal('${fecha}','${ev.id}')" style="padding:5px 10px;font-size:0.78rem;">✏ Editar</button>
@@ -14166,13 +14172,17 @@ function openAgendaModal(fecha, eventId) {
         gEl.__agendaBound = true;
         gEl.addEventListener('change', () => {
           const g = String(gEl.value || '').trim();
-          const secs = (g && Array.isArray(_agendaSeccionesByGrado[g]) && _agendaSeccionesByGrado[g].length)
-            ? _agendaSeccionesByGrado[g]
-            : (_agendaSeccionesAll || []);
+          const gKey = g.toUpperCase();
+          const secs = (gKey && Array.isArray(_agendaSeccionesByGrado[gKey]) && _agendaSeccionesByGrado[gKey].length)
+            ? _agendaSeccionesByGrado[gKey]
+            : [];
           if(sEl) {
             const prev = String(sEl.value || '').trim().toUpperCase();
             sEl.innerHTML = `<option value="">-- Sección --</option>` + (secs || []).filter(Boolean).map(s => `<option value="${_escHtml(s)}">${_escHtml(s)}</option>`).join('');
             if(prev && (secs || []).includes(prev)) sEl.value = prev;
+            const hasSecs = (secs || []).filter(Boolean).length > 0;
+            sEl.disabled = !hasSecs;
+            sEl.style.opacity = hasSecs ? '' : '0.45';
           }
         });
       }
