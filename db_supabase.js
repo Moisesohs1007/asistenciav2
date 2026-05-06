@@ -15,12 +15,16 @@ const DB = {
   // ── ALUMNOS ───────────────────────────────────────────────
 
   _alumnosCache: null,
+  _alumnosCacheKey: '',
   _alumnosScopedCache: {},
 
   async getAlumnos() {
-    if (this._alumnosCache) return this._alumnosCache;
-    const lsData = LSC.get('alumnos');
-    if (lsData) { this._alumnosCache = lsData; return lsData; }
+    const uid = (window.currentUser && window.currentUser.uid) ? window.currentUser.uid : 'anon';
+    const cacheKey = 'alumnos:' + COLEGIO_ID + ':' + uid;
+    if (this._alumnosCache && this._alumnosCacheKey === cacheKey) return this._alumnosCache;
+    const lsData = LSC.get(cacheKey);
+    if (lsData) { this._alumnosCache = lsData; this._alumnosCacheKey = cacheKey; return lsData; }
+    try { LSC.del('alumnos'); } catch(_) {}
 
     const { data, error } = await supabase
       .from('alumnos')
@@ -31,7 +35,8 @@ const DB = {
 
     // Normalizar nombres de campos (snake_case → camelCase para compat. con código actual)
     this._alumnosCache = data.map(_normAlumno);
-    LSC.set('alumnos', this._alumnosCache, LSC.TTL_ALUMNOS);
+    this._alumnosCacheKey = cacheKey;
+    LSC.set(cacheKey, this._alumnosCache, LSC.TTL_ALUMNOS);
     return this._alumnosCache;
   },
 
@@ -78,11 +83,12 @@ const DB = {
 
   invalidarAlumnos() {
     this._alumnosCache = null;
+    this._alumnosCacheKey = '';
     this._alumnosScopedCache = {};
     LSC.del('alumnos');
     try {
       Object.keys(localStorage)
-        .filter(k => k.startsWith('scoped:') || k.startsWith('asmqr_scoped:'))
+        .filter(k => k.startsWith('scoped:') || k.startsWith('asmqr_scoped:') || k.startsWith('alumnos:'))
         .forEach(k => localStorage.removeItem(k));
     } catch (e) {}
   },

@@ -14242,7 +14242,9 @@ function openAgendaModal(fecha, eventId) {
         });
       }
     };
-    if(!_agendaGradosAll.length) _agendaLoadAulaOptions().then(apply);
+    const hasGrados = !!(_agendaGradosAll && _agendaGradosAll.length);
+    const hasSecsMap = !!(_agendaSeccionesByGrado && Object.keys(_agendaSeccionesByGrado).length);
+    if(!hasGrados || !hasSecsMap) _agendaLoadAulaOptions().then(apply);
     else apply();
   }
   if(eventId) {
