@@ -146,6 +146,8 @@ CREATE POLICY "registros_apoderado_read" ON registros FOR SELECT
 -- 4. POLÍTICA ESTRICTA EN TABLA ALUMNOS
 ALTER TABLE alumnos ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "alumnos_apoderado_read" ON alumnos;
+DROP POLICY IF EXISTS "alumnos_staff_read" ON alumnos;
+DROP POLICY IF EXISTS "alumnos_admin_write" ON alumnos;
 
 CREATE POLICY "alumnos_apoderado_read" ON alumnos FOR SELECT
   USING (
@@ -153,6 +155,13 @@ CREATE POLICY "alumnos_apoderado_read" ON alumnos FOR SELECT
     is_apoderado() AND 
     id = auth_alumno_id()
   );
+
+CREATE POLICY "alumnos_staff_read" ON alumnos FOR SELECT
+  USING (colegio_id = auth_colegio_id() AND is_staff());
+
+CREATE POLICY "alumnos_admin_write" ON alumnos FOR ALL
+  USING (colegio_id = auth_colegio_id() AND is_admin())
+  WITH CHECK (colegio_id = auth_colegio_id() AND is_admin());
 
 -- 5. POLÍTICA ESTRICTA EN RESUMEN MENSUAL
 ALTER TABLE resumen_mensual ENABLE ROW LEVEL SECURITY;

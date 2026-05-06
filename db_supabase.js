@@ -32,6 +32,7 @@ const DB = {
       .eq('colegio_id', COLEGIO_ID);
 
     if (error) { console.error('[DB] getAlumnos:', error.message); return []; }
+    if (!data || !data.length) { try { LSC.del(cacheKey); } catch(_) {} return []; }
 
     // Normalizar nombres de campos (snake_case → camelCase para compat. con código actual)
     this._alumnosCache = data.map(_normAlumno);
