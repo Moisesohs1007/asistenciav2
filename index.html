@@ -13728,6 +13728,8 @@ function _isAgendaWriter(){
 let _agendaGradosAll = [];
 let _agendaSeccionesAll = [];
 let _agendaSeccionesByGrado = {};
+let _agendaSeccionesAny = [];
+let _agendaWarnedNoAlumnos = false;
 function _agendaKey(x) {
   let s = String(x || '').trim().toUpperCase();
   try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(_) {}
@@ -13741,7 +13743,7 @@ function _agendaGradeLabelFromAlumno(a) {
   const turno = String(a?.turno || '').trim().toLowerCase();
   const n = _agendaNum(a?.grado);
   if(!n) return '';
-  if(turno === 'inicial') {
+  if(turno.includes('inicial')) {
     if(n === 3) return '3 años';
     if(n === 4) return '4 años';
     if(n === 5) return '5 años';
@@ -13766,14 +13768,17 @@ async function _agendaLoadAulaOptions() {
     _agendaGradosAll = [...new Set(Object.values(cfg.grados || {}).flat().map(x => String(x || '').trim()).filter(Boolean))];
     _agendaSeccionesAll = (cfg.secciones || []).map(x => String(x || '').trim().toUpperCase()).filter(Boolean);
     _agendaSeccionesByGrado = {};
+    _agendaSeccionesAny = [];
     const cfgGradeKeys = new Set((_agendaGradosAll || []).map(g => _agendaKey(g)).filter(Boolean));
     try {
       const alumnos = (window.DB && typeof DB.getAlumnos === 'function') ? await DB.getAlumnos() : [];
+      const anySet = new Set();
       (alumnos || []).forEach(a => {
         const gRaw = String(a?.grado || '').trim();
         let gKey = _agendaKey(gRaw);
         const s = String(a?.seccion || '').trim().toUpperCase();
         if(!s) return;
+        anySet.add(s);
         if(!gKey || !cfgGradeKeys.has(gKey)) {
           const alt = _agendaGradeLabelFromAlumno(a);
           const altKey = _agendaKey(alt);
@@ -13786,14 +13791,33 @@ async function _agendaLoadAulaOptions() {
       Object.keys(_agendaSeccionesByGrado).forEach(g => {
         _agendaSeccionesByGrado[g] = Array.from(_agendaSeccionesByGrado[g]).sort();
       });
+      _agendaSeccionesAny = Array.from(anySet).sort();
     } catch(e2) {
       _agendaSeccionesByGrado = {};
+      _agendaSeccionesAny = [];
     }
   } catch(e) {
     _agendaGradosAll = [];
     _agendaSeccionesAll = [];
     _agendaSeccionesByGrado = {};
+    _agendaSeccionesAny = [];
   }
+}
+function _agendaSecsForGrado(grado) {
+  const gKey = _agendaKey(String(grado || '').trim());
+  const byG = (gKey && Array.isArray(_agendaSeccionesByGrado[gKey]) && _agendaSeccionesByGrado[gKey].length)
+    ? _agendaSeccionesByGrado[gKey]
+    : [];
+  if((byG || []).length) return byG;
+  if((_agendaSeccionesAny || []).length) return _agendaSeccionesAny;
+  if((_agendaSeccionesAll || []).length) {
+    if(!_agendaWarnedNoAlumnos) {
+      _agendaWarnedNoAlumnos = true;
+      toast('⚠️ No se pudo leer alumnos para validar secciones. Revisa RLS de alumnos.', 'warning');
+    }
+    return _agendaSeccionesAll;
+  }
+  return [];
 }
 function _agendaFillSelects(gradoSelId, seccionSelId, gradoVal, seccionVal) {
   const gEl = document.getElementById(gradoSelId);
@@ -13801,10 +13825,7 @@ function _agendaFillSelects(gradoSelId, seccionSelId, gradoVal, seccionVal) {
   if(!gEl || !sEl) return;
   const gList = _agendaGradosAll.length ? _agendaGradosAll : [''];
   const gPick = String(gradoVal || gEl.value || '').trim();
-  const gKey = _agendaKey(gPick);
-  const secs = (gKey && Array.isArray(_agendaSeccionesByGrado[gKey]) && _agendaSeccionesByGrado[gKey].length)
-    ? _agendaSeccionesByGrado[gKey]
-    : [];
+  const secs = _agendaSecsForGrado(gPick);
   gEl.innerHTML = `<option value="">-- Grado --</option>` + gList.filter(Boolean).map(g => `<option value="${_escHtml(g)}">${_escHtml(g)}</option>`).join('');
   sEl.innerHTML = `<option value="">-- Sección --</option>` + secs.filter(Boolean).map(s => `<option value="${_escHtml(s)}">${_escHtml(s)}</option>`).join('');
   if(gradoVal) gEl.value = gradoVal;
@@ -14217,10 +14238,7 @@ function openAgendaModal(fecha, eventId) {
         gEl.__agendaBound = true;
         gEl.addEventListener('change', () => {
           const g = String(gEl.value || '').trim();
-          const gKey = _agendaKey(g);
-          const secs = (gKey && Array.isArray(_agendaSeccionesByGrado[gKey]) && _agendaSeccionesByGrado[gKey].length)
-            ? _agendaSeccionesByGrado[gKey]
-            : [];
+          const secs = _agendaSecsForGrado(g);
           if(sEl) {
             const prev = String(sEl.value || '').trim().toUpperCase();
             sEl.innerHTML = `<option value="">-- Sección --</option>` + (secs || []).filter(Boolean).map(s => `<option value="${_escHtml(s)}">${_escHtml(s)}</option>`).join('');
