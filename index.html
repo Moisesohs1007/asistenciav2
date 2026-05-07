@@ -4897,7 +4897,8 @@
       <div class="form-group form-full" id="age-aula-pick-wrap" style="display:none;">
         <label>Aula *</label>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <select id="age-grado" style="min-width:160px;"></select>
+          <select id="age-nivel" onchange="onAgendaNivelChange()" style="min-width:140px;"></select>
+          <select id="age-grado" onchange="onAgendaGradoChange()" style="min-width:160px;"></select>
           <select id="age-seccion" style="min-width:120px;"></select>
         </div>
         <label id="age-all-wrap" style="display:none;align-items:center;gap:10px;margin-top:10px;">
@@ -13989,7 +13990,6 @@ function _agendaHash(s) {
 }
 
 async function initAgenda() {
-  await _agendaLoadAulaOptions();
   poblarSelectorMes('age-mes');
   if(!_agendaSelDia) _agendaSelDia = hoy();
   await renderAgenda();
@@ -14176,7 +14176,45 @@ function agendaSelectDay(fecha, mapOpt) {
   } catch(e) {}
 }
 
-function openAgendaModal(fecha, eventId) {
+function _agendaInferNivelByGrado(grado, cfg) {
+  const g = String(grado || '').trim();
+  try {
+    for(const [niv, list] of Object.entries((cfg && cfg.grados) ? cfg.grados : {})) {
+      if((list || []).includes(g)) return String(niv || '').trim();
+    }
+  } catch(e) {}
+  return '';
+}
+
+async function onAgendaNivelChange() {
+  try {
+    const nivel = String(document.getElementById('age-nivel')?.value || '').trim();
+    const gEl = document.getElementById('age-grado');
+    const sEl = document.getElementById('age-seccion');
+    if(gEl) gEl.value = '';
+    if(sEl) sEl.value = '';
+    _disableSelect('age-seccion');
+    await poblarFiltroSeccion('age-seccion', null);
+    if(!nivel) { _disableSelect('age-grado'); return; }
+    await poblarFiltroGrado('age-grado', (nivel === 'TODOS' ? null : nivel));
+    _enableSelect('age-grado');
+  } catch(e) {}
+}
+
+async function onAgendaGradoChange() {
+  try {
+    const grado = String(document.getElementById('age-grado')?.value || '').trim();
+    const sEl = document.getElementById('age-seccion');
+    if(sEl) sEl.value = '';
+    _disableSelect('age-seccion');
+    await poblarFiltroSeccion('age-seccion', null);
+    if(!grado) return;
+    await poblarFiltroSeccion('age-seccion', grado);
+    _enableSelect('age-seccion');
+  } catch(e) {}
+}
+
+async function openAgendaModal(fecha, eventId) {
   if(!_isAgendaWriter()) { toast('No permitido','warning'); return; }
   const m = document.getElementById('modal-agenda');
   if(!m) return;
@@ -14222,8 +14260,10 @@ function openAgendaModal(fecha, eventId) {
   if(allWrap) allWrap.style.display = (!isTutor && canAll) ? 'flex' : 'none';
   if(allChk) allChk.checked = false;
   try {
+    const nEl0 = document.getElementById('age-nivel');
     const gEl0 = document.getElementById('age-grado');
     const sEl0 = document.getElementById('age-seccion');
+    if(nEl0) { nEl0.disabled = false; nEl0.value = ''; }
     if(gEl0) gEl0.disabled = false;
     if(sEl0) sEl0.disabled = false;
   } catch(e0) {}
@@ -14231,40 +14271,26 @@ function openAgendaModal(fecha, eventId) {
     const el = document.getElementById('age-aula-fixed');
     if(el) el.textContent = tutor.grado + ' ' + tutor.seccion;
   } else {
-    const apply = () => {
-      _agendaFillSelects('age-grado','age-seccion','','');
-      const gEl = document.getElementById('age-grado');
-      const sEl = document.getElementById('age-seccion');
-      if(gEl && !gEl.__agendaBound) {
-        gEl.__agendaBound = true;
-        gEl.addEventListener('change', () => {
-          const g = String(gEl.value || '').trim();
-          const secs = _agendaSecsForGrado(g);
-          if(sEl) {
-            const prev = String(sEl.value || '').trim().toUpperCase();
-            sEl.innerHTML = `<option value="">-- Sección --</option>` + (secs || []).filter(Boolean).map(s => `<option value="${_escHtml(s)}">${_escHtml(s)}</option>`).join('');
-            if(prev && (secs || []).includes(prev)) sEl.value = prev;
-            const hasSecs = (secs || []).filter(Boolean).length > 0;
-            sEl.disabled = !hasSecs;
-            sEl.style.opacity = hasSecs ? '' : '0.45';
-          }
-        });
-      }
-      if(allChk && !allChk.__agendaBound) {
-        allChk.__agendaBound = true;
-        allChk.addEventListener('change', () => {
-          const on = !!allChk.checked;
-          const gEl2 = document.getElementById('age-grado');
-          const sEl2 = document.getElementById('age-seccion');
-          if(gEl2) gEl2.disabled = on;
-          if(sEl2) sEl2.disabled = on;
-        });
-      }
-    };
-    const hasGrados = !!(_agendaGradosAll && _agendaGradosAll.length);
-    const hasSecsMap = !!(_agendaSeccionesByGrado && Object.keys(_agendaSeccionesByGrado).length);
-    if(!hasGrados || !hasSecsMap) _agendaLoadAulaOptions().then(apply);
-    else apply();
+    try {
+      await poblarFiltroNivel('age-nivel');
+      _enableSelect('age-nivel');
+      await poblarFiltroGrado('age-grado', null);
+      await poblarFiltroSeccion('age-seccion', null);
+      _disableSelect('age-grado');
+      _disableSelect('age-seccion');
+    } catch(e0) {}
+    if(allChk && !allChk.__agendaBound) {
+      allChk.__agendaBound = true;
+      allChk.addEventListener('change', () => {
+        const on = !!allChk.checked;
+        const nEl2 = document.getElementById('age-nivel');
+        const gEl2 = document.getElementById('age-grado');
+        const sEl2 = document.getElementById('age-seccion');
+        if(nEl2) nEl2.disabled = on;
+        if(gEl2) gEl2.disabled = on || !String(nEl2?.value||'').trim();
+        if(sEl2) sEl2.disabled = on || !String(gEl2?.value||'').trim();
+      });
+    }
   }
   if(eventId) {
     const mes = (fecha||'').slice(0,7);
@@ -14301,11 +14327,21 @@ function openAgendaModal(fecha, eventId) {
       if(!(isTutor && tutor.ok)) {
         const isAllEv = (String(ev.grado||'') === '*' && String(ev.seccion||'') === '*');
         if(allChk) allChk.checked = !!isAllEv;
+        const nEl2 = document.getElementById('age-nivel');
         const gEl2 = document.getElementById('age-grado');
         const sEl2 = document.getElementById('age-seccion');
+        try {
+          const cfg = await getConfig();
+          const nivel = _agendaInferNivelByGrado(ev.grado || '', cfg);
+          if(nEl2) nEl2.value = nivel || '';
+          await onAgendaNivelChange();
+          if(gEl2) gEl2.value = isAllEv ? '' : (ev.grado || '');
+          await onAgendaGradoChange();
+          if(sEl2) sEl2.value = isAllEv ? '' : String(ev.seccion || '').trim().toUpperCase();
+        } catch(e1) {}
+        if(nEl2) nEl2.disabled = !!isAllEv;
         if(gEl2) gEl2.disabled = !!isAllEv;
         if(sEl2) sEl2.disabled = !!isAllEv;
-        _agendaFillSelects('age-grado','age-seccion', isAllEv ? '' : (ev.grado || ''), isAllEv ? '' : (ev.seccion || ''));
       }
     }
   }
