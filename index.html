@@ -13715,10 +13715,16 @@ function _agendaTutorAula() {
   const s = String(currentTutorInfo?.tutorSeccion || '').trim().toUpperCase();
   return { ok: !!(currentTutorInfo?.esTutor && g && s), grado: g, seccion: s };
 }
+function _agendaHasAsignacionesExtra() {
+  try {
+    const base = (window.currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {};
+    return Object.keys(base || {}).length > 0;
+  } catch(e) { return false; }
+}
 function _isAgendaWriter(){
   const r = _normRol(currentRol);
   if(['admin','director','coordinador'].includes(r)) return true;
-  if(r === 'profesor') return _agendaTutorAula().ok;
+  if(r === 'profesor') return _agendaTutorAula().ok || _agendaHasAsignacionesExtra();
   return false;
 }
 
@@ -14254,8 +14260,9 @@ async function openAgendaModal(fecha, eventId) {
   document.getElementById('agenda-modal-title').textContent = eventId ? 'Editar evento' : 'Nuevo evento';
   const tutor = _agendaTutorAula();
   const isTutor = _normRol(currentRol) === 'profesor';
-  if(fixedWrap) fixedWrap.style.display = (isTutor && tutor.ok) ? '' : 'none';
-  if(pickWrap)  pickWrap.style.display  = (isTutor && tutor.ok) ? 'none' : '';
+  const canPick = !isTutor || _agendaHasAsignacionesExtra() || !_isDocenteAula();
+  if(fixedWrap) fixedWrap.style.display = (isTutor && tutor.ok && !canPick) ? '' : 'none';
+  if(pickWrap)  pickWrap.style.display  = (isTutor && tutor.ok && !canPick) ? 'none' : '';
   try {
     const nEl0 = document.getElementById('age-nivel');
     const gEl0 = document.getElementById('age-grado');
@@ -14267,7 +14274,8 @@ async function openAgendaModal(fecha, eventId) {
   if(isTutor && tutor.ok) {
     const el = document.getElementById('age-aula-fixed');
     if(el) el.textContent = tutor.grado + ' ' + tutor.seccion;
-  } else {
+  }
+  if(!(isTutor && tutor.ok && !canPick)) {
     try {
       await poblarFiltroNivel('age-nivel');
       _enableSelect('age-nivel');
@@ -14275,6 +14283,9 @@ async function openAgendaModal(fecha, eventId) {
       await poblarFiltroSeccion('age-seccion', null);
       _disableSelect('age-grado');
       _disableSelect('age-seccion');
+      if(isTutor && tutor.ok) {
+        try { await _autoSelectTutoria('age-nivel','age-grado','age-seccion'); } catch(e0) {}
+      }
     } catch(e0) {}
   }
   if(eventId) {
@@ -14367,9 +14378,27 @@ async function guardarAgendaEvento() {
     let seccion = '';
     let isAll = false;
     if(r === 'profesor') {
-      if(!tutor.ok) { toast('No tienes tutoría asignada','warning'); return; }
-      grado = tutor.grado;
-      seccion = tutor.seccion;
+      const canPick = _agendaHasAsignacionesExtra() || !_isDocenteAula();
+      if(!canPick) {
+        if(!tutor.ok) { toast('No tienes tutoría asignada','warning'); return; }
+        grado = tutor.grado;
+        seccion = tutor.seccion;
+      } else {
+        const nivel = String(document.getElementById('age-nivel')?.value || '').trim();
+        const gSel = String(document.getElementById('age-grado')?.value || '').trim();
+        const sSel = String(document.getElementById('age-seccion')?.value || '').trim().toUpperCase();
+        if(!nivel || nivel === 'TODOS') { toast('Selecciona nivel','warning'); return; }
+        if(!gSel || gSel === 'TODOS') { toast('Selecciona grado','warning'); return; }
+        if(!sSel) { toast('Selecciona sección','warning'); return; }
+        try {
+          const asig = (typeof _profesorAsignacionesEfectivas === 'function') ? _profesorAsignacionesEfectivas() : {};
+          if(!asig[gSel]) { toast('No permitido para esta aula','warning'); return; }
+          const secs = Array.isArray(asig[gSel]) ? asig[gSel] : [];
+          if(secs.length && !secs.map(x=>String(x||'').trim().toUpperCase()).includes(sSel)) { toast('No permitido para esta sección','warning'); return; }
+        } catch(e0) {}
+        grado = gSel;
+        seccion = sSel;
+      }
     } else {
       const nivel = String(document.getElementById('age-nivel')?.value || '').trim();
       const gSel = String(document.getElementById('age-grado')?.value || '').trim();

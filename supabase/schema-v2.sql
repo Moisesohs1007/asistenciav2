@@ -258,6 +258,75 @@ RETURNS TEXT LANGUAGE sql STABLE SECURITY DEFINER AS $$
   ), '')
 $$;
 
+CREATE OR REPLACE FUNCTION profesor_asignaciones()
+RETURNS JSONB LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT COALESCE((
+    SELECT u.asignaciones
+    FROM public.usuarios u
+    WHERE u.colegio_id = auth_colegio_id()
+      AND u.id = auth.uid()
+    LIMIT 1
+  ), '{}'::jsonb)
+$$;
+
+CREATE OR REPLACE FUNCTION profesor_restringir()
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT COALESCE((
+    SELECT u.restringir
+    FROM public.usuarios u
+    WHERE u.colegio_id = auth_colegio_id()
+      AND u.id = auth.uid()
+    LIMIT 1
+  ), FALSE)
+$$;
+
+CREATE OR REPLACE FUNCTION profesor_ver_todas_aulas()
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT COALESCE((
+    SELECT (u.permisos_extra->>'verTodasAulas')::boolean
+    FROM public.usuarios u
+    WHERE u.colegio_id = auth_colegio_id()
+      AND u.id = auth.uid()
+    LIMIT 1
+  ), FALSE)
+$$;
+
+CREATE OR REPLACE FUNCTION profesor_puede_aula(p_grado TEXT, p_seccion TEXT)
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  WITH u AS (
+    SELECT
+      COALESCE(u.restringir, FALSE) AS restringir,
+      COALESCE(u.asignaciones, '{}'::jsonb) AS asig,
+      COALESCE(u.permisos_extra, '{}'::jsonb) AS px,
+      COALESCE(u.es_tutor, FALSE) AS es_tutor,
+      COALESCE(u.tutor_grado, '') AS tg,
+      UPPER(COALESCE(u.tutor_seccion, '')) AS ts
+    FROM public.usuarios u
+    WHERE u.colegio_id = auth_colegio_id()
+      AND u.id = auth.uid()
+    LIMIT 1
+  )
+  SELECT
+    CASE
+      WHEN COALESCE((u.px->>'verTodasAulas')::boolean, FALSE) THEN TRUE
+      WHEN NOT u.restringir THEN TRUE
+      WHEN u.es_tutor AND u.tg = COALESCE(p_grado,'') AND u.ts = UPPER(COALESCE(p_seccion,'')) THEN TRUE
+      WHEN (u.asig ? COALESCE(p_grado,'')) THEN
+        CASE
+          WHEN jsonb_typeof(u.asig->COALESCE(p_grado,'')) <> 'array' THEN TRUE
+          WHEN jsonb_array_length(u.asig->COALESCE(p_grado,'')) = 0 THEN TRUE
+          ELSE EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements_text(u.asig->COALESCE(p_grado,'')) AS x(seccion)
+            WHERE UPPER(x.seccion) = UPPER(COALESCE(p_seccion,''))
+            LIMIT 1
+          )
+        END
+      ELSE FALSE
+    END
+  FROM u
+$$;
+
 CREATE POLICY "agenda_read_admin" ON agenda FOR SELECT
   USING (colegio_id = auth_colegio_id() AND is_admin_or_director_or_coord());
 
@@ -265,11 +334,10 @@ CREATE POLICY "agenda_read_tutor" ON agenda FOR SELECT
   USING (
     colegio_id = auth_colegio_id()
     AND auth_rol() = 'profesor'
-    AND is_tutor()
     AND (
-      (grado = tutor_grado() AND seccion = tutor_seccion())
-      OR (grado = '*' AND seccion = '*')
+      (grado = '*' AND seccion = '*')
       OR (seccion = '*' AND grado LIKE 'nivel:%')
+      OR (seccion <> '*' AND profesor_puede_aula(grado, seccion))
     )
   );
 
@@ -310,10 +378,11 @@ CREATE POLICY "agenda_insert_tutor" ON agenda FOR INSERT
   WITH CHECK (
     colegio_id = auth_colegio_id()
     AND auth_rol() = 'profesor'
-    AND is_tutor()
-    AND grado = tutor_grado()
-    AND seccion = tutor_seccion()
     AND created_by = auth.uid()
+    AND seccion <> '*'
+    AND grado <> '*'
+    AND grado NOT LIKE 'nivel:%'
+    AND profesor_puede_aula(grado, seccion)
   );
 
 CREATE POLICY "agenda_update_admin" ON agenda FOR UPDATE
@@ -324,18 +393,20 @@ CREATE POLICY "agenda_update_tutor" ON agenda FOR UPDATE
   USING (
     colegio_id = auth_colegio_id()
     AND auth_rol() = 'profesor'
-    AND is_tutor()
     AND created_by = auth.uid()
-    AND grado = tutor_grado()
-    AND seccion = tutor_seccion()
+    AND seccion <> '*'
+    AND grado <> '*'
+    AND grado NOT LIKE 'nivel:%'
+    AND profesor_puede_aula(grado, seccion)
   )
   WITH CHECK (
     colegio_id = auth_colegio_id()
     AND auth_rol() = 'profesor'
-    AND is_tutor()
     AND created_by = auth.uid()
-    AND grado = tutor_grado()
-    AND seccion = tutor_seccion()
+    AND seccion <> '*'
+    AND grado <> '*'
+    AND grado NOT LIKE 'nivel:%'
+    AND profesor_puede_aula(grado, seccion)
   );
 
 CREATE POLICY "agenda_delete_admin" ON agenda FOR DELETE
@@ -345,10 +416,11 @@ CREATE POLICY "agenda_delete_tutor" ON agenda FOR DELETE
   USING (
     colegio_id = auth_colegio_id()
     AND auth_rol() = 'profesor'
-    AND is_tutor()
     AND created_by = auth.uid()
-    AND grado = tutor_grado()
-    AND seccion = tutor_seccion()
+    AND seccion <> '*'
+    AND grado <> '*'
+    AND grado NOT LIKE 'nivel:%'
+    AND profesor_puede_aula(grado, seccion)
   );
 
 -- 7. AUDITORÍA IA (PROMPTS AUTOMÁTICOS)
