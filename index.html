@@ -17339,7 +17339,7 @@ async function onUTutorGradoChange() {
   } catch(e) {}
 }
 
-function toggleTutorFields() {
+function toggleTutorFields(prefill) {
   const chk = document.getElementById('u-es-tutor');
   const fields = document.getElementById('u-tutor-fields');
   if(!chk || !fields) return;
@@ -17355,7 +17355,8 @@ function toggleTutorFields() {
     _disableSelect('u-tutor-seccion');
   } else {
     try {
-      poblarTutorAulaSelects();
+      if(prefill && (prefill.grado || prefill.seccion)) poblarTutorAulaSelects(prefill);
+      else poblarTutorAulaSelects();
     } catch(e0) {}
   }
 }
@@ -17492,9 +17493,8 @@ async function openModalUsuario(uid, nombre, rol, email) {
       actualizarResumenPermisosEspeciales();
       // Cargar teléfono
       document.getElementById('u-telefono').value = uData.telefono || '';
-      await poblarTutorAulaSelects({ grado: uData.tutorGrado || null, seccion: uData.tutorSeccion || null });
       document.getElementById('u-es-tutor').checked = !!uData.esTutor;
-      toggleTutorFields();
+      toggleTutorFields({ grado: uData.tutorGrado || null, seccion: uData.tutorSeccion || null });
       // Mostrar botón recuperar solo si tiene teléfono
       document.getElementById('u-recuperar-msg').style.display = 'none';
       const cargoSel = document.getElementById('u-cargo-select');
