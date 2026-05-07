@@ -50,7 +50,10 @@ RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
     FROM public.usuarios u
     WHERE u.colegio_id = auth_colegio_id()
       AND u.id = auth.uid()
-      AND COALESCE(u.es_tutor, FALSE) = TRUE
+      AND (
+        COALESCE(u.es_tutor, FALSE) = TRUE
+        OR (COALESCE(u.tutor_grado,'') <> '' AND COALESCE(u.tutor_seccion,'') <> '')
+      )
   )
 $$;
 
@@ -129,7 +132,7 @@ RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
     CASE
       WHEN COALESCE((u.px->>'verTodasAulas')::boolean, FALSE) THEN TRUE
       WHEN NOT u.restringir THEN TRUE
-      WHEN u.es_tutor AND u.tg = COALESCE(p_grado,'') AND u.ts = UPPER(COALESCE(p_seccion,'')) THEN TRUE
+      WHEN (u.es_tutor OR (u.tg <> '' AND u.ts <> '')) AND u.tg = COALESCE(p_grado,'') AND u.ts = UPPER(COALESCE(p_seccion,'')) THEN TRUE
       WHEN (u.asig ? COALESCE(p_grado,'')) THEN
         CASE
           WHEN jsonb_typeof(u.asig->COALESCE(p_grado,'')) <> 'array' THEN TRUE

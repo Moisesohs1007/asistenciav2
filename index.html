@@ -9383,7 +9383,9 @@ async function cargarTutorActual() {
       const norm = (v) => String(v ?? '').trim().replace(/\s+/g,' ');
       const tutorGrado = norm(d.tutorGrado || '');
       const tutorSeccion = norm(d.tutorSeccion || '').toUpperCase();
-      const esTutor = !!d.esTutor && !!tutorGrado && !!tutorSeccion;
+      const hasTut = !!tutorGrado && !!tutorSeccion;
+      const raw = d.esTutor;
+      const esTutor = hasTut && ((raw === undefined || raw === null) ? true : !!raw);
       currentTutorInfo = {
         esTutor,
         tutorGrado,
@@ -14396,13 +14398,23 @@ async function guardarAgendaEvento() {
         if(!nivel || nivel === 'TODOS') { toast('Selecciona nivel','warning'); return; }
         if(!gSel || gSel === 'TODOS') { toast('Selecciona grado','warning'); return; }
         if(!sSel) { toast('Selecciona sección','warning'); return; }
+        let gFinal = gSel;
         try {
           const asig = (typeof _profesorAsignacionesEfectivas === 'function') ? _profesorAsignacionesEfectivas() : {};
-          if(!asig[gSel]) { toast('No permitido para esta aula','warning'); return; }
-          const secs = Array.isArray(asig[gSel]) ? asig[gSel] : [];
+          const keys = Object.keys(asig || {});
+          const matchKey = keys.find(k => _agendaKey(k) === _agendaKey(gSel)) || '';
+          if(!matchKey) {
+            const tg = String(tutor?.grado || '').trim();
+            const ts = String(tutor?.seccion || '').trim().toUpperCase();
+            const okTut = !!tg && !!ts && _agendaKey(tg) === _agendaKey(gSel) && ts === sSel;
+            if(!okTut) { toast('No permitido para esta aula','warning'); return; }
+            gFinal = tg || gSel;
+          }
+          const secs = matchKey && Array.isArray(asig[matchKey]) ? asig[matchKey] : [];
           if(secs.length && !secs.map(x=>String(x||'').trim().toUpperCase()).includes(sSel)) { toast('No permitido para esta sección','warning'); return; }
+          if(matchKey) gFinal = matchKey;
         } catch(e0) {}
-        grado = gSel;
+        grado = gFinal;
         seccion = sSel;
       }
     } else {
