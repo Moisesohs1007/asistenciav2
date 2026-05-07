@@ -18483,7 +18483,9 @@ let _usuariosSeccionesRealesCache = { ts: 0, map: null };
 let _usuariosWarnedNoSeccionesReales = false;
 async function _getSeccionesRealesByGrado() {
   const now = Date.now();
-  if(_usuariosSeccionesRealesCache.map && (now - (_usuariosSeccionesRealesCache.ts || 0) < 60000)) return _usuariosSeccionesRealesCache.map;
+  if(_usuariosSeccionesRealesCache.map && Object.keys(_usuariosSeccionesRealesCache.map || {}).length && (now - (_usuariosSeccionesRealesCache.ts || 0) < 60000)) {
+    return _usuariosSeccionesRealesCache.map;
+  }
   let rows = [];
   try {
     if(window.DB && typeof DB.getAulas === 'function') rows = await DB.getAulas();
@@ -18498,11 +18500,13 @@ async function _getSeccionesRealesByGrado() {
     const g = String(r?.grado || '').trim();
     const s = String(r?.seccion || '').trim().toUpperCase();
     if(!g || !s) return;
-    if(!bucket[g]) bucket[g] = new Set();
-    bucket[g].add(s);
+    const gKey = _agendaKey(g);
+    if(!gKey) return;
+    if(!bucket[gKey]) bucket[gKey] = new Set();
+    bucket[gKey].add(s);
   });
   const out = {};
-  Object.entries(bucket).forEach(([g, set]) => { out[g] = Array.from(set).sort(); });
+  Object.entries(bucket).forEach(([gKey, set]) => { out[gKey] = Array.from(set).sort(); });
   _usuariosSeccionesRealesCache = { ts: now, map: out };
   return out;
 }
@@ -18510,8 +18514,11 @@ async function _getSeccionesRealesByGrado() {
 async function cargarCheckboxesPrivilegios(uid) {
   const cfg = await getConfig();
   const seccionesRealesByGrado = await _getSeccionesRealesByGrado();
-  const seccionesCfg = (cfg.secciones || ['A','B','C','D']).map(x => String(x || '').trim().toUpperCase()).filter(Boolean);
   const hasAnyReal = !!(seccionesRealesByGrado && Object.keys(seccionesRealesByGrado).some(k => (seccionesRealesByGrado[k] || []).length));
+  if(!hasAnyReal && !_usuariosWarnedNoSeccionesReales) {
+    _usuariosWarnedNoSeccionesReales = true;
+    toast('⚠️ No se pudo obtener secciones reales. Revisa RLS de alumnos o habilita RPC list_aulas.', 'warning');
+  }
 
   // Si uid, cargar desde Firestore; si no, usar tempAsignaciones
   if(uid) {
@@ -18541,14 +18548,8 @@ async function cargarCheckboxesPrivilegios(uid) {
           const seccsAsignadas = hasGrado ? ((asignaciones || {})[g] || []) : [];
           const seccsSet = new Set((seccsAsignadas || []).map(x => String(x || '').trim().toUpperCase()).filter(Boolean));
           const gradoKey = nivelKey + '_' + g.replace(/[^a-z0-9]/gi,'_');
-          let secciones = (seccionesRealesByGrado && Array.isArray(seccionesRealesByGrado[g])) ? seccionesRealesByGrado[g] : [];
-          if(!secciones.length) {
-            secciones = seccionesCfg;
-            if(!_usuariosWarnedNoSeccionesReales) {
-              _usuariosWarnedNoSeccionesReales = true;
-              toast('⚠️ No se pudieron validar secciones reales para algunos grados. Mostrando secciones de configuración.', 'warning');
-            }
-          }
+          const gKey = _agendaKey(g);
+          const secciones = (gKey && seccionesRealesByGrado && Array.isArray(seccionesRealesByGrado[gKey])) ? seccionesRealesByGrado[gKey] : [];
           return `
             <div style="margin-bottom:8px;">
               <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem;font-weight:600;margin-bottom:5px;">

@@ -151,7 +151,7 @@ const DB = {
   async getAulas() {
     const cacheKey = 'aulas:' + COLEGIO_ID;
     const lsData = LSC.get(cacheKey);
-    if (lsData) return lsData;
+    if (Array.isArray(lsData) && lsData.length) return lsData;
     if (!supabase || typeof supabase.rpc !== 'function') return [];
     const { data, error } = await supabase.rpc('list_aulas', { p_colegio_id: COLEGIO_ID });
     if (error) {
@@ -163,7 +163,7 @@ const DB = {
       seccion: r.seccion || '',
       turno: r.turno || ''
     }));
-    LSC.set(cacheKey, out, LSC.TTL_ALUMNOS);
+    if (out && out.length) LSC.set(cacheKey, out, LSC.TTL_ALUMNOS);
     return out;
   },
 
