@@ -93,7 +93,7 @@ const DB = {
     LSC.del('alumnos');
     try {
       Object.keys(localStorage)
-        .filter(k => k.startsWith('scoped:') || k.startsWith('asmqr_scoped:') || k.startsWith('alumnos:'))
+        .filter(k => k.startsWith('scoped:') || k.startsWith('asmqr_scoped:') || k.startsWith('alumnos:') || k.startsWith('aulas:'))
         .forEach(k => localStorage.removeItem(k));
     } catch (e) {}
   },
@@ -146,6 +146,25 @@ const DB = {
     this._alumnosCache = null;
     this._alumnosScopedCache = {};
     LSC.del('alumnos');
+  },
+
+  async getAulas() {
+    const cacheKey = 'aulas:' + COLEGIO_ID;
+    const lsData = LSC.get(cacheKey);
+    if (lsData) return lsData;
+    if (!supabase || typeof supabase.rpc !== 'function') return [];
+    const { data, error } = await supabase.rpc('list_aulas', { p_colegio_id: COLEGIO_ID });
+    if (error) {
+      console.error('[DB] getAulas:', error.message);
+      return [];
+    }
+    const out = (data || []).map(r => ({
+      grado: r.grado || r.grado_text || r.grado_id || '',
+      seccion: r.seccion || '',
+      turno: r.turno || ''
+    }));
+    LSC.set(cacheKey, out, LSC.TTL_ALUMNOS);
+    return out;
   },
 
   // ── REGISTROS ─────────────────────────────────────────────

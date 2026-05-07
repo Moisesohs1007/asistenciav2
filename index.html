@@ -13807,6 +13807,31 @@ async function _agendaLoadAulaOptions() {
         _agendaSeccionesByGrado[g] = Array.from(_agendaSeccionesByGrado[g]).sort();
       });
       _agendaSeccionesAny = Array.from(anySet).sort();
+      if(!Object.keys(_agendaSeccionesByGrado).length && window.DB && typeof DB.getAulas === 'function') {
+        try {
+          const aulas = await DB.getAulas();
+          const anySet2 = new Set();
+          (aulas || []).forEach(r => {
+            const s = String(r?.seccion || '').trim().toUpperCase();
+            if(!s) return;
+            anySet2.add(s);
+            const gRaw = String(r?.grado || '').trim();
+            let gKey = _agendaKey(gRaw);
+            if((!gKey || !cfgGradeKeys.has(gKey)) && _agendaNum(gRaw)) {
+              const n = _agendaNum(gRaw);
+              if(cfgInicialNumToKey[n]) gKey = cfgInicialNumToKey[n];
+              else if(cfgNumToKey[n]) gKey = cfgNumToKey[n];
+            }
+            if(!gKey || !cfgGradeKeys.has(gKey)) return;
+            if(!_agendaSeccionesByGrado[gKey]) _agendaSeccionesByGrado[gKey] = new Set();
+            _agendaSeccionesByGrado[gKey].add(s);
+          });
+          Object.keys(_agendaSeccionesByGrado).forEach(g => {
+            _agendaSeccionesByGrado[g] = Array.from(_agendaSeccionesByGrado[g]).sort();
+          });
+          if(anySet2.size) _agendaSeccionesAny = Array.from(anySet2).sort();
+        } catch(_) {}
+      }
     } catch(e2) {
       _agendaSeccionesByGrado = {};
       _agendaSeccionesAny = [];
@@ -13824,12 +13849,9 @@ function _agendaSecsForGrado(grado) {
     ? _agendaSeccionesByGrado[gKey]
     : [];
   if((byG || []).length) return byG;
-  const hasAnyMap = !!(_agendaSeccionesByGrado && Object.keys(_agendaSeccionesByGrado).length);
-  if(hasAnyMap) return [];
-  if((_agendaSeccionesAll || []).length) return _agendaSeccionesAll;
   if(!_agendaWarnedNoAlumnos) {
     _agendaWarnedNoAlumnos = true;
-    toast('⚠️ No se pudo leer alumnos para validar secciones. Revisa RLS de alumnos.', 'warning');
+    toast('⚠️ No se pudo validar secciones reales para este grado.', 'warning');
   }
   return [];
 }
