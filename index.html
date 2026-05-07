@@ -3353,8 +3353,14 @@
           </label>
           <div id="u-tutor-fields" style="display:none;margin-top:10px;">
             <div class="form-group" style="margin:0 0 10px 0;">
+              <label>Nivel</label>
+              <select id="u-tutor-nivel" onchange="onUTutorNivelChange()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:var(--font-body);font-size:0.88rem;width:100%;display:block;-webkit-appearance:menulist;appearance:menulist;cursor:pointer;">
+                <option value="" disabled selected>-- Nivel --</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0 0 10px 0;">
               <label>Aula (Grado)</label>
-              <select id="u-tutor-grado" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:var(--font-body);font-size:0.88rem;width:100%;display:block;-webkit-appearance:menulist;appearance:menulist;cursor:pointer;">
+              <select id="u-tutor-grado" onchange="onUTutorGradoChange()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:var(--font-body);font-size:0.88rem;width:100%;display:block;-webkit-appearance:menulist;appearance:menulist;cursor:pointer;">
                 <option value="" disabled selected>-- Grado --</option>
               </select>
             </div>
@@ -17259,14 +17265,66 @@ function toast(msg, type='success') {
 let editingUsuarioId = null;
 
 async function poblarTutorAulaSelects({ grado = null, seccion = null } = {}) {
+  const nEl = document.getElementById('u-tutor-nivel');
   const gEl = document.getElementById('u-tutor-grado');
   const sEl = document.getElementById('u-tutor-seccion');
-  if(!gEl || !sEl) return;
-  const cfg = await getConfig();
-  const todosGrados = [...new Set(Object.values(cfg.grados||{}).flat())].filter(Boolean);
-  const secciones = (cfg.secciones || ['A','B','C','D']).filter(Boolean);
-  gEl.innerHTML = `<option value="" disabled ${!grado?'selected':''}>-- Grado --</option>` + todosGrados.map(g => `<option value="${g}" ${grado===g?'selected':''}>${g}</option>`).join('');
-  sEl.innerHTML = `<option value="" disabled ${!seccion?'selected':''}>-- Sección --</option>` + secciones.map(s => `<option value="${s}" ${seccion===s?'selected':''}>${s}</option>`).join('');
+  if(!nEl || !gEl || !sEl) return;
+  await poblarFiltroNivel('u-tutor-nivel');
+  try {
+    Array.from(nEl.options || []).forEach(o => { if(o && o.value === 'TODOS') o.remove(); });
+  } catch(e) {}
+  _enableSelect('u-tutor-nivel');
+  _disableSelect('u-tutor-grado');
+  _disableSelect('u-tutor-seccion');
+  if(grado) {
+    try {
+      const cfg = await getConfig();
+      const niv = _agendaInferNivelByGrado(grado, cfg);
+      if(niv) nEl.value = niv;
+      await onUTutorNivelChange();
+      gEl.value = String(grado || '').trim();
+      await onUTutorGradoChange();
+      sEl.value = String(seccion || '').trim().toUpperCase();
+    } catch(e2) {}
+  } else {
+    try { nEl.value = ''; } catch(e0) {}
+    try { gEl.value = ''; } catch(e0) {}
+    try { sEl.value = ''; } catch(e0) {}
+  }
+}
+
+async function onUTutorNivelChange() {
+  try {
+    const nivel = String(document.getElementById('u-tutor-nivel')?.value || '').trim();
+    const gEl = document.getElementById('u-tutor-grado');
+    const sEl = document.getElementById('u-tutor-seccion');
+    if(gEl) gEl.value = '';
+    if(sEl) sEl.value = '';
+    _disableSelect('u-tutor-seccion');
+    await poblarFiltroSeccion('u-tutor-seccion', null);
+    if(!nivel || nivel === 'TODOS') { _disableSelect('u-tutor-grado'); return; }
+    await poblarFiltroGrado('u-tutor-grado', nivel);
+    try {
+      Array.from(gEl.options || []).forEach(o => { if(o && o.value === 'TODOS') o.remove(); });
+    } catch(e0) {}
+    _enableSelect('u-tutor-grado');
+  } catch(e) {}
+}
+
+async function onUTutorGradoChange() {
+  try {
+    const grado = String(document.getElementById('u-tutor-grado')?.value || '').trim();
+    const sEl = document.getElementById('u-tutor-seccion');
+    if(sEl) sEl.value = '';
+    _disableSelect('u-tutor-seccion');
+    await poblarFiltroSeccion('u-tutor-seccion', null);
+    if(!grado || grado === 'TODOS') return;
+    await poblarFiltroSeccion('u-tutor-seccion', grado);
+    try {
+      Array.from(sEl.options || []).forEach(o => { if(o && o.value === 'TODOS') o.remove(); });
+    } catch(e0) {}
+    _enableSelect('u-tutor-seccion');
+  } catch(e) {}
 }
 
 function toggleTutorFields() {
@@ -17275,10 +17333,18 @@ function toggleTutorFields() {
   if(!chk || !fields) return;
   fields.style.display = chk.checked ? '' : 'none';
   if(!chk.checked) {
+    const nEl = document.getElementById('u-tutor-nivel');
     const gEl = document.getElementById('u-tutor-grado');
     const sEl = document.getElementById('u-tutor-seccion');
+    if(nEl) nEl.value = '';
     if(gEl) gEl.value = '';
     if(sEl) sEl.value = '';
+    _disableSelect('u-tutor-grado');
+    _disableSelect('u-tutor-seccion');
+  } else {
+    try {
+      poblarTutorAulaSelects();
+    } catch(e0) {}
   }
 }
 
@@ -17495,6 +17561,7 @@ async function saveUsuario() {
     const asignaciones = (rolScope && restringir) ? tempAsignaciones : {};
     const esTutor = rol === 'profesor' ? !!document.getElementById('u-es-tutor')?.checked : false;
     const telefonoVal = document.getElementById('u-telefono').value.trim();
+    const tutorNivel = esTutor ? (document.getElementById('u-tutor-nivel')?.value || '') : '';
     const tutorGrado = esTutor ? (document.getElementById('u-tutor-grado')?.value || '') : '';
     const tutorSeccion = esTutor ? (document.getElementById('u-tutor-seccion')?.value || '') : '';
     if(rol === 'psicologo') {
@@ -17503,6 +17570,7 @@ async function saveUsuario() {
     }
     if(esTutor) {
       if(!telefonoVal) { toast('Completa el teléfono del tutor','warning'); return; }
+      if(!tutorNivel) { toast('Selecciona el nivel del tutor','warning'); return; }
       if(!tutorGrado) { toast('Selecciona el grado del tutor','warning'); return; }
       if(!tutorSeccion) { toast('Selecciona la sección del tutor','warning'); return; }
     }
