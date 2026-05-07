@@ -4901,10 +4901,6 @@
           <select id="age-grado" onchange="onAgendaGradoChange()" style="min-width:160px;"></select>
           <select id="age-seccion" style="min-width:120px;"></select>
         </div>
-        <label id="age-all-wrap" style="display:none;align-items:center;gap:10px;margin-top:10px;">
-          <input type="checkbox" id="age-all-aulas">
-          <span style="font-size:0.82rem;color:var(--muted);">Enviar a todos los grados y secciones</span>
-        </label>
       </div>
       <div class="form-group form-full">
         <label>Título *</label>
@@ -14155,7 +14151,13 @@ function agendaSelectDay(fecha, mapOpt) {
     const hora = ev.hora ? (ev.hora + ' · ') : '';
     const det = ev.detalle ? `<div class="agenda-item-meta">${ev.detalle}</div>` : '';
     const aula = (_normRol(currentRol) !== 'profesor' && ev.grado && ev.seccion)
-      ? `<div class="agenda-item-meta">Aula: ${_escHtml(ev.grado==='*'&&ev.seccion==='*' ? 'Todo el colegio (todas las aulas)' : (ev.grado + ' ' + ev.seccion))}</div>`
+      ? (() => {
+          const g = String(ev.grado||'');
+          const s = String(ev.seccion||'');
+          if(g==='*' && s==='*') return `<div class="agenda-item-meta">Aula: ${_escHtml('Todo el colegio (todas las aulas)')}</div>`;
+          if(s==='*' && g.startsWith('nivel:')) return `<div class="agenda-item-meta">Aula: ${_escHtml('Todo el nivel ' + g.slice(6))}</div>`;
+          return `<div class="agenda-item-meta">Aula: ${_escHtml(g + ' ' + s)}</div>`;
+        })()
       : '';
     const actions = canWrite ? `<div class="agenda-item-actions">
       <button class="btn btn-ghost" onclick="openAgendaModal('${fecha}','${ev.id}')" style="padding:5px 10px;font-size:0.78rem;">✏ Editar</button>
@@ -14188,7 +14190,6 @@ function _agendaInferNivelByGrado(grado, cfg) {
 
 async function onAgendaNivelChange() {
   try {
-    const allOn = !!document.getElementById('age-all-aulas')?.checked;
     const nivel = String(document.getElementById('age-nivel')?.value || '').trim();
     const gEl = document.getElementById('age-grado');
     const sEl = document.getElementById('age-seccion');
@@ -14196,23 +14197,20 @@ async function onAgendaNivelChange() {
     if(sEl) sEl.value = '';
     _disableSelect('age-seccion');
     await poblarFiltroSeccion('age-seccion', null);
-    if(allOn) { _disableSelect('age-grado'); return; }
-    if(!nivel) { _disableSelect('age-grado'); return; }
-    await poblarFiltroGrado('age-grado', (nivel === 'TODOS' ? null : nivel));
+    if(!nivel || nivel === 'TODOS') { _disableSelect('age-grado'); return; }
+    await poblarFiltroGrado('age-grado', nivel);
     _enableSelect('age-grado');
   } catch(e) {}
 }
 
 async function onAgendaGradoChange() {
   try {
-    const allOn = !!document.getElementById('age-all-aulas')?.checked;
     const grado = String(document.getElementById('age-grado')?.value || '').trim();
     const sEl = document.getElementById('age-seccion');
     if(sEl) sEl.value = '';
     _disableSelect('age-seccion');
     await poblarFiltroSeccion('age-seccion', null);
-    if(allOn) return;
-    if(!grado) return;
+    if(!grado || grado === 'TODOS') return;
     await poblarFiltroSeccion('age-seccion', grado);
     _enableSelect('age-seccion');
   } catch(e) {}
@@ -14224,8 +14222,6 @@ async function openAgendaModal(fecha, eventId) {
   if(!m) return;
   const fixedWrap = document.getElementById('age-aula-fixed-wrap');
   const pickWrap  = document.getElementById('age-aula-pick-wrap');
-  const allWrap   = document.getElementById('age-all-wrap');
-  const allChk    = document.getElementById('age-all-aulas');
   document.getElementById('age-event-id').value = eventId || '';
   document.getElementById('age-fec').value = fecha || hoy();
   document.getElementById('age-hora').value = '';
@@ -14260,9 +14256,6 @@ async function openAgendaModal(fecha, eventId) {
   const isTutor = _normRol(currentRol) === 'profesor';
   if(fixedWrap) fixedWrap.style.display = (isTutor && tutor.ok) ? '' : 'none';
   if(pickWrap)  pickWrap.style.display  = (isTutor && tutor.ok) ? 'none' : '';
-  const canAll = ['admin','director','coordinador'].includes(_normRol(currentRol));
-  if(allWrap) allWrap.style.display = (!isTutor && canAll) ? 'flex' : 'none';
-  if(allChk) allChk.checked = false;
   try {
     const nEl0 = document.getElementById('age-nivel');
     const gEl0 = document.getElementById('age-grado');
@@ -14283,30 +14276,6 @@ async function openAgendaModal(fecha, eventId) {
       _disableSelect('age-grado');
       _disableSelect('age-seccion');
     } catch(e0) {}
-    if(allChk && !allChk.__agendaBound) {
-      allChk.__agendaBound = true;
-      allChk.addEventListener('change', () => {
-        const on = !!allChk.checked;
-        const nEl2 = document.getElementById('age-nivel');
-        const gEl2 = document.getElementById('age-grado');
-        const sEl2 = document.getElementById('age-seccion');
-        if(on) {
-          try { if(nEl2) nEl2.value = ''; } catch(e0) {}
-          try { if(gEl2) gEl2.value = ''; } catch(e0) {}
-          try { if(sEl2) sEl2.value = ''; } catch(e0) {}
-          if(nEl2) nEl2.disabled = true;
-          if(gEl2) gEl2.disabled = true;
-          if(sEl2) sEl2.disabled = true;
-          try {
-            if(gEl2) gEl2.style.opacity = '0.45';
-            if(sEl2) sEl2.style.opacity = '0.45';
-          } catch(e0) {}
-        } else {
-          if(nEl2) nEl2.disabled = false;
-          try { onAgendaNivelChange(); } catch(e0) {}
-        }
-      });
-    }
   }
   if(eventId) {
     const mes = (fecha||'').slice(0,7);
@@ -14341,23 +14310,34 @@ async function openAgendaModal(fecha, eventId) {
         }
       } catch(e0) {}
       if(!(isTutor && tutor.ok)) {
-        const isAllEv = (String(ev.grado||'') === '*' && String(ev.seccion||'') === '*');
-        if(allChk) allChk.checked = !!isAllEv;
         const nEl2 = document.getElementById('age-nivel');
         const gEl2 = document.getElementById('age-grado');
         const sEl2 = document.getElementById('age-seccion');
         try {
           const cfg = await getConfig();
-          const nivel = _agendaInferNivelByGrado(ev.grado || '', cfg);
-          if(nEl2) nEl2.value = nivel || '';
-          await onAgendaNivelChange();
-          if(gEl2) gEl2.value = isAllEv ? '' : (ev.grado || '');
-          await onAgendaGradoChange();
-          if(sEl2) sEl2.value = isAllEv ? '' : String(ev.seccion || '').trim().toUpperCase();
+          const gr = String(ev.grado || '').trim();
+          const sec = String(ev.seccion || '').trim();
+          if(gr === '*' && sec === '*') {
+            if(nEl2) nEl2.value = 'TODOS';
+            if(gEl2) gEl2.value = '';
+            if(sEl2) sEl2.value = '';
+            _disableSelect('age-grado');
+            _disableSelect('age-seccion');
+          } else if(sec === '*' && gr.startsWith('nivel:')) {
+            const niv = gr.slice(6);
+            if(nEl2) nEl2.value = niv || '';
+            await onAgendaNivelChange();
+            if(gEl2) gEl2.value = 'TODOS';
+            _disableSelect('age-seccion');
+          } else {
+            const nivel = _agendaInferNivelByGrado(gr, cfg);
+            if(nEl2) nEl2.value = nivel || '';
+            await onAgendaNivelChange();
+            if(gEl2) gEl2.value = gr;
+            await onAgendaGradoChange();
+            if(sEl2) sEl2.value = String(sec || '').trim().toUpperCase();
+          }
         } catch(e1) {}
-        if(nEl2) nEl2.disabled = !!isAllEv;
-        if(gEl2) gEl2.disabled = !!isAllEv;
-        if(sEl2) sEl2.disabled = !!isAllEv;
       }
     }
   }
@@ -14391,14 +14371,23 @@ async function guardarAgendaEvento() {
       grado = tutor.grado;
       seccion = tutor.seccion;
     } else {
-      isAll = !!document.getElementById('age-all-aulas')?.checked;
-      if(isAll) {
+      const nivel = String(document.getElementById('age-nivel')?.value || '').trim();
+      const gSel = String(document.getElementById('age-grado')?.value || '').trim();
+      const sSel = String(document.getElementById('age-seccion')?.value || '').trim().toUpperCase();
+      if(!nivel) { toast('Selecciona nivel','warning'); return; }
+      if(nivel === 'TODOS') {
+        isAll = true;
         grado = '*';
         seccion = '*';
+      } else if(!gSel) {
+        toast('Selecciona grado','warning'); return;
+      } else if(gSel === 'TODOS') {
+        grado = 'nivel:' + nivel;
+        seccion = '*';
       } else {
-        grado = String(document.getElementById('age-grado')?.value || '').trim();
-        seccion = String(document.getElementById('age-seccion')?.value || '').trim().toUpperCase();
-        if(!grado || !seccion) { toast('Selecciona grado y sección','warning'); return; }
+        grado = gSel;
+        seccion = sSel;
+        if(!seccion) { toast('Selecciona sección','warning'); return; }
       }
     }
 
@@ -14419,6 +14408,16 @@ async function guardarAgendaEvento() {
       const uid = (currentUser && currentUser.uid) ? currentUser.uid : 'anon';
       const baseKey = fecha + '|' + (hora||'') + '|' + titulo + '|' + (detalle||'');
       const newId = id || ('all_' + fecha.replaceAll('-','') + '_' + uid + '_' + _agendaHash(baseKey));
+      await db.collection('agenda').doc(newId).set({
+        ...data,
+        ...adj,
+        createdBy: (currentUser && currentUser.uid) ? currentUser.uid : null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    } else if(String(seccion||'') === '*' && String(grado||'').startsWith('nivel:')) {
+      const uid = (currentUser && currentUser.uid) ? currentUser.uid : 'anon';
+      const baseKey = fecha + '|' + (hora||'') + '|' + titulo + '|' + (detalle||'') + '|' + grado;
+      const newId = id || ('niv_' + fecha.replaceAll('-','') + '_' + uid + '_' + _agendaHash(baseKey));
       await db.collection('agenda').doc(newId).set({
         ...data,
         ...adj,

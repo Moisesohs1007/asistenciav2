@@ -694,7 +694,9 @@ function _apoOpenDetalle(kind, id) {
     const titulo = String(ev.titulo || 'Evento');
     const hora = String(ev.hora || '').trim();
     const autor = String(ev.createdByName || ev.created_by_name || '').trim();
-    const scope = (String(ev.grado||'') === '*' && String(ev.seccion||'') === '*') ? 'Todo el colegio' : '';
+    const g = String(ev.grado||'');
+    const s = String(ev.seccion||'');
+    const scope = (g === '*' && s === '*') ? 'Todo el colegio' : ((s === '*' && g.indexOf('nivel:') === 0) ? ('Todo el nivel ' + g.slice(6)) : '');
     const parts = [];
     if(ev.fecha) parts.push(_fechaLarga(String(ev.fecha)));
     if(hora) parts.push(hora);
@@ -1560,7 +1562,9 @@ function renderApoAgenda() {
         var hora = (ev.hora || '').trim();
         var titulo = _h(ev.titulo || 'Evento');
         var autor = _h(ev.createdByName || ev.created_by_name || '');
-        var scope = (String(ev.grado||'') === '*' && String(ev.seccion||'') === '*') ? 'Todo el colegio' : '';
+        var g = String(ev.grado||'');
+        var s = String(ev.seccion||'');
+        var scope = (g === '*' && s === '*') ? 'Todo el colegio' : ((s === '*' && g.indexOf('nivel:') === 0) ? ('Todo el nivel ' + g.slice(6)) : '');
         var hasPrev = !!(ev.previewBase64 || ev.preview_base64);
         var badgePrev = hasPrev ? '<span style="margin-left:8px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.28);color:#34d399;border-radius:999px;padding:2px 8px;font-size:0.7rem;font-weight:800;">Adjunto</span>' : '';
         var scopeHtml = scope ? ('<div style="margin-top:6px;color:var(--muted);font-size:0.74rem;">Evento: <strong style="color:var(--text);">' + _h(scope) + '</strong></div>') : '';

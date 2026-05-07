@@ -269,6 +269,7 @@ CREATE POLICY "agenda_read_tutor" ON agenda FOR SELECT
     AND (
       (grado = tutor_grado() AND seccion = tutor_seccion())
       OR (grado = '*' AND seccion = '*')
+      OR (seccion = '*' AND grado LIKE 'nivel:%')
     )
   );
 
@@ -278,6 +279,18 @@ CREATE POLICY "agenda_read_apoderado" ON agenda FOR SELECT
     AND is_apoderado()
     AND (
       (grado = '*' AND seccion = '*')
+      OR (
+        seccion = '*'
+        AND grado LIKE 'nivel:%'
+        AND EXISTS (
+          SELECT 1
+          FROM public.alumnos a
+          WHERE a.colegio_id = agenda.colegio_id
+            AND a.id = auth_alumno_id()
+            AND a.turno = split_part(agenda.grado, ':', 2)
+          LIMIT 1
+        )
+      )
       OR EXISTS (
         SELECT 1
         FROM public.alumnos a
