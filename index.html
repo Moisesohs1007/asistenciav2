@@ -18480,6 +18480,7 @@ async function savePrivilegios() {
 }
 
 let _usuariosSeccionesRealesCache = { ts: 0, map: null };
+let _usuariosWarnedNoSeccionesReales = false;
 async function _getSeccionesRealesByGrado() {
   const now = Date.now();
   if(_usuariosSeccionesRealesCache.map && (now - (_usuariosSeccionesRealesCache.ts || 0) < 60000)) return _usuariosSeccionesRealesCache.map;
@@ -18509,6 +18510,8 @@ async function _getSeccionesRealesByGrado() {
 async function cargarCheckboxesPrivilegios(uid) {
   const cfg = await getConfig();
   const seccionesRealesByGrado = await _getSeccionesRealesByGrado();
+  const seccionesCfg = (cfg.secciones || ['A','B','C','D']).map(x => String(x || '').trim().toUpperCase()).filter(Boolean);
+  const hasAnyReal = !!(seccionesRealesByGrado && Object.keys(seccionesRealesByGrado).some(k => (seccionesRealesByGrado[k] || []).length));
 
   // Si uid, cargar desde Firestore; si no, usar tempAsignaciones
   if(uid) {
@@ -18538,7 +18541,14 @@ async function cargarCheckboxesPrivilegios(uid) {
           const seccsAsignadas = hasGrado ? ((asignaciones || {})[g] || []) : [];
           const seccsSet = new Set((seccsAsignadas || []).map(x => String(x || '').trim().toUpperCase()).filter(Boolean));
           const gradoKey = nivelKey + '_' + g.replace(/[^a-z0-9]/gi,'_');
-          const secciones = (seccionesRealesByGrado && Array.isArray(seccionesRealesByGrado[g])) ? seccionesRealesByGrado[g] : [];
+          let secciones = (seccionesRealesByGrado && Array.isArray(seccionesRealesByGrado[g])) ? seccionesRealesByGrado[g] : [];
+          if(!secciones.length) {
+            secciones = seccionesCfg;
+            if(!_usuariosWarnedNoSeccionesReales) {
+              _usuariosWarnedNoSeccionesReales = true;
+              toast('⚠️ No se pudieron validar secciones reales para algunos grados. Mostrando secciones de configuración.', 'warning');
+            }
+          }
           return `
             <div style="margin-bottom:8px;">
               <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem;font-weight:600;margin-bottom:5px;">
