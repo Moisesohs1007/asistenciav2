@@ -18479,12 +18479,15 @@ async function savePrivilegios() {
   }
 }
 
-let _usuariosSeccionesRealesCache = { ts: 0, map: null };
+let _usuariosSeccionesRealesCache = { ts: 0, data: null };
 let _usuariosWarnedNoSeccionesReales = false;
 async function _getSeccionesRealesByGrado() {
   const now = Date.now();
-  if(_usuariosSeccionesRealesCache.map && Object.keys(_usuariosSeccionesRealesCache.map || {}).length && (now - (_usuariosSeccionesRealesCache.ts || 0) < 60000)) {
-    return _usuariosSeccionesRealesCache.map;
+  if(_usuariosSeccionesRealesCache.data && (now - (_usuariosSeccionesRealesCache.ts || 0) < 60000)) {
+    const d0 = _usuariosSeccionesRealesCache.data || {};
+    const bk0 = d0.byGradoKey || {};
+    const btn0 = d0.byTurnoNum || {};
+    if(Object.keys(bk0).length || Object.keys(btn0).length) return d0;
   }
   let rows = [];
   try {
@@ -18495,26 +18498,45 @@ async function _getSeccionesRealesByGrado() {
       if(window.DB && typeof DB.getAlumnos === 'function') rows = await DB.getAlumnos();
     } catch(e1) { rows = []; }
   }
-  const bucket = {};
+  const byGradoKey = {};
+  const byTurnoNum = {};
   (rows || []).forEach(r => {
     const g = String(r?.grado || '').trim();
     const s = String(r?.seccion || '').trim().toUpperCase();
+    const t = String(r?.turno || '').trim();
     if(!g || !s) return;
     const gKey = _agendaKey(g);
     if(!gKey) return;
-    if(!bucket[gKey]) bucket[gKey] = new Set();
-    bucket[gKey].add(s);
+    if(!byGradoKey[gKey]) byGradoKey[gKey] = new Set();
+    byGradoKey[gKey].add(s);
+    const num = _agendaNum(g);
+    const tKey = _agendaKey(t);
+    if(num && tKey) {
+      const k = tKey + '|' + String(num);
+      if(!byTurnoNum[k]) byTurnoNum[k] = new Set();
+      byTurnoNum[k].add(s);
+    }
   });
-  const out = {};
-  Object.entries(bucket).forEach(([gKey, set]) => { out[gKey] = Array.from(set).sort(); });
-  _usuariosSeccionesRealesCache = { ts: now, map: out };
+  const out = {
+    byGradoKey: {},
+    byTurnoNum: {}
+  };
+  Object.entries(byGradoKey).forEach(([k, set]) => { out.byGradoKey[k] = Array.from(set).sort(); });
+  Object.entries(byTurnoNum).forEach(([k, set]) => { out.byTurnoNum[k] = Array.from(set).sort(); });
+  _usuariosSeccionesRealesCache = { ts: now, data: out };
   return out;
 }
 
 async function cargarCheckboxesPrivilegios(uid) {
   const cfg = await getConfig();
-  const seccionesRealesByGrado = await _getSeccionesRealesByGrado();
-  const hasAnyReal = !!(seccionesRealesByGrado && Object.keys(seccionesRealesByGrado).some(k => (seccionesRealesByGrado[k] || []).length));
+  const real = await _getSeccionesRealesByGrado();
+  const hasAnyReal = !!(
+    real
+    && (
+      Object.keys(real.byGradoKey || {}).some(k => (real.byGradoKey[k] || []).length)
+      || Object.keys(real.byTurnoNum || {}).some(k => (real.byTurnoNum[k] || []).length)
+    )
+  );
   if(!hasAnyReal && !_usuariosWarnedNoSeccionesReales) {
     _usuariosWarnedNoSeccionesReales = true;
     toast('⚠️ No se pudo obtener secciones reales. Revisa RLS de alumnos o habilita RPC list_aulas.', 'warning');
@@ -18539,6 +18561,7 @@ async function cargarCheckboxesPrivilegios(uid) {
   const nivelesEl = document.getElementById('u-niveles-checks');
   nivelesEl.innerHTML = (cfg.niveles||[]).map(n => {
     const grados = (cfg.grados||{})[n.nombre] || [];
+    const nKey = _agendaKey(n.nombre);
     const nivelKey = n.nombre.replace(/[^a-z0-9]/gi,'_');
     return `
       <div style="margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:10px;">
@@ -18549,7 +18572,16 @@ async function cargarCheckboxesPrivilegios(uid) {
           const seccsSet = new Set((seccsAsignadas || []).map(x => String(x || '').trim().toUpperCase()).filter(Boolean));
           const gradoKey = nivelKey + '_' + g.replace(/[^a-z0-9]/gi,'_');
           const gKey = _agendaKey(g);
-          const secciones = (gKey && seccionesRealesByGrado && Array.isArray(seccionesRealesByGrado[gKey])) ? seccionesRealesByGrado[gKey] : [];
+          let secciones = (gKey && real && Array.isArray(real.byGradoKey?.[gKey])) ? real.byGradoKey[gKey] : [];
+          if(!secciones.length) {
+            const num = _agendaNum(g);
+            const k = (nKey && num) ? (nKey + '|' + String(num)) : '';
+            secciones = (k && real && Array.isArray(real.byTurnoNum?.[k])) ? real.byTurnoNum[k] : [];
+          }
+          if(!secciones.length) {
+            const cfgSecs = (cfg.secciones || ['A','B','C','D']).map(x => String(x || '').trim().toUpperCase()).filter(Boolean);
+            secciones = cfgSecs;
+          }
           return `
             <div style="margin-bottom:8px;">
               <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem;font-weight:600;margin-bottom:5px;">
