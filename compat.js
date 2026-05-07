@@ -388,9 +388,14 @@ class _DocRef {
       if (v && v.__type === 'serverTimestamp') { update[_toSnake(k)] = new Date().toISOString(); continue; }
       update[_toSnake(k)] = v;
     }
-    const { error } = await _sb.from(this._col)
-      .update(update).eq('colegio_id', COLEGIO_ID).eq('id', this._id);
+    const { data: out, error } = await _sb.from(this._col)
+      .update(update)
+      .eq('colegio_id', COLEGIO_ID)
+      .eq('id', this._id)
+      .select('id')
+      .maybeSingle();
     if (error) throw new Error(error.message);
+    if (!out) throw new Error('No se pudo actualizar (RLS o registro no encontrado)');
   }
 
   async delete() {
