@@ -14188,6 +14188,7 @@ function _agendaInferNivelByGrado(grado, cfg) {
 
 async function onAgendaNivelChange() {
   try {
+    const allOn = !!document.getElementById('age-all-aulas')?.checked;
     const nivel = String(document.getElementById('age-nivel')?.value || '').trim();
     const gEl = document.getElementById('age-grado');
     const sEl = document.getElementById('age-seccion');
@@ -14195,6 +14196,7 @@ async function onAgendaNivelChange() {
     if(sEl) sEl.value = '';
     _disableSelect('age-seccion');
     await poblarFiltroSeccion('age-seccion', null);
+    if(allOn) { _disableSelect('age-grado'); return; }
     if(!nivel) { _disableSelect('age-grado'); return; }
     await poblarFiltroGrado('age-grado', (nivel === 'TODOS' ? null : nivel));
     _enableSelect('age-grado');
@@ -14203,11 +14205,13 @@ async function onAgendaNivelChange() {
 
 async function onAgendaGradoChange() {
   try {
+    const allOn = !!document.getElementById('age-all-aulas')?.checked;
     const grado = String(document.getElementById('age-grado')?.value || '').trim();
     const sEl = document.getElementById('age-seccion');
     if(sEl) sEl.value = '';
     _disableSelect('age-seccion');
     await poblarFiltroSeccion('age-seccion', null);
+    if(allOn) return;
     if(!grado) return;
     await poblarFiltroSeccion('age-seccion', grado);
     _enableSelect('age-seccion');
@@ -14286,9 +14290,21 @@ async function openAgendaModal(fecha, eventId) {
         const nEl2 = document.getElementById('age-nivel');
         const gEl2 = document.getElementById('age-grado');
         const sEl2 = document.getElementById('age-seccion');
-        if(nEl2) nEl2.disabled = on;
-        if(gEl2) gEl2.disabled = on || !String(nEl2?.value||'').trim();
-        if(sEl2) sEl2.disabled = on || !String(gEl2?.value||'').trim();
+        if(on) {
+          try { if(nEl2) nEl2.value = ''; } catch(e0) {}
+          try { if(gEl2) gEl2.value = ''; } catch(e0) {}
+          try { if(sEl2) sEl2.value = ''; } catch(e0) {}
+          if(nEl2) nEl2.disabled = true;
+          if(gEl2) gEl2.disabled = true;
+          if(sEl2) sEl2.disabled = true;
+          try {
+            if(gEl2) gEl2.style.opacity = '0.45';
+            if(sEl2) sEl2.style.opacity = '0.45';
+          } catch(e0) {}
+        } else {
+          if(nEl2) nEl2.disabled = false;
+          try { onAgendaNivelChange(); } catch(e0) {}
+        }
       });
     }
   }
