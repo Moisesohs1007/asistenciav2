@@ -3341,7 +3341,7 @@
         </div>
         <div class="form-group" style="margin:12px 0 0 0;">
           <label>Asignaciones (formato Excel)</label>
-          <textarea id="u-asignaciones-text" rows="2" placeholder="Ej: 3:A,B;4:todas" oninput="onUsuarioAsignacionesInput()" style="resize:none;"></textarea>
+          <textarea id="u-asignaciones-text" rows="2" placeholder="Ej: 3 años:A,B;4 años:todas" oninput="onUsuarioAsignacionesInput()" style="resize:none;"></textarea>
           <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;">
             Solo se usa si <b>Restringir</b> está activado (rol Profesor o Psicólogo).
           </div>
@@ -17570,7 +17570,7 @@ async function saveUsuario() {
     const incidentesDiaLectura = _isAdminDirector() ? !!permisosExtra?.incidentesDiaLectura : false;
     const rolScope = (rol === 'profesor' || rol === 'psicologo');
     const restringir = rolScope ? document.getElementById('u-restringir').checked : false;
-    const asignaciones = (rolScope && restringir) ? tempAsignaciones : {};
+    let asignaciones = (rolScope && restringir) ? tempAsignaciones : {};
     const esTutor = rol === 'profesor' ? !!document.getElementById('u-es-tutor')?.checked : false;
     const telefonoVal = document.getElementById('u-telefono').value.trim();
     const tutorNivel = esTutor ? (document.getElementById('u-tutor-nivel')?.value || '') : '';
@@ -17585,6 +17585,12 @@ async function saveUsuario() {
       if(!tutorNivel) { toast('Selecciona el nivel del tutor','warning'); return; }
       if(!tutorGrado) { toast('Selecciona el grado del tutor','warning'); return; }
       if(!tutorSeccion) { toast('Selecciona la sección del tutor','warning'); return; }
+    }
+    if(rolScope && restringir) {
+      try {
+        const cfg = await getConfig();
+        asignaciones = _normalizeAsignacionesWithCfg(asignaciones || {}, cfg, tutorNivel || '') || {};
+      } catch(e0) {}
     }
 
     if(!editingUsuarioId) {
@@ -17840,6 +17846,69 @@ function _parseAsignaciones(v) {
   return out;
 }
 
+function _mergeAsignaciones(a, b) {
+  const out = {};
+  const addOne = (g, secs) => {
+    const key = String(g || '').trim();
+    if(!key) return;
+    const arr = Array.isArray(secs) ? secs : [];
+    const normArr = arr.map(x => String(x || '').trim().toUpperCase()).filter(Boolean);
+    if(!(key in out)) { out[key] = normArr; return; }
+    if(!Array.isArray(out[key])) { out[key] = normArr; return; }
+    if(out[key].length === 0 || normArr.length === 0) { out[key] = []; return; }
+    const set = new Set(out[key].map(x => String(x || '').trim().toUpperCase()).filter(Boolean));
+    normArr.forEach(x => set.add(String(x || '').trim().toUpperCase()));
+    out[key] = Array.from(set);
+  };
+  Object.entries(a || {}).forEach(([g, secs]) => addOne(g, secs));
+  Object.entries(b || {}).forEach(([g, secs]) => addOne(g, secs));
+  return out;
+}
+
+function _normGradoFromCfg(gradoRaw, cfg, preferNivel) {
+  const g0 = String(gradoRaw || '').trim().replace(/\s+/g, ' ');
+  if(!g0) return '';
+  const gradosAll = [...new Set(Object.values((cfg && cfg.grados) ? cfg.grados : {}).flat().map(x => String(x || '').trim()).filter(Boolean))];
+  const normToCanon = new Map();
+  gradosAll.forEach(g => {
+    const k = _agendaKey(g);
+    if(k && !normToCanon.has(k)) normToCanon.set(k, g);
+  });
+  const k0 = _agendaKey(g0);
+  if(k0 && normToCanon.has(k0)) return normToCanon.get(k0) || g0;
+  const n = _agendaNum(g0);
+  if(!n) return g0;
+  let candidates = gradosAll.filter(g => _agendaNum(g) === n);
+  const pref = (preferNivel && cfg && cfg.grados && Array.isArray(cfg.grados[preferNivel])) ? cfg.grados[preferNivel].map(x => String(x || '').trim()).filter(Boolean) : [];
+  if(pref.length) {
+    const prefSet = new Set(pref);
+    const cand2 = candidates.filter(g => prefSet.has(g));
+    if(cand2.length) candidates = cand2;
+  }
+  if(candidates.length === 1) return candidates[0];
+  const cand3 = candidates.filter(g => _agendaKey(g).includes(k0) || k0.includes(_agendaKey(g)));
+  if(cand3.length === 1) return cand3[0];
+  return g0;
+}
+
+function _normalizeAsignacionesWithCfg(asig, cfg, preferNivel) {
+  const out = {};
+  const addOne = (g, secs) => {
+    const gCanon = _normGradoFromCfg(g, cfg, preferNivel) || String(g || '').trim();
+    if(!gCanon) return;
+    const arr = Array.isArray(secs) ? secs : [];
+    const normArr = arr.map(x => String(x || '').trim().toUpperCase()).filter(Boolean);
+    if(!(gCanon in out)) { out[gCanon] = normArr; return; }
+    if(!Array.isArray(out[gCanon])) { out[gCanon] = normArr; return; }
+    if(out[gCanon].length === 0 || normArr.length === 0) { out[gCanon] = []; return; }
+    const set = new Set(out[gCanon].map(x => String(x || '').trim().toUpperCase()).filter(Boolean));
+    normArr.forEach(x => set.add(String(x || '').trim().toUpperCase()));
+    out[gCanon] = Array.from(set);
+  };
+  Object.entries(asig || {}).forEach(([g, secs]) => addOne(g, secs));
+  return out;
+}
+
 async function _adminCrearUsuario(payload) {
   const { data: { session } } = await _sb.auth.getSession();
   const jwt = session?.access_token;
@@ -17908,9 +17977,17 @@ async function downloadUsuariosTemplate() {
     ws.getRow(1).font = { bold: true };
     ws.columns = headers.map((h, idx) => ({ key: h, width: idx === 0 ? 26 : idx === 1 ? 28 : 16 }));
 
+    const exGr1 = String(gradosAll[0] || '').trim();
+    const exGr2 = String(gradosAll[1] || '').trim();
+    const exS1 = String(secciones[0] || 'A').trim();
+    const exS2 = String(secciones[1] || '').trim();
+    const exAsig = [
+      exGr1 ? (exGr1 + ':' + exS1 + (exS2 ? (',' + exS2) : '')) : '',
+      exGr2 ? (exGr2 + ':todas') : ''
+    ].filter(Boolean).join(';');
     ws.addRow([
       'Juan Pérez','juan.perez@colegio.com','123456','profesor','987654321','Docente de aula',
-      'SI', gradosAll[0] || '', secciones[0] || '', 'NO', '3:A,B;4:todas'
+      'SI', exGr1 || '', exS1 || '', 'NO', exAsig || ''
     ]);
 
     const roleFormula = `"${roles.join(',')}"`;
@@ -18086,10 +18163,12 @@ async function handleImportUsuariosFile() {
       const telefono = String(_getRowVal(r, ['telefono','tel','celular','whatsapp'])).trim();
       const cargo = String(_getRowVal(r, ['cargo'])).trim();
       const esTutor = _parseBool(_getRowVal(r, ['es_tutor','tutor','estutor']));
-      const tutorGrado = String(_getRowVal(r, ['tutor_grado','grado_tutor','tutorgrado'])).trim();
+      const tutorGradoRaw = String(_getRowVal(r, ['tutor_grado','grado_tutor','tutorgrado'])).trim();
+      const tutorGrado = _normGradoFromCfg(tutorGradoRaw, cfg, '') || tutorGradoRaw;
       const tutorSeccion = String(_getRowVal(r, ['tutor_seccion','seccion_tutor','tutorseccion'])).trim();
       const restringir = _parseBool(_getRowVal(r, ['restringir','restrignir','restricto','restringido']));
-      const asignaciones = _parseAsignaciones(_getRowVal(r, ['asignaciones','asignaciones_json']));
+      const asignacionesRaw = _parseAsignaciones(_getRowVal(r, ['asignaciones','asignaciones_json']));
+      const asignaciones = _normalizeAsignacionesWithCfg(asignacionesRaw || {}, cfg, _agendaInferNivelByGrado(tutorGrado, cfg)) || {};
 
       const errors = [];
       if(!nombre) errors.push('Falta nombre');
@@ -18348,7 +18427,7 @@ function _setUsuarioAsignacionesText(v) {
   el.value = next;
 }
 
-function onUsuarioAsignacionesInput() {
+async function onUsuarioAsignacionesInput() {
   const rol = document.getElementById('u-rol')?.value || '';
   if(rol !== 'profesor' && rol !== 'psicologo') return;
   const chk = document.getElementById('u-restringir');
@@ -18356,7 +18435,13 @@ function onUsuarioAsignacionesInput() {
   const el = document.getElementById('u-asignaciones-text');
   if(!el) return;
   const parsed = _parseAsignaciones(el.value);
-  tempAsignaciones = parsed || {};
+  try {
+    const cfg = await getConfig();
+    const preferNivel = _agendaInferNivelByGrado(String(document.getElementById('u-tutor-grado')?.value || '').trim(), cfg);
+    tempAsignaciones = _normalizeAsignacionesWithCfg(parsed || {}, cfg, preferNivel) || {};
+  } catch(e) {
+    tempAsignaciones = parsed || {};
+  }
   actualizarResumenPrivilegios();
 }
 
@@ -18392,7 +18477,9 @@ async function cargarCheckboxesPrivilegios(uid) {
     try {
       const doc = await db.collection('usuarios').doc(uid).get();
       if(doc.exists) {
-        tempAsignaciones = doc.data().asignaciones || {};
+        const d = doc.data() || {};
+        const preferNivel = _agendaInferNivelByGrado(String(d.tutorGrado || d.tutor_grado || '').trim(), cfg);
+        tempAsignaciones = _normalizeAsignacionesWithCfg(d.asignaciones || {}, cfg, preferNivel) || {};
         document.getElementById('u-restringir').checked = doc.data().restringir || false;
       }
     } catch(e) {}
@@ -18477,10 +18564,32 @@ async function cargarPrivilegiosActuales() {
         restringir:   doc.data().restringir   || false,
         asignaciones: doc.data().asignaciones || {},
       };
+      try {
+        const cfg = await getConfig();
+        const preferNivel = _agendaInferNivelByGrado(String(currentTutorInfo?.tutorGrado || '').trim(), cfg);
+        currentPrivilegios.asignaciones = _normalizeAsignacionesWithCfg(currentPrivilegios.asignaciones || {}, cfg, preferNivel) || {};
+      } catch(e0) {}
     }
   } catch(e) {
     currentPrivilegios = { restringir: false, asignaciones: {} };
   }
+}
+
+function _profesorAsignacionesEfectivas() {
+  const base = (currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {};
+  const merged = JSON.parse(JSON.stringify(base || {}));
+  if(_isTutorUser()) {
+    const g = String(currentTutorInfo?.tutorGrado || '').trim();
+    const s = String(currentTutorInfo?.tutorSeccion || '').trim().toUpperCase();
+    if(g) {
+      if(!merged[g]) merged[g] = s ? [s] : [];
+      else if(Array.isArray(merged[g])) {
+        if(merged[g].length === 0) { merged[g] = s ? [s] : []; }
+        else if(s && !merged[g].includes(s)) merged[g].push(s);
+      } else merged[g] = s ? [s] : [];
+    }
+  }
+  return merged;
 }
 
 // Aplicar restricción a lista de alumnos
@@ -18526,19 +18635,7 @@ async function getAlumnosFiltrados() {
   const r = _normRol(currentRol);
   if(r === 'profesor' || r === 'psicologo') {
     if(!!currentPerms?.verTodasAulas) return DB.getAlumnos();
-    const base = ((currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {});
-    const asig = JSON.parse(JSON.stringify(base || {}));
-    if(_isTutorUser()) {
-      const g = String(currentTutorInfo.tutorGrado || '').trim();
-      const s = String(currentTutorInfo.tutorSeccion || '').trim().toUpperCase();
-      if(g) {
-        if(!asig[g]) asig[g] = s ? [s] : [];
-        else if(Array.isArray(asig[g])) {
-          if(asig[g].length === 0) { asig[g] = s ? [s] : []; }
-          else if(s && !asig[g].includes(s)) asig[g].push(s);
-        } else asig[g] = s ? [s] : [];
-      }
-    }
+    const asig = _profesorAsignacionesEfectivas();
     if(Object.keys(asig).length) return DB.getAlumnosScoped(asig);
     return [];
   }
