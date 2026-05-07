@@ -13769,73 +13769,38 @@ async function _agendaLoadAulaOptions() {
     _agendaSeccionesAll = (cfg.secciones || []).map(x => String(x || '').trim().toUpperCase()).filter(Boolean);
     _agendaSeccionesByGrado = {};
     _agendaSeccionesAny = [];
-    const cfgGradeKeys = new Set((_agendaGradosAll || []).map(g => _agendaKey(g)).filter(Boolean));
-    const cfgInicialNumToKey = {};
-    const cfgNumToKey = {};
-    (_agendaGradosAll || []).forEach(g => {
-      const gStr = String(g || '').trim();
-      const key = _agendaKey(gStr);
-      const n = _agendaNum(gStr);
-      if(!key || !n) return;
-      if(key.includes('ANOS') || key.includes('AÑOS') || key.includes('ANIOS') || key.includes('AÑOS')) cfgInicialNumToKey[n] = key;
-      cfgNumToKey[n] = key;
-    });
+    const gradoToNivel = {};
     try {
-      const alumnos = (window.DB && typeof DB.getAlumnos === 'function') ? await DB.getAlumnos() : [];
-      const anySet = new Set();
-      (alumnos || []).forEach(a => {
-        const gRaw = String(a?.grado || '').trim();
-        let gKey = _agendaKey(gRaw);
-        const s = String(a?.seccion || '').trim().toUpperCase();
-        if(!s) return;
-        anySet.add(s);
-        if(!gKey || !cfgGradeKeys.has(gKey)) {
-          const alt = _agendaGradeLabelFromAlumno(a);
-          const altKey = _agendaKey(alt);
-          if(altKey && cfgGradeKeys.has(altKey)) gKey = altKey;
-        }
-        if((!gKey || !cfgGradeKeys.has(gKey)) && _agendaNum(gRaw)) {
-          const n = _agendaNum(gRaw);
-          if(cfgInicialNumToKey[n]) gKey = cfgInicialNumToKey[n];
-          else if(cfgNumToKey[n]) gKey = cfgNumToKey[n];
-        }
-        if(!gKey) return;
-        if(!_agendaSeccionesByGrado[gKey]) _agendaSeccionesByGrado[gKey] = new Set();
-        _agendaSeccionesByGrado[gKey].add(s);
+      Object.entries(cfg.grados || {}).forEach(([niv, list]) => {
+        (list || []).forEach(g => { gradoToNivel[String(g||'').trim()] = String(niv||'').trim(); });
       });
-      Object.keys(_agendaSeccionesByGrado).forEach(g => {
-        _agendaSeccionesByGrado[g] = Array.from(_agendaSeccionesByGrado[g]).sort();
-      });
-      _agendaSeccionesAny = Array.from(anySet).sort();
-      if(!Object.keys(_agendaSeccionesByGrado).length && window.DB && typeof DB.getAulas === 'function') {
-        try {
-          const aulas = await DB.getAulas();
-          const anySet2 = new Set();
-          (aulas || []).forEach(r => {
-            const s = String(r?.seccion || '').trim().toUpperCase();
-            if(!s) return;
-            anySet2.add(s);
-            const gRaw = String(r?.grado || '').trim();
-            let gKey = _agendaKey(gRaw);
-            if((!gKey || !cfgGradeKeys.has(gKey)) && _agendaNum(gRaw)) {
-              const n = _agendaNum(gRaw);
-              if(cfgInicialNumToKey[n]) gKey = cfgInicialNumToKey[n];
-              else if(cfgNumToKey[n]) gKey = cfgNumToKey[n];
-            }
-            if(!gKey || !cfgGradeKeys.has(gKey)) return;
-            if(!_agendaSeccionesByGrado[gKey]) _agendaSeccionesByGrado[gKey] = new Set();
-            _agendaSeccionesByGrado[gKey].add(s);
-          });
-          Object.keys(_agendaSeccionesByGrado).forEach(g => {
-            _agendaSeccionesByGrado[g] = Array.from(_agendaSeccionesByGrado[g]).sort();
-          });
-          if(anySet2.size) _agendaSeccionesAny = Array.from(anySet2).sort();
-        } catch(_) {}
-      }
-    } catch(e2) {
-      _agendaSeccionesByGrado = {};
-      _agendaSeccionesAny = [];
+    } catch(e0) {}
+    let rows = [];
+    try { rows = (window.DB && typeof DB.getAlumnos === 'function') ? await DB.getAlumnos() : []; } catch(e1) { rows = []; }
+    if((!rows || !rows.length) && window.DB && typeof DB.getAulas === 'function') {
+      try { rows = await DB.getAulas(); } catch(e2) { rows = []; }
     }
+    const seccCfg = (_agendaSeccionesAll || []).filter(Boolean).map(s => String(s).trim().toUpperCase()).filter(Boolean);
+    const anySet = new Set();
+    const gradosConDatos = new Set((rows || []).map(r => String(r?.grado || '').trim()).filter(Boolean));
+    _agendaGradosAll = (_agendaGradosAll || []).filter(g => gradosConDatos.has(String(g||'').trim()));
+    (_agendaGradosAll || []).forEach(g => {
+      const nivel = gradoToNivel[String(g||'').trim()] || '';
+      const secsSet = new Set();
+      (rows || []).forEach(r => {
+        if(String(r?.grado || '').trim() !== String(g||'').trim()) return;
+        if(nivel && String(r?.turno || '').trim() !== nivel) return;
+        const s = String(r?.seccion || 'A').trim().toUpperCase();
+        if(!s) return;
+        secsSet.add(s);
+        anySet.add(s);
+      });
+      const seccionesDeAlumnos = Array.from(secsSet).filter(Boolean).sort();
+      let secciones = seccCfg.length ? seccCfg.filter(s => seccionesDeAlumnos.includes(s)) : seccionesDeAlumnos;
+      if(!secciones.length) secciones = seccionesDeAlumnos;
+      _agendaSeccionesByGrado[_agendaKey(g)] = secciones;
+    });
+    _agendaSeccionesAny = Array.from(anySet).sort();
   } catch(e) {
     _agendaGradosAll = [];
     _agendaSeccionesAll = [];
