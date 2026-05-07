@@ -17,8 +17,8 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="compat.js?v=115"></script>
-<script src="db_supabase.js?v=115"></script>
+<script src="compat.js?v=116"></script>
+<script src="db_supabase.js?v=116"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
@@ -17523,6 +17523,7 @@ async function openModalUsuario(uid, nombre, rol, email) {
         cargoSel.value = '';
       }
       cargoHidden.value = cargo;
+      try { toggleCargoCustum(); } catch(e0) {}
     } catch(e) {}
   } else {
     document.getElementById('u-pass-group').style.display = 'block';
@@ -18532,18 +18533,7 @@ async function _getSeccionesRealesByGrado() {
 
 async function cargarCheckboxesPrivilegios(uid) {
   const cfg = await getConfig();
-  const real = await _getSeccionesRealesByGrado();
-  const hasAnyReal = !!(
-    real
-    && (
-      Object.keys(real.byGradoKey || {}).some(k => (real.byGradoKey[k] || []).length)
-      || Object.keys(real.byTurnoNum || {}).some(k => (real.byTurnoNum[k] || []).length)
-    )
-  );
-  if(!hasAnyReal && !_usuariosWarnedNoSeccionesReales) {
-    _usuariosWarnedNoSeccionesReales = true;
-    toast('⚠️ No se pudo obtener secciones reales. Ejecuta alter_alumnos_staff.sql y alter_list_aulas.sql en Supabase.', 'warning');
-  }
+  const seccionesCfg = (cfg.secciones || ['A','B','C','D']).map(x => String(x || '').trim().toUpperCase()).filter(Boolean);
 
   // Si uid, cargar desde Firestore; si no, usar tempAsignaciones
   if(uid) {
@@ -18574,13 +18564,7 @@ async function cargarCheckboxesPrivilegios(uid) {
           const seccsAsignadas = hasGrado ? ((asignaciones || {})[g] || []) : [];
           const seccsSet = new Set((seccsAsignadas || []).map(x => String(x || '').trim().toUpperCase()).filter(Boolean));
           const gradoKey = nivelKey + '_' + g.replace(/[^a-z0-9]/gi,'_');
-          const gKey = _agendaKey(g);
-          let secciones = (gKey && real && Array.isArray(real.byGradoKey?.[gKey])) ? real.byGradoKey[gKey] : [];
-          if(!secciones.length) {
-            const num = _agendaNum(g);
-            const k = (nKey && num) ? (nKey + '|' + String(num)) : '';
-            secciones = (k && real && Array.isArray(real.byTurnoNum?.[k])) ? real.byTurnoNum[k] : [];
-          }
+          const secciones = seccionesCfg;
           return `
             <div style="margin-bottom:8px;">
               <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem;font-weight:600;margin-bottom:5px;">
