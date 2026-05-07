@@ -96,6 +96,18 @@ RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
   ), FALSE)
 $$;
 
+CREATE OR REPLACE FUNCTION agenda_creator_is_admin(p_uid UUID)
+RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.usuarios u
+    WHERE u.colegio_id = auth_colegio_id()
+      AND u.id = p_uid
+      AND COALESCE(u.rol,'') IN ('admin','director','coordinador')
+    LIMIT 1
+  )
+$$;
+
 CREATE OR REPLACE FUNCTION profesor_puede_aula(p_grado TEXT, p_seccion TEXT)
 RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER AS $$
   WITH u AS (
@@ -153,6 +165,7 @@ CREATE POLICY "agenda_read_tutor" ON public.agenda FOR SELECT
   USING (
     colegio_id = auth_colegio_id()
     AND auth_rol() = 'profesor'
+    AND (created_by = auth.uid() OR created_by IS NULL OR agenda_creator_is_admin(created_by))
     AND (
       (grado = '*' AND seccion = '*')
       OR (seccion = '*' AND grado LIKE 'nivel:%')

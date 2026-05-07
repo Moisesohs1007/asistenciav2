@@ -3341,7 +3341,7 @@
         </div>
         <div class="form-group" style="margin:12px 0 0 0;">
           <label>Asignaciones (formato Excel)</label>
-          <textarea id="u-asignaciones-text" rows="2" placeholder="Ej: 3 años:A,B;4 años:todas" oninput="onUsuarioAsignacionesInput()" style="resize:none;"></textarea>
+          <textarea id="u-asignaciones-text" rows="2" placeholder="Ej: 3 años:A,B;4 años:todas" readonly style="resize:none;"></textarea>
           <div style="font-size:0.75rem;color:var(--muted);margin-top:6px;">
             Solo se usa si <b>Restringir</b> está activado (rol Profesor o Psicólogo).
           </div>
@@ -17480,7 +17480,11 @@ async function openModalUsuario(uid, nombre, rol, email) {
     try {
       const uDoc = await db.collection('usuarios').doc(uid).get();
       const uData = uDoc.exists ? uDoc.data() : {};
-      const cargo = uData.cargo || '';
+      const cargo = String(uData.cargo || '').trim().replace(/\s+/g,' ');
+      try {
+        const rr = _normRol(uData.rol || rol || '');
+        if(rr) document.getElementById('u-rol').value = rr;
+      } catch(e0) {}
       if(canSetExtras) {
         const px = (uData.permisosExtra && typeof uData.permisosExtra === 'object') ? uData.permisosExtra : {};
         _applyPermisosEspecialesToForm({
@@ -17500,9 +17504,16 @@ async function openModalUsuario(uid, nombre, rol, email) {
       const cargoSel = document.getElementById('u-cargo-select');
       const cargoCustom = document.getElementById('u-cargo-custom');
       const cargoHidden = document.getElementById('u-cargo');
+      const _ck = (v) => {
+        let s = String(v || '').trim().toUpperCase();
+        try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(_) {}
+        s = s.replace(/\s+/g,' ');
+        return s;
+      };
       const opciones = Array.from(cargoSel.options).map(o => o.value);
-      if(opciones.includes(cargo)) {
-        cargoSel.value = cargo;
+      const match = opciones.find(v => _ck(v) === _ck(cargo)) || '';
+      if(match) {
+        cargoSel.value = match;
         cargoCustom.style.display = 'none';
       } else if(cargo) {
         cargoSel.value = 'otro';
@@ -18468,9 +18479,36 @@ async function savePrivilegios() {
   }
 }
 
+let _usuariosSeccionesRealesCache = { ts: 0, map: null };
+async function _getSeccionesRealesByGrado() {
+  const now = Date.now();
+  if(_usuariosSeccionesRealesCache.map && (now - (_usuariosSeccionesRealesCache.ts || 0) < 60000)) return _usuariosSeccionesRealesCache.map;
+  let rows = [];
+  try {
+    if(window.DB && typeof DB.getAulas === 'function') rows = await DB.getAulas();
+  } catch(e0) { rows = []; }
+  if(!rows || !rows.length) {
+    try {
+      if(window.DB && typeof DB.getAlumnos === 'function') rows = await DB.getAlumnos();
+    } catch(e1) { rows = []; }
+  }
+  const bucket = {};
+  (rows || []).forEach(r => {
+    const g = String(r?.grado || '').trim();
+    const s = String(r?.seccion || '').trim().toUpperCase();
+    if(!g || !s) return;
+    if(!bucket[g]) bucket[g] = new Set();
+    bucket[g].add(s);
+  });
+  const out = {};
+  Object.entries(bucket).forEach(([g, set]) => { out[g] = Array.from(set).sort(); });
+  _usuariosSeccionesRealesCache = { ts: now, map: out };
+  return out;
+}
+
 async function cargarCheckboxesPrivilegios(uid) {
   const cfg = await getConfig();
-  const secciones = cfg.secciones || ['A','B','C','D'];
+  const seccionesRealesByGrado = await _getSeccionesRealesByGrado();
 
   // Si uid, cargar desde Firestore; si no, usar tempAsignaciones
   if(uid) {
@@ -18496,22 +18534,25 @@ async function cargarCheckboxesPrivilegios(uid) {
       <div style="margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:10px;">
         <div style="font-size:0.82rem;font-weight:700;color:var(--accent);margin-bottom:10px;">${n.nombre}</div>
         ${grados.map(g => {
-          const seccsAsignadas = asignaciones[g] || [];
+          const hasGrado = Object.prototype.hasOwnProperty.call((asignaciones || {}), g);
+          const seccsAsignadas = hasGrado ? ((asignaciones || {})[g] || []) : [];
+          const seccsSet = new Set((seccsAsignadas || []).map(x => String(x || '').trim().toUpperCase()).filter(Boolean));
           const gradoKey = nivelKey + '_' + g.replace(/[^a-z0-9]/gi,'_');
+          const secciones = (seccionesRealesByGrado && Array.isArray(seccionesRealesByGrado[g])) ? seccionesRealesByGrado[g] : [];
           return `
             <div style="margin-bottom:8px;">
               <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem;font-weight:600;margin-bottom:5px;">
                 <input type="checkbox" class="chk-grado" data-grado="${g}" data-key="${gradoKey}"
                   onchange="toggleGradoSecciones(this)"
-                  ${seccsAsignadas.length?'checked':''}
+                  ${hasGrado?'checked':''}
                   style="accent-color:var(--accent);width:15px;height:15px;">
                 ${g}
               </label>
-              <div id="secc-${gradoKey}" style="display:${seccsAsignadas.length?'flex':'none'};flex-wrap:wrap;gap:8px;padding-left:22px;margin-top:4px;">
-                ${secciones.map(s => `
+              <div id="secc-${gradoKey}" style="display:${hasGrado?'flex':'none'};flex-wrap:wrap;gap:8px;padding-left:22px;margin-top:4px;">
+                ${(secciones || []).map(s => `
                   <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:0.82rem;">
                     <input type="checkbox" class="chk-seccion" data-grado="${g}" data-key="${gradoKey}" value="${s}"
-                      ${seccsAsignadas.includes(s)?'checked':''}
+                      ${seccsSet.has(String(s || '').trim().toUpperCase())?'checked':''}
                       style="accent-color:var(--accent);width:14px;height:14px;">
                     ${s}
                   </label>
