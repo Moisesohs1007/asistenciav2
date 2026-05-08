@@ -17,8 +17,8 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="compat.js?v=119"></script>
-<script src="db_supabase.js?v=119"></script>
+<script src="compat.js?v=120"></script>
+<script src="db_supabase.js?v=120"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
@@ -6067,7 +6067,7 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('app-header').style.display = '';
     const navEl = document.getElementById('nav-tabs');
     if(navEl) navEl.style.display = '';
-    document.getElementById('app-main').style.display = '';
+    document.getElementById('app-main').style.display = 'none';
     const bnav = document.getElementById('bottom-nav');
     if(bnav) bnav.style.display = '';
     resetInactTimer(); // Iniciar contador de inactividad
@@ -6085,12 +6085,15 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('avatar-btn').style.display = 'inline-flex';
     setTimeout(() => msbUpdateUser && msbUpdateUser(), 200);
 
+    // Aplicar permisos y restaurar la última sección ANTES de cargar datos pesados,
+    // para evitar que se vea "Inicio" por unos segundos al refrescar.
+    aplicarPermisos(currentRol);
+    document.getElementById('app-main').style.display = '';
+
     if(!(await maybeRunSetupWizard())) return;
 
     // Cargar datos y configuración
     await cargarTutorActual();
-    // Aplicar permisos según rol (incluye mostrar/ocultar tab usuarios)
-    aplicarPermisos(currentRol);
     await cargarPrivilegiosActuales();
     cargarConfigBanner(); // cargar imágenes banner en segundo plano
     await inicializarFiltros();
