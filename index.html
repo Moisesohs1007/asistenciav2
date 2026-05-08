@@ -17,8 +17,8 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="compat.js?v=117"></script>
-<script src="db_supabase.js?v=117"></script>
+<script src="compat.js?v=118"></script>
+<script src="db_supabase.js?v=118"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
@@ -17483,7 +17483,7 @@ async function openModalUsuario(uid, nombre, rol, email) {
   }
 
   const _setCargoUI = (cargoRaw) => {
-    const cargo = String(cargoRaw || '').trim().replace(/[\s\u00A0]+/g,' ');
+    const cargo = _canonCargo(String(cargoRaw || '').trim().replace(/[\s\u00A0]+/g,' '));
     const cargoSel = document.getElementById('u-cargo-select');
     const cargoCustom = document.getElementById('u-cargo-custom');
     const cargoHidden = document.getElementById('u-cargo');
@@ -17491,6 +17491,7 @@ async function openModalUsuario(uid, nombre, rol, email) {
     const _ck = (v) => {
       let s = String(v || '').trim().toUpperCase().replace(/[\s\u00A0]+/g,' ');
       try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(_) {}
+      s = s.replace(/[^\w ]+/g,'');
       return s;
     };
     const opciones = Array.from(cargoSel.options || []).map(o => o.value);
@@ -17592,7 +17593,7 @@ async function saveUsuario() {
   const cargoSel = String(document.getElementById('u-cargo-select')?.value || '').trim();
   const cargoCustom = String(document.getElementById('u-cargo-custom')?.value || '').trim();
   const cargoHidden = String(document.getElementById('u-cargo')?.value || '').trim();
-  const cargo  = (cargoSel === 'otro') ? cargoCustom : (cargoSel || cargoHidden);
+  const cargo  = _canonCargo((cargoSel === 'otro') ? cargoCustom : (cargoSel || cargoHidden));
 
   if(!nombre){ toast('Completa el nombre','warning'); return; }
   if(!editingUsuarioId && !email){ toast('Completa el correo','warning'); return; }
@@ -18405,6 +18406,21 @@ function toggleCargoCustum() {
     togglePrivilegios();
     toggleBtnConfigurar();
   }
+}
+
+function _canonCargo(v) {
+  const cargoSel = document.getElementById('u-cargo-select');
+  const raw = String(v || '').trim().replace(/[\s\u00A0]+/g,' ');
+  if(!raw || !cargoSel) return raw;
+  const _ck = (x) => {
+    let s = String(x || '').trim().toUpperCase().replace(/[\s\u00A0]+/g,' ');
+    try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(_) {}
+    s = s.replace(/[^\w ]+/g,'');
+    return s;
+  };
+  const opciones = Array.from(cargoSel.options || []).map(o => o.value).filter(Boolean);
+  const match = opciones.find(opt => _ck(opt) === _ck(raw));
+  return match || raw;
 }
 
 function toggleBtnConfigurar() {
