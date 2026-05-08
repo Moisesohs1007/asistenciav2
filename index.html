@@ -17,8 +17,8 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="compat.js?v=116"></script>
-<script src="db_supabase.js?v=116"></script>
+<script src="compat.js?v=117"></script>
+<script src="db_supabase.js?v=117"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
@@ -17467,6 +17467,51 @@ async function openModalUsuario(uid, nombre, rol, email) {
   const canSetExtras = _isAdminDirector();
   if(extraWrap) extraWrap.style.display = canSetExtras ? '' : 'none';
 
+  tempAsignaciones = {};
+  document.getElementById('u-restringir').checked = false;
+
+  const mUsr = document.getElementById('modal-usuario');
+  if(mUsr) {
+    const mSetup = document.getElementById('modal-setup');
+    if(mSetup && mSetup.classList.contains('open')) {
+      mSetup.style.zIndex = '10005';
+      mUsr.style.zIndex = '10010';
+    }
+    mUsr.style.display = '';
+    _modalLockOn();
+    mUsr.classList.add('open');
+  }
+
+  const _setCargoUI = (cargoRaw) => {
+    const cargo = String(cargoRaw || '').trim().replace(/[\s\u00A0]+/g,' ');
+    const cargoSel = document.getElementById('u-cargo-select');
+    const cargoCustom = document.getElementById('u-cargo-custom');
+    const cargoHidden = document.getElementById('u-cargo');
+    if(!cargoSel || !cargoCustom || !cargoHidden) return;
+    const _ck = (v) => {
+      let s = String(v || '').trim().toUpperCase().replace(/[\s\u00A0]+/g,' ');
+      try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(_) {}
+      return s;
+    };
+    const opciones = Array.from(cargoSel.options || []).map(o => o.value);
+    const match = opciones.find(v => _ck(v) === _ck(cargo)) || '';
+    if(match) {
+      cargoSel.value = match;
+      cargoCustom.style.display = 'none';
+      cargoCustom.value = '';
+    } else if(cargo) {
+      cargoSel.value = 'otro';
+      cargoCustom.style.display = 'block';
+      cargoCustom.value = cargo;
+    } else {
+      cargoSel.value = '';
+      cargoCustom.style.display = 'none';
+      cargoCustom.value = '';
+    }
+    cargoHidden.value = cargo;
+    try { toggleCargoCustum(); } catch(e0) {}
+  };
+
   if(uid) {
     document.getElementById('u-pass-group').style.display = 'block';
     document.getElementById('u-pass-label').textContent = 'Nueva contraseña (opcional)';
@@ -17476,55 +17521,41 @@ async function openModalUsuario(uid, nombre, rol, email) {
     if(nombre) document.getElementById('u-nombre').value = nombre;
     if(email)  document.getElementById('u-email').value  = email;
     if(rol) document.getElementById('u-rol').value = _normRol(rol);
-    // Cargar cargo desde Firestore
-    try {
-      const uDoc = await db.collection('usuarios').doc(uid).get();
-      const uData = uDoc.exists ? uDoc.data() : {};
-      const cargo = String(uData.cargo || '').trim().replace(/\s+/g,' ');
+    document.getElementById('u-telefono').value = '';
+    document.getElementById('u-es-tutor').checked = false;
+    toggleTutorFields({ grado: null, seccion: null });
+    _applyPermisosEspecialesToForm({});
+    actualizarResumenPermisosEspeciales();
+    _setCargoUI('');
+    (async () => {
       try {
-        const rr = _normRol(uData.rol || rol || '');
-        if(rr) document.getElementById('u-rol').value = rr;
-      } catch(e0) {}
-      if(canSetExtras) {
-        const px = (uData.permisosExtra && typeof uData.permisosExtra === 'object') ? uData.permisosExtra : {};
-        _applyPermisosEspecialesToForm({
-          ...px,
-          incidentesDiaLectura: (px.incidentesDiaLectura !== undefined) ? !!px.incidentesDiaLectura : !!uData.incidentesDiaLectura
-        });
-      } else {
-        _applyPermisosEspecialesToForm({});
-      }
-      actualizarResumenPermisosEspeciales();
-      // Cargar teléfono
-      document.getElementById('u-telefono').value = uData.telefono || '';
-      document.getElementById('u-es-tutor').checked = !!uData.esTutor;
-      toggleTutorFields({ grado: uData.tutorGrado || null, seccion: uData.tutorSeccion || null });
-      // Mostrar botón recuperar solo si tiene teléfono
-      document.getElementById('u-recuperar-msg').style.display = 'none';
-      const cargoSel = document.getElementById('u-cargo-select');
-      const cargoCustom = document.getElementById('u-cargo-custom');
-      const cargoHidden = document.getElementById('u-cargo');
-      const _ck = (v) => {
-        let s = String(v || '').trim().toUpperCase();
-        try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(_) {}
-        s = s.replace(/\s+/g,' ');
-        return s;
-      };
-      const opciones = Array.from(cargoSel.options).map(o => o.value);
-      const match = opciones.find(v => _ck(v) === _ck(cargo)) || '';
-      if(match) {
-        cargoSel.value = match;
-        cargoCustom.style.display = 'none';
-      } else if(cargo) {
-        cargoSel.value = 'otro';
-        cargoCustom.style.display = 'block';
-        cargoCustom.value = cargo;
-      } else {
-        cargoSel.value = '';
-      }
-      cargoHidden.value = cargo;
-      try { toggleCargoCustum(); } catch(e0) {}
-    } catch(e) {}
+        const uDoc = await db.collection('usuarios').doc(uid).get();
+        const uData = uDoc.exists ? (uDoc.data() || {}) : {};
+        try {
+          const rr = _normRol(uData.rol || rol || '');
+          if(rr) document.getElementById('u-rol').value = rr;
+        } catch(e0) {}
+        if(canSetExtras) {
+          const px = (uData.permisosExtra && typeof uData.permisosExtra === 'object') ? uData.permisosExtra : {};
+          _applyPermisosEspecialesToForm({
+            ...px,
+            incidentesDiaLectura: (px.incidentesDiaLectura !== undefined) ? !!px.incidentesDiaLectura : !!uData.incidentesDiaLectura
+          });
+        } else {
+          _applyPermisosEspecialesToForm({});
+        }
+        actualizarResumenPermisosEspeciales();
+        document.getElementById('u-telefono').value = uData.telefono || '';
+        document.getElementById('u-es-tutor').checked = !!uData.esTutor;
+        toggleTutorFields({ grado: uData.tutorGrado || null, seccion: uData.tutorSeccion || null });
+        document.getElementById('u-recuperar-msg').style.display = 'none';
+        _setCargoUI(uData.cargo || '');
+        cargarCheckboxesPrivilegios(uid, uData).catch(() => {});
+        actualizarResumenPrivilegios();
+        togglePrivilegios();
+        toggleBtnConfigurar();
+      } catch(e) {}
+    })();
   } else {
     document.getElementById('u-pass-group').style.display = 'block';
     document.getElementById('u-pass-label').textContent = 'Contraseña';
@@ -17541,26 +17572,13 @@ async function openModalUsuario(uid, nombre, rol, email) {
     actualizarResumenPermisosEspeciales();
     tempAsignaciones = {};
     document.getElementById('u-restringir').checked = false;
-    await poblarTutorAulaSelects();
+    poblarTutorAulaSelects().catch(() => {});
     document.getElementById('u-es-tutor').checked = false;
     toggleTutorFields();
-  }
-
-  // Cargar checkboxes de privilegios
-  await cargarCheckboxesPrivilegios(uid);
-  actualizarResumenPrivilegios();
-  togglePrivilegios();
-  toggleBtnConfigurar();
-  const mUsr = document.getElementById('modal-usuario');
-  if(mUsr) {
-    const mSetup = document.getElementById('modal-setup');
-    if(mSetup && mSetup.classList.contains('open')) {
-      mSetup.style.zIndex = '10005';
-      mUsr.style.zIndex = '10010';
-    }
-    mUsr.style.display = '';
-    _modalLockOn();
-    mUsr.classList.add('open');
+    cargarCheckboxesPrivilegios(null).catch(() => {});
+    actualizarResumenPrivilegios();
+    togglePrivilegios();
+    toggleBtnConfigurar();
   }
 }
 
@@ -18351,9 +18369,27 @@ async function runImportUsuarios() {
 let tempAsignaciones = {};
 
 function toggleCargoCustum() {
-  const sel = document.getElementById('u-cargo-select').value;
+  const selEl = document.getElementById('u-cargo-select');
   const custom = document.getElementById('u-cargo-custom');
   const hidden = document.getElementById('u-cargo');
+  if(!selEl || !custom || !hidden) return;
+  const hiddenVal0 = String(hidden.value || '').trim().replace(/[\s\u00A0]+/g,' ');
+  if(!selEl.value && hiddenVal0) {
+    const _ck = (v) => {
+      let s = String(v || '').trim().toUpperCase().replace(/[\s\u00A0]+/g,' ');
+      try { s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch(_) {}
+      return s;
+    };
+    const opciones = Array.from(selEl.options || []).map(o => o.value);
+    const match = opciones.find(v => _ck(v) === _ck(hiddenVal0)) || '';
+    if(match) {
+      selEl.value = match;
+    } else {
+      selEl.value = 'otro';
+      custom.value = hiddenVal0;
+    }
+  }
+  const sel = selEl.value;
   if(sel === 'otro') {
     custom.style.display = 'block';
     custom.oninput = () => hidden.value = custom.value;
@@ -18531,19 +18567,26 @@ async function _getSeccionesRealesByGrado() {
   return out;
 }
 
-async function cargarCheckboxesPrivilegios(uid) {
+async function cargarCheckboxesPrivilegios(uid, uDataOverride) {
   const cfg = await getConfig();
   const seccionesCfg = (cfg.secciones || ['A','B','C','D']).map(x => String(x || '').trim().toUpperCase()).filter(Boolean);
 
   // Si uid, cargar desde Firestore; si no, usar tempAsignaciones
   if(uid) {
     try {
-      const doc = await db.collection('usuarios').doc(uid).get();
-      if(doc.exists) {
-        const d = doc.data() || {};
+      const d = (uDataOverride && typeof uDataOverride === 'object') ? uDataOverride : null;
+      if(d) {
         const preferNivel = _agendaInferNivelByGrado(String(d.tutorGrado || d.tutor_grado || '').trim(), cfg);
         tempAsignaciones = _normalizeAsignacionesWithCfg(d.asignaciones || {}, cfg, preferNivel) || {};
-        document.getElementById('u-restringir').checked = doc.data().restringir || false;
+        document.getElementById('u-restringir').checked = d.restringir || false;
+      } else {
+        const doc = await db.collection('usuarios').doc(uid).get();
+        if(doc.exists) {
+          const d2 = doc.data() || {};
+          const preferNivel2 = _agendaInferNivelByGrado(String(d2.tutorGrado || d2.tutor_grado || '').trim(), cfg);
+          tempAsignaciones = _normalizeAsignacionesWithCfg(d2.asignaciones || {}, cfg, preferNivel2) || {};
+          document.getElementById('u-restringir').checked = doc.data().restringir || false;
+        }
       }
     } catch(e) {}
   }
