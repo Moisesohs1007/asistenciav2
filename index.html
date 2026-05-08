@@ -17,8 +17,8 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="compat.js?v=118"></script>
-<script src="db_supabase.js?v=118"></script>
+<script src="compat.js?v=119"></script>
+<script src="db_supabase.js?v=119"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
@@ -17467,9 +17467,6 @@ async function openModalUsuario(uid, nombre, rol, email) {
   const canSetExtras = _isAdminDirector();
   if(extraWrap) extraWrap.style.display = canSetExtras ? '' : 'none';
 
-  tempAsignaciones = {};
-  document.getElementById('u-restringir').checked = false;
-
   const mUsr = document.getElementById('modal-usuario');
   if(mUsr) {
     const mSetup = document.getElementById('modal-setup');
@@ -17513,6 +17510,13 @@ async function openModalUsuario(uid, nombre, rol, email) {
     try { toggleCargoCustum(); } catch(e0) {}
   };
 
+  const _cachedUsr = (function(){
+    try {
+      const arr = Array.isArray(_usuariosCacheData) ? _usuariosCacheData : [];
+      return arr.find(x => String(x.uid || x.id || '') === String(uid || '')) || null;
+    } catch(e) { return null; }
+  })();
+
   if(uid) {
     document.getElementById('u-pass-group').style.display = 'block';
     document.getElementById('u-pass-label').textContent = 'Nueva contraseña (opcional)';
@@ -17522,12 +17526,37 @@ async function openModalUsuario(uid, nombre, rol, email) {
     if(nombre) document.getElementById('u-nombre').value = nombre;
     if(email)  document.getElementById('u-email').value  = email;
     if(rol) document.getElementById('u-rol').value = _normRol(rol);
-    document.getElementById('u-telefono').value = '';
-    document.getElementById('u-es-tutor').checked = false;
-    toggleTutorFields({ grado: null, seccion: null });
-    _applyPermisosEspecialesToForm({});
+    const initU = _cachedUsr || {};
+    try {
+      const rr0 = _normRol(initU.rol || rol || '');
+      if(rr0) document.getElementById('u-rol').value = rr0;
+    } catch(e0) {}
+    document.getElementById('u-telefono').value = initU.telefono || '';
+    document.getElementById('u-es-tutor').checked = !!initU.esTutor;
+    toggleTutorFields({ grado: initU.tutorGrado || null, seccion: initU.tutorSeccion || null });
+    if(canSetExtras) {
+      const px0 = (initU.permisosExtra && typeof initU.permisosExtra === 'object') ? initU.permisosExtra : {};
+      _applyPermisosEspecialesToForm({
+        ...px0,
+        incidentesDiaLectura: (px0.incidentesDiaLectura !== undefined) ? !!px0.incidentesDiaLectura : !!initU.incidentesDiaLectura
+      });
+    } else {
+      _applyPermisosEspecialesToForm({});
+    }
     actualizarResumenPermisosEspeciales();
-    _setCargoUI('');
+    _setCargoUI(initU.cargo || '');
+    try {
+      const cfg0 = await getConfig();
+      const preferNivel0 = _agendaInferNivelByGrado(String(initU.tutorGrado || '').trim(), cfg0);
+      tempAsignaciones = _normalizeAsignacionesWithCfg(initU.asignaciones || {}, cfg0, preferNivel0) || {};
+    } catch(e0) {
+      tempAsignaciones = initU.asignaciones || {};
+    }
+    document.getElementById('u-restringir').checked = !!initU.restringir;
+    cargarCheckboxesPrivilegios(null).catch(() => {});
+    actualizarResumenPrivilegios();
+    togglePrivilegios();
+    toggleBtnConfigurar();
     (async () => {
       try {
         const uDoc = await db.collection('usuarios').doc(uid).get();
@@ -17604,7 +17633,7 @@ async function saveUsuario() {
     const incidentesDiaLectura = _isAdminDirector() ? !!permisosExtra?.incidentesDiaLectura : false;
     const rolScope = (rol === 'profesor' || rol === 'psicologo');
     const restringir = rolScope ? document.getElementById('u-restringir').checked : false;
-    let asignaciones = (rolScope && restringir) ? tempAsignaciones : {};
+    let asignaciones = rolScope ? tempAsignaciones : {};
     const esTutor = rol === 'profesor' ? !!document.getElementById('u-es-tutor')?.checked : false;
     const telefonoVal = document.getElementById('u-telefono').value.trim();
     const tutorNivel = esTutor ? (document.getElementById('u-tutor-nivel')?.value || '') : '';
@@ -18398,13 +18427,6 @@ function toggleCargoCustum() {
   } else {
     custom.style.display = 'none';
     if(sel) hidden.value = sel;
-  }
-  const cargoVal = String(hidden.value || '').trim();
-  const rolEl = document.getElementById('u-rol');
-  if(rolEl && /docente/i.test(cargoVal) && rolEl.value !== 'profesor') {
-    rolEl.value = 'profesor';
-    togglePrivilegios();
-    toggleBtnConfigurar();
   }
 }
 
