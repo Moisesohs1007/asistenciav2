@@ -392,7 +392,7 @@
       padding-bottom: 0 !important;
     }
     main.scanner-mode #sec-scan.active {
-      height: calc(100dvh - 52px - 62px - 28px);
+      height: calc(100dvh - 48px - 14px - 16px);
       overflow: hidden;
     }
     #sec-scan .scan-top-bar { flex-wrap: wrap; gap: 6px; }
