@@ -6902,6 +6902,7 @@ function showOverlay(tipo, nombre, grado, msg, sub) {
   const el = document.getElementById('scan-result-overlay');
   if(!el) return;
   if(_overlayTimer) { clearTimeout(_overlayTimer); _overlayTimer = null; }
+  try { document.body.classList.add('scan-overlay-on'); } catch(e0) {}
 
   // Ocultar tarjeta antigua
   document.getElementById('result-empty').style.display = 'none';
@@ -6909,9 +6910,11 @@ function showOverlay(tipo, nombre, grado, msg, sub) {
   document.getElementById('scan-action-bar').style.display = 'none';
 
   // Círculos SVG sin fondo de color
-  const R = 48, CX = 52, CY = 52, SIZE = 104;
+  const VB = 104;
+  const SIZE = (window.innerWidth && window.innerWidth < 700) ? 84 : 104;
+  const R = 48, CX = 52, CY = 52;
   function svgCircle(stroke, fill, symbol) {
-    return `<div class="sro-circle"><svg width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+    return `<div class="sro-circle"><svg width="${SIZE}" height="${SIZE}" viewBox="0 0 ${VB} ${VB}">
       <circle cx="${CX}" cy="${CY}" r="${R}" fill="${fill}" stroke="${stroke}" stroke-width="3.5"/>
       ${symbol}
     </svg></div>`;
@@ -6960,6 +6963,7 @@ function showOverlay(tipo, nombre, grado, msg, sub) {
 function hideOverlay() {
   const el = document.getElementById('scan-result-overlay');
   if(el) el.className = '';
+  try { document.body.classList.remove('scan-overlay-on'); } catch(e0) {}
   document.getElementById('result-empty').style.display = 'flex';
   pendingStudent = null;
 }

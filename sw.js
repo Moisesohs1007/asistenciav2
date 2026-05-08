@@ -1,4 +1,4 @@
-const CACHE_NAME = 'asistencia-v2-1.7.9';
+const CACHE_NAME = 'asistencia-v2-1.8.0';
 const ASSETS = [
   './index.html',
   './apoderado.html',

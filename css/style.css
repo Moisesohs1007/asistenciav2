@@ -445,10 +445,16 @@
     #sec-scan .info-item label { font-size: 0.68rem !important; }
     #sec-scan .info-item span  { font-size: 0.82rem !important; }
     #scan-action-bar {
-      flex-shrink: 0; display: flex !important;
+      flex-shrink: 0; display: flex;
       gap: 8px; padding: 6px 0 4px;
     }
     #result-student .btn-action-group { display: none; }
+  }
+
+  @media(max-width:700px){
+    body.scan-overlay-on #scan-action-bar { display: none !important; }
+    body.scan-overlay-on #sec-scan .scan-col-left #qr-reader { height: 160px !important; min-height: 160px; }
+    body.scan-overlay-on #qr-video { height: 160px !important; }
   }
 
   /* Desktop: barra fija oculta */
