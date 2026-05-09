@@ -473,17 +473,18 @@
     }
     #result-student .btn-action-group { display: none; }
 
-    body.scan-overlay-on #sec-scan .scan-top-bar { display: none !important; }
-    body.scan-overlay-on #sec-scan .scan-col-left { display: none !important; }
-    body.scan-overlay-on #sec-scan .stats-row-mobile { display: none !important; }
     body.scan-overlay-on #scan-action-bar { display: none !important; }
-    body.scan-overlay-on #sec-scan .result-box { padding: 12px !important; }
-    body.scan-overlay-on #scan-result-overlay { padding: 12px 10px; gap: 8px; }
-    body.scan-overlay-on .sro-circle svg { width: 64px; height: 64px; }
-    body.scan-overlay-on .sro-spinner { width: 48px; height: 48px; }
-    body.scan-overlay-on .sro-name { -webkit-line-clamp: 3; }
-    body.scan-overlay-on .sro-msg { font-size: 0.85rem; }
-    body.scan-overlay-on .sro-sub { font-size: 0.74rem; }
+    body.scan-overlay-on #sec-scan .scan-col-left #qr-reader {
+      height: 140px !important;
+      min-height: 140px;
+    }
+    body.scan-overlay-on #qr-video { height: 140px !important; }
+    body.scan-overlay-on #sec-scan .result-box { overflow: hidden !important; }
+    body.scan-overlay-on #scan-result-overlay {
+      padding: 16px 12px;
+      gap: 12px;
+      justify-content: center;
+    }
   }
 
   /* Desktop: barra fija oculta */
