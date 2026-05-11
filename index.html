@@ -5392,7 +5392,8 @@ let _tutoriaLocked = false;
 async function _autoSelectTutoria(nivelId, gradoId, seccionId) {
   if (!_isDocenteAula()) return;
   const _asig = (currentPrivilegios && typeof currentPrivilegios.asignaciones === 'object' && currentPrivilegios.asignaciones) ? currentPrivilegios.asignaciones : {};
-  const _lockCampos = !(Object.keys(_asig || {}).length > 0) && !currentPerms?.verTodasAulas;
+  const _noLock = String(nivelId || '').startsWith('rep-');
+  const _lockCampos = _noLock ? false : (!(Object.keys(_asig || {}).length > 0) && !currentPerms?.verTodasAulas);
   const g = String(currentTutorInfo?.tutorGrado || '').trim();
   const s = String(currentTutorInfo?.tutorSeccion || '').trim().toUpperCase();
   if (!g || !s) return;
@@ -5406,12 +5407,11 @@ async function _autoSelectTutoria(nivelId, gradoId, seccionId) {
   // 1. Poblar y seleccionar nivel
   let nivel = '';
   if (nEl) {
+    let cfg = null;
+    try { cfg = await getConfig(); } catch(e0) {}
     await poblarFiltroNivel(nivelId);
-    nivel = [...(nEl.options || [])].find(o => o.value && o.value !== 'TODOS')?.value || '';
-    if (!nivel) {
-      const alumnos = await getAlumnosFiltrados();
-      nivel = alumnos[0]?.turno || '';
-    }
+    nivel = (cfg ? _agendaInferNivelByGrado(g, cfg) : '') || [...(nEl.options || [])].find(o => o.value && o.value !== 'TODOS')?.value || '';
+    if (!nivel) { const alumnos = await getAlumnosFiltrados(); nivel = alumnos[0]?.turno || ''; }
     if (nivel) {
       if (![...nEl.options].some(o => o.value === nivel)) await poblarFiltroNivel(nivelId);
       nEl.value = nivel;
@@ -16375,9 +16375,12 @@ function _repDiasPeriodoAll({ rangoActivo, desde, hasta, mes }) {
     return out;
   }
   const ms = String(mes || '').slice(0,7) || mesActual();
+  const today = hoy();
+  const curMs = today.slice(0,7);
+  if(ms > curMs) return [];
   const [yy,mm] = ms.split('-').map(Number);
   const primerDia = new Date(yy, mm-1, 1);
-  const ultimoDia = new Date(yy, mm, 0);
+  const ultimoDia = (ms === curMs) ? _repIsoToDate(today) : new Date(yy, mm, 0);
   const out = [];
   for(let d = new Date(primerDia); d <= ultimoDia; d.setDate(d.getDate()+1)) {
     const dow = d.getDay();
