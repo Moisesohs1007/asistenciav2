@@ -2905,7 +2905,7 @@
           <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="#64748b"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35"/></svg>
           <input type="text" id="search-alumnos" placeholder="Buscar por nombre o DNI..." oninput="onSearchAlumnos()">
         </div>
-        <button class="btn btn-ghost" onclick="limpiarFiltrosAlumnos()" style="align-self:flex-end;">✕ Limpiar</button>
+        <button class="btn btn-ghost" id="btn-limpiar-filtros-alumnos" onclick="limpiarFiltrosAlumnos()" style="align-self:flex-end;">✕ Limpiar</button>
       </div>
     </div>
     <!-- Contador + acciones -->
@@ -2915,8 +2915,8 @@
         <button class="btn btn-primary" id="btn-nuevo-alumno" onclick="openModalAlumno()">+ Nuevo Alumno</button>
         <button class="btn btn-ghost" id="btn-plantilla-alumnos" onclick="downloadAlumnosTemplate()">⬇ Plantilla Excel</button>
         <button class="btn btn-ghost" id="btn-importar-excel" onclick="importExcel()">📊 Importar Excel</button>
-        <button class="btn btn-ghost" onclick="exportPDFAlumnos()">🖨 Exportar PDF</button>
-        <button class="btn btn-ghost" onclick="exportExcelAlumnos()">📊 Exportar Excel</button>
+        <button class="btn btn-ghost" id="btn-export-pdf-alumnos" onclick="exportPDFAlumnos()">🖨 Exportar PDF</button>
+        <button class="btn btn-ghost" id="btn-export-excel-alumnos" onclick="exportExcelAlumnos()">📊 Exportar Excel</button>
         <!-- Toggle modo carnets -->
         <label id="label-modo-carnets" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:0.82rem;color:var(--text);user-select:none;" title="Activar modo impresión de carnets">
           <input type="checkbox" id="toggle-modo-carnets" onchange="toggleModoCarnets(this.checked)" style="width:15px;height:15px;cursor:pointer;">
@@ -14561,6 +14561,32 @@ function toggleModoCarnets(activo) {
     if(t) t.checked = false;
     return;
   }
+  const _tmpDis = (el, dis, op) => {
+    if(!el) return;
+    if(dis) {
+      if(el.dataset) {
+        if(el.dataset.prevDisabled === undefined) el.dataset.prevDisabled = el.disabled ? '1' : '0';
+        if(el.dataset.prevOpacity  === undefined) el.dataset.prevOpacity  = (el.style && el.style.opacity !== undefined) ? (el.style.opacity || '') : '';
+        if(el.dataset.prevPointer  === undefined) el.dataset.prevPointer  = (el.style && el.style.pointerEvents !== undefined) ? (el.style.pointerEvents || '') : '';
+      }
+      el.disabled = true;
+      el.style.opacity = (op !== undefined ? String(op) : '0.35');
+      el.style.pointerEvents = 'none';
+    } else {
+      if(el.dataset && el.dataset.prevDisabled !== undefined) {
+        el.disabled = (el.dataset.prevDisabled === '1');
+        el.style.opacity = el.dataset.prevOpacity || '';
+        el.style.pointerEvents = el.dataset.prevPointer || '';
+        delete el.dataset.prevDisabled;
+        delete el.dataset.prevOpacity;
+        delete el.dataset.prevPointer;
+      } else {
+        el.disabled = false;
+        el.style.opacity = '';
+        el.style.pointerEvents = '';
+      }
+    }
+  };
   // Mostrar/ocultar columna checkbox thead
   document.getElementById('th-chk-all').style.display = activo ? '' : 'none';
   // Mostrar/ocultar checkboxes de cada fila y DESMARCARLOS siempre
@@ -14590,6 +14616,16 @@ function toggleModoCarnets(activo) {
   if(btnNuevo)      { btnNuevo.disabled = activo;      btnNuevo.style.opacity = activo ? '0.35' : '';  btnNuevo.style.pointerEvents = activo ? 'none' : ''; }
   if(btnPlantilla)  { btnPlantilla.disabled = activo;  btnPlantilla.style.opacity = activo ? '0.35' : '';  btnPlantilla.style.pointerEvents = activo ? 'none' : ''; }
   if(btnImportarXL) { btnImportarXL.disabled = activo; btnImportarXL.style.opacity = activo ? '0.35' : '1'; btnImportarXL.style.pointerEvents = activo ? 'none' : ''; }
+  const btnExpPdf = document.getElementById('btn-export-pdf-alumnos');
+  const btnExpXls = document.getElementById('btn-export-excel-alumnos');
+  const btnLimpiar = document.getElementById('btn-limpiar-filtros-alumnos');
+  _tmpDis(btnExpPdf, !!activo, '0.35');
+  _tmpDis(btnExpXls, !!activo, '0.35');
+  _tmpDis(btnLimpiar, !!activo, '0.35');
+  _tmpDis(document.getElementById('fa-nivel'), !!activo, '0.45');
+  _tmpDis(document.getElementById('fa-grado'), !!activo, '0.45');
+  _tmpDis(document.getElementById('fa-seccion'), !!activo, '0.45');
+  _tmpDis(document.getElementById('search-alumnos'), !!activo, '0.45');
 }
 
 function toggleSelectAll(chk) {
