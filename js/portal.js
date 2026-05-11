@@ -1324,7 +1324,27 @@ function toggleApoMenu(e) {
   var menu = document.getElementById('apo-user-menu');
   if(!menu) return;
   var isOpen = menu.style.display === 'block';
-  menu.style.display = isOpen ? 'none' : 'block';
+  if(isOpen) { menu.style.display = 'none'; return; }
+  menu.style.display = 'block';
+  try {
+    var btn = document.getElementById('apo-avatar-btn') || (e && e.currentTarget) || null;
+    if(btn && btn.getBoundingClientRect) {
+      var r = btn.getBoundingClientRect();
+      var gap = 8;
+      var vw = window.innerWidth || document.documentElement.clientWidth || 360;
+      var vh = window.innerHeight || document.documentElement.clientHeight || 640;
+      var mw = menu.offsetWidth || 220;
+      var mh = menu.offsetHeight || 10;
+      var left = Math.round(r.right - mw);
+      if(left < gap) left = gap;
+      if(left + mw > vw - gap) left = Math.max(gap, vw - gap - mw);
+      var top = Math.round(r.bottom + gap);
+      if(top + mh > vh - gap) top = Math.round(r.top - gap - mh);
+      if(top < gap) top = gap;
+      menu.style.left = left + 'px';
+      menu.style.top = top + 'px';
+    }
+  } catch(e2) {}
 }
 function closeApoMenu() {
   var menu = document.getElementById('apo-user-menu');
