@@ -4831,7 +4831,7 @@
         <button class="btn btn-ghost" onclick="cargarReportesAnio()" style="font-size:0.8rem;padding:6px 14px;">📅 Año completo</button>
       </div>
       <button class="btn btn-ghost" id="rep-btn-pdf" onclick="exportarReportePDF()" style="font-size:0.78rem;padding:5px 12px;border-color:var(--accent2);color:var(--accent2);">⬇ PDF</button>
-      <button class="btn btn-ghost" onclick="repExportCostAudit()" style="font-size:0.78rem;padding:5px 12px;border-color:rgba(34,197,94,0.45);color:rgba(34,197,94,0.95);">📊 Uso</button>
+      <button class="btn btn-ghost" id="rep-btn-uso" onclick="repExportCostAudit()" style="font-size:0.78rem;padding:5px 12px;border-color:rgba(34,197,94,0.45);color:rgba(34,197,94,0.95);">📊 Uso</button>
       <div id="rep-periodo-label" style="flex-basis:100%;font-size:0.78rem;color:var(--muted);margin-top:2px;"></div>
     </div>
 
@@ -6239,6 +6239,11 @@ function aplicarPermisos(rol) {
     if(b1) b1.style.display = canManageAlumnos ? '' : 'none';
     if(b2) b2.style.display = canManageAlumnos ? '' : 'none';
     if(b3) b3.style.display = (_normRol(currentRol) === 'admin') ? '' : 'none';
+  } catch(e) {}
+
+  try {
+    const bUso = document.getElementById('rep-btn-uso');
+    if(bUso) bUso.style.display = (_normRol(currentRol) === 'admin') ? '' : 'none';
   } catch(e) {}
 
   // Restaurar última sección activa si existe y está permitida
@@ -14662,7 +14667,7 @@ async function imprimirCarnetsMasivo() {
 
   const PAGE_W = 210, PAGE_H = 297;
   const COLS = 3, ROWS = 3;
-  const W = 57, H = 92;
+  const W = 58, H = 94;
   const MX = (PAGE_W - COLS * W) / (COLS + 1);   // ~10.5mm
   const MY = (PAGE_H - ROWS * H) / (ROWS + 1);   // ~9.8mm
 
@@ -14681,7 +14686,7 @@ async function imprimirCarnetsMasivo() {
   function drawCarnet(doc, x, y, alumno, qrImg, pageLogoImg) {
     const HEADER_H = 12;
     const FOOTER_H = 7;
-    const BORDER   = 0.6;
+    const BORDER   = 1.2;
 
     // Borde dorado exterior grueso
     doc.setFillColor(...GOLD);
@@ -15433,6 +15438,7 @@ function repResetReportesUI() {
 
 function repExportCostAudit() {
   try {
+    if(_normRol(currentRol) !== 'admin') { toast('No permitido', 'warning'); return; }
     const a = window.ASMQR_COST_AUDIT;
     if(!a) { toast('Auditoría no disponible','warning'); return; }
     if(!a.isEnabled()) a.enable(true, { deepBytes: false });
