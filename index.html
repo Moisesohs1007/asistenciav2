@@ -14787,8 +14787,16 @@ async function imprimirCarnetsMasivo() {
     doc.circle(contCX, fotoCY, fotoR, 'F');
 
     if(alumno.foto) {
-      try { doc.addImage(alumno.foto, contCX-fotoR, fotoCY-fotoR, fotoR*2, fotoR*2); }
+      try {
+        doc.saveGraphicsState();
+        doc.circle(contCX, fotoCY, fotoR, null);
+        doc.clip();
+        if(doc.discardPath) doc.discardPath();
+        doc.addImage(alumno.foto, contCX-fotoR, fotoCY-fotoR, fotoR*2, fotoR*2);
+        doc.restoreGraphicsState();
+      }
       catch(e) {
+        try { if(doc.restoreGraphicsState) doc.restoreGraphicsState(); } catch(e2) {}
         doc.setTextColor(255,255,255); doc.setFontSize(11); doc.setFont('helvetica','bold');
         doc.text((alumno.nombres[0]||'?')+(alumno.apellidos[0]||'?'), contCX, fotoCY+3, {align:'center'});
       }
