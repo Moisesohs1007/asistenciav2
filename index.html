@@ -6073,6 +6073,22 @@ auth.onAuthStateChanged(async user => {
     currentCargo = String(uData.cargo || '').trim();
     const nombre = uData.nombre || user.email;
 
+    try {
+      const norm = (v) => String(v ?? '').trim().replace(/\s+/g,' ');
+      const tutorGrado = norm(uData.tutorGrado || '');
+      const tutorSeccion = norm(uData.tutorSeccion || '').toUpperCase();
+      const hasTut = !!tutorGrado && !!tutorSeccion;
+      const raw = uData.esTutor;
+      const esTutor = hasTut && ((raw === undefined || raw === null) ? true : !!raw);
+      currentTutorInfo = {
+        esTutor,
+        tutorGrado,
+        tutorSeccion,
+        nombre: norm(uData.nombre || ''),
+        telefono: norm(uData.telefono || ''),
+      };
+    } catch(e0) {}
+
     // Marcar sesión activa para evitar splash al refrescar
     try { sessionStorage.setItem('asmqr_haySession', '1'); } catch(e) {}
     // Ocultar login, mostrar app
