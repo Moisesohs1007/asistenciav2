@@ -6079,7 +6079,7 @@ auth.onAuthStateChanged(async user => {
       const tutorSeccion = norm(uData.tutorSeccion || '').toUpperCase();
       const hasTut = !!tutorGrado && !!tutorSeccion;
       const raw = uData.esTutor;
-      const esTutor = hasTut && ((raw === undefined || raw === null) ? true : !!raw);
+      const esTutor = !!raw || hasTut;
       currentTutorInfo = {
         esTutor,
         tutorGrado,
@@ -9421,7 +9421,7 @@ async function cargarTutorActual() {
       const tutorSeccion = norm(d.tutorSeccion || '').toUpperCase();
       const hasTut = !!tutorGrado && !!tutorSeccion;
       const raw = d.esTutor;
-      const esTutor = hasTut && ((raw === undefined || raw === null) ? true : !!raw);
+      const esTutor = !!raw || hasTut;
       currentTutorInfo = {
         esTutor,
         tutorGrado,
