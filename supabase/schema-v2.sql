@@ -188,8 +188,8 @@ CREATE POLICY "alumnos_staff_read" ON alumnos FOR SELECT
   USING (colegio_id = auth_colegio_id() AND is_staff());
 
 CREATE POLICY "alumnos_admin_write" ON alumnos FOR ALL
-  USING (colegio_id = auth_colegio_id() AND is_admin())
-  WITH CHECK (colegio_id = auth_colegio_id() AND is_admin());
+  USING (colegio_id = auth_colegio_id() AND auth_rol() IN ('admin','director','coordinador'))
+  WITH CHECK (colegio_id = auth_colegio_id() AND auth_rol() IN ('admin','director','coordinador'));
 
 -- 5. POLÍTICA ESTRICTA EN RESUMEN MENSUAL
 ALTER TABLE resumen_mensual ENABLE ROW LEVEL SECURITY;

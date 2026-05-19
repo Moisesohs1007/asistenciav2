@@ -15,5 +15,5 @@ CREATE POLICY "alumnos_staff_read" ON public.alumnos FOR SELECT
   USING (colegio_id = auth_colegio_id() AND is_staff());
 
 CREATE POLICY "alumnos_admin_write" ON public.alumnos FOR ALL
-  USING (colegio_id = auth_colegio_id() AND is_admin())
-  WITH CHECK (colegio_id = auth_colegio_id() AND is_admin());
+  USING (colegio_id = auth_colegio_id() AND auth_rol() IN ('admin','director','coordinador'))
+  WITH CHECK (colegio_id = auth_colegio_id() AND auth_rol() IN ('admin','director','coordinador'));

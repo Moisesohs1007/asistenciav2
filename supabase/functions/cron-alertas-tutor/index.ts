@@ -101,6 +101,7 @@ serve(async (req) => {
 
   const body = await req.json().catch(() => ({}));
   const colegioIdOnly = typeof body.colegioId === 'string' ? body.colegioId.trim() : '';
+  const dryRun = !!body.dryRun;
 
   const sb = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
@@ -184,8 +185,10 @@ serve(async (req) => {
         if (eIns) throw new Error(eIns.message);
 
         try {
-          await sendFactilizaText({ token, instancia, telefono: tel, mensaje: msg });
-          await sb.from('alertas_envios').update({ estado: 'enviado', sent_at: new Date().toISOString() }).eq('id', ins.id);
+          if (!dryRun) {
+            await sendFactilizaText({ token, instancia, telefono: tel, mensaje: msg });
+          }
+          await sb.from('alertas_envios').update({ estado: dryRun ? 'simulado' : 'enviado', sent_at: new Date().toISOString() }).eq('id', ins.id);
           await upsertEstado(sb, { colegio_id: c.id, alumno_id: alumnoId, tipo: 'FALTAS_MES', periodo_key: mes, nivel_enviado: nivel });
           enviados++;
         } catch (e) {
@@ -244,8 +247,10 @@ serve(async (req) => {
         if (eIns) throw new Error(eIns.message);
 
         try {
-          await sendFactilizaText({ token, instancia, telefono: tel, mensaje: msg });
-          await sb.from('alertas_envios').update({ estado: 'enviado', sent_at: new Date().toISOString() }).eq('id', ins.id);
+          if (!dryRun) {
+            await sendFactilizaText({ token, instancia, telefono: tel, mensaje: msg });
+          }
+          await sb.from('alertas_envios').update({ estado: dryRun ? 'simulado' : 'enviado', sent_at: new Date().toISOString() }).eq('id', ins.id);
           await upsertEstado(sb, { colegio_id: c.id, alumno_id: alumnoId, tipo: 'TARDANZAS_5D', periodo_key: periodoKey, nivel_enviado: 1 });
           enviados++;
         } catch (e) {
@@ -257,6 +262,5 @@ serve(async (req) => {
     }
   }
 
-  return json(200, { ok: true, hoy, mes, enviados, errores });
+  return json(200, { ok: true, hoy, mes, enviados, dryRun, errores });
 });
-
