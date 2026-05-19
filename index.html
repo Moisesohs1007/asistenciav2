@@ -7222,8 +7222,9 @@ async function openModalAlumno(id) {
   document.getElementById('modal-title-text').textContent = id ? 'Editar Alumno' : 'Nuevo Alumno';
   try { const ff = document.getElementById('f-foto-file'); if(ff) ff.value = ''; } catch(e) {}
   if(id) {
-    const alumnos = await DB.getAlumnos();
-    const a = alumnos.find(x => x.id === id);
+    const a = (typeof DB.getAlumnoById === 'function')
+      ? await DB.getAlumnoById(id)
+      : (await DB.getAlumnos()).find(x => x.id === id);
     document.getElementById('f-id').value = a.id;
     document.getElementById('f-id').readOnly = false;
     document.getElementById('f-id').style.opacity = '1';
@@ -7614,8 +7615,9 @@ function _renderAlumnosPagina() {
 // QR GENERATION (via API)
 // ============================================================
 async function showQR(id) {
-  const alumnos = await DB.getAlumnos();
-  const a = alumnos.find(x => x.id === id);
+  const a = (typeof DB.getAlumnoById === 'function')
+    ? await DB.getAlumnoById(id)
+    : (await DB.getAlumnos()).find(x => x.id === id);
   if(!a) return;
 
   const cfg = await getConfig();

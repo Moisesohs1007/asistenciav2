@@ -46,6 +46,20 @@ const DB = {
     return this._alumnosCache;
   },
 
+  async getAlumnoById(id) {
+    const sid = String(id || '').trim();
+    if (!sid) return null;
+    const { data, error } = await supabase
+      .from('alumnos')
+      .select('*')
+      .eq('colegio_id', COLEGIO_ID)
+      .eq('id', sid)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    return _normAlumno(data);
+  },
+
   // Carga solo los alumnos de los grados/secciones asignadas al profesor.
   // asignaciones: { 'grado': ['A','B'] }
   async getAlumnosScoped(asignaciones) {
