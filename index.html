@@ -4778,6 +4778,35 @@
       <div id="al-alertas-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
       <div id="al-alertas-wrap" style="margin-top:10px;display:none;"></div>
     </div>
+
+    <div class="card" id="al-envios-card" style="margin-bottom:14px;">
+      <div class="card-title"><span class="dot" style="background:rgba(34,197,94,0.95)"></span>Envíos automáticos</div>
+      <div id="al-envios-filtros" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-top:10px;">
+        <div class="form-group" style="margin:0;min-width:220px;">
+          <label>Desde</label>
+          <input type="date" id="ae-desde" onchange="alLoadEnvios()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px;color:var(--text);font-size:0.85rem;">
+        </div>
+        <div class="form-group" style="margin:0;min-width:220px;">
+          <label>Hasta</label>
+          <input type="date" id="ae-hasta" onchange="alLoadEnvios()" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px;color:var(--text);font-size:0.85rem;">
+        </div>
+        <div class="form-group" style="margin:0;min-width:220px;" id="ae-f-nivel-wrap">
+          <label>Nivel</label>
+          <select id="ae-nivel" onchange="onAeNivelChange()"></select>
+        </div>
+        <div class="form-group" style="margin:0;min-width:220px;" id="ae-f-grado-wrap">
+          <label>Grado</label>
+          <select id="ae-grado" onchange="onAeGradoChange()" disabled style="opacity:0.45;"></select>
+        </div>
+        <div class="form-group" style="margin:0;min-width:220px;" id="ae-f-seccion-wrap">
+          <label>Sección</label>
+          <select id="ae-seccion" onchange="alLoadEnvios()" disabled style="opacity:0.45;"></select>
+        </div>
+        <button class="btn btn-primary" id="ae-btn-refresh" onclick="alLoadEnvios()" style="justify-content:center;min-width:220px;">Actualizar</button>
+      </div>
+      <div id="al-envios-status" style="margin-top:10px;font-size:0.82rem;color:var(--muted);"></div>
+      <div id="al-envios-wrap" style="margin-top:10px;display:none;"></div>
+    </div>
   </div>
 
   <!-- ===== REPORTES ===== -->
@@ -15537,6 +15566,7 @@ async function initAlertas() {
   const wrap = document.getElementById('al-alertas-wrap');
   if(st) st.textContent = '';
   if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
+  try { await alInitEnvios(); } catch(e) {}
 }
 
 function _alClearAlertasOutput() {
@@ -15606,6 +15636,150 @@ async function limpiarFiltrosAlertas() {
   const wrap = document.getElementById('al-alertas-wrap');
   if(st) st.textContent = '';
   if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
+}
+
+let _aeBusy = false;
+async function alInitEnvios() {
+  const r = _normRol(currentRol);
+  const isStaff = (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'psicologo');
+  const d1 = document.getElementById('ae-desde');
+  const d2 = document.getElementById('ae-hasta');
+  const today = hoy();
+  if(d1) d1.max = today;
+  if(d2) d2.max = today;
+  if(d2 && !d2.value) d2.value = today;
+  if(d1 && !d1.value) {
+    const dd = _repIsoToDate(today) || new Date();
+    dd.setDate(dd.getDate() - 14);
+    d1.value = _repDateToIso(dd);
+  }
+
+  const wN = document.getElementById('ae-f-nivel-wrap');
+  const wG = document.getElementById('ae-f-grado-wrap');
+  const wS = document.getElementById('ae-f-seccion-wrap');
+  if(wN) wN.style.display = isStaff ? '' : 'none';
+  if(wG) wG.style.display = isStaff ? '' : 'none';
+  if(wS) wS.style.display = isStaff ? '' : 'none';
+
+  if(isStaff) {
+    await poblarFiltroNivel('ae-nivel');
+    await poblarFiltroGrado('ae-grado', null);
+    await poblarFiltroSeccion('ae-seccion', null);
+    _disableSelect('ae-grado');
+    _disableSelect('ae-seccion');
+  }
+
+  const st = document.getElementById('al-envios-status');
+  const wrap = document.getElementById('al-envios-wrap');
+  if(st) st.textContent = '';
+  if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
+  await alLoadEnvios();
+}
+
+async function onAeNivelChange() {
+  const r = _normRol(currentRol);
+  const isStaff = (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'psicologo');
+  if(!isStaff) return;
+  const nivel = document.getElementById('ae-nivel')?.value || '';
+  const gra = document.getElementById('ae-grado');
+  const sec = document.getElementById('ae-seccion');
+  if(gra) gra.value = '';
+  if(sec) sec.value = '';
+  _disableSelect('ae-seccion');
+  if(nivel && nivel !== 'TODOS') {
+    await poblarFiltroGrado('ae-grado', nivel);
+    _enableSelect('ae-grado');
+  } else if(nivel === 'TODOS') {
+    await poblarFiltroGrado('ae-grado', null);
+    _enableSelect('ae-grado');
+  } else {
+    _disableSelect('ae-grado');
+  }
+  await alLoadEnvios();
+}
+
+async function onAeGradoChange() {
+  const r = _normRol(currentRol);
+  const isStaff = (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'psicologo');
+  if(!isStaff) return;
+  const grado = document.getElementById('ae-grado')?.value || '';
+  const sec = document.getElementById('ae-seccion');
+  if(sec) sec.value = '';
+  if(grado && grado !== 'TODOS') {
+    await poblarFiltroSeccion('ae-seccion', grado);
+    _enableSelect('ae-seccion');
+  } else if(grado === 'TODOS') {
+    await poblarFiltroSeccion('ae-seccion', null);
+    _enableSelect('ae-seccion');
+  } else {
+    _disableSelect('ae-seccion');
+  }
+  await alLoadEnvios();
+}
+
+async function alLoadEnvios() {
+  if(_aeBusy) return;
+  _aeBusy = true;
+  const st = document.getElementById('al-envios-status');
+  const wrap = document.getElementById('al-envios-wrap');
+  const btn = document.getElementById('ae-btn-refresh');
+  try {
+    if(btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+    if(st) st.textContent = 'Cargando envíos...';
+    if(wrap) { wrap.style.display = 'none'; wrap.innerHTML = ''; }
+
+    const r = _normRol(currentRol);
+    const isStaff = (r === 'admin' || r === 'director' || r === 'coordinador' || r === 'psicologo');
+    const desde = document.getElementById('ae-desde')?.value || '';
+    const hasta = document.getElementById('ae-hasta')?.value || '';
+    const turno = isStaff ? (document.getElementById('ae-nivel')?.value || '') : '';
+    const grado = isStaff ? (document.getElementById('ae-grado')?.value || '') : '';
+    const seccion = isStaff ? (document.getElementById('ae-seccion')?.value || '') : '';
+
+    const rows = await (DB.getAlertasEnvios ? DB.getAlertasEnvios({
+      desde,
+      hasta,
+      turno: (turno && turno !== 'TODOS') ? turno : '',
+      grado: (grado && grado !== 'TODOS') ? grado : '',
+      seccion: (seccion && seccion !== 'TODOS') ? seccion : '',
+      limit: 200
+    }) : []);
+
+    if(!rows || !rows.length) {
+      if(st) st.textContent = 'Sin envíos en el período.';
+      return;
+    }
+    if(st) st.textContent = `${rows.length} envíos`;
+
+    const html = [];
+    html.push('<div style="overflow:auto;">');
+    html.push('<table class="tabla" style="width:100%;min-width:860px;">');
+    html.push('<thead><tr>');
+    html.push('<th>Fecha</th><th>Tipo</th><th>Alumno</th><th>Aula</th><th>Contador</th><th>Estado</th><th>Destino</th>');
+    html.push('</tr></thead><tbody>');
+    rows.forEach(rw => {
+      const estado = String(rw.estado || '');
+      const color = estado === 'enviado' ? 'rgba(34,197,94,0.95)' : (estado === 'fallo' ? 'rgba(239,68,68,0.95)' : 'rgba(251,191,36,0.95)');
+      const err = rw.error ? String(rw.error).slice(0, 120) : '';
+      html.push('<tr>');
+      html.push(`<td>${rw.createdAt || ''}</td>`);
+      html.push(`<td>${rw.tipo || ''}</td>`);
+      html.push(`<td>${rw.alumnoNombre || ''}<br><span style="font-size:0.72rem;color:var(--muted);">${rw.alumnoId || ''}</span></td>`);
+      html.push(`<td>${rw.turno || ''} · ${rw.grado || ''} ${rw.seccion || ''}</td>`);
+      html.push(`<td style="text-align:center;">${rw.contador ?? ''}</td>`);
+      html.push(`<td><span style="color:${color};font-weight:700;">${estado}</span>${err ? `<br><span style="font-size:0.72rem;color:var(--muted);">${err}</span>` : ''}</td>`);
+      html.push(`<td>${rw.telefonoDestino || ''}</td>`);
+      html.push('</tr>');
+    });
+    html.push('</tbody></table></div>');
+    if(wrap) { wrap.style.display = 'block'; wrap.innerHTML = html.join(''); }
+  } catch(e) {
+    if(st) st.textContent = '';
+    toast('Error cargando envíos: ' + (e?.message || e), 'error');
+  } finally {
+    if(btn) { btn.disabled = false; btn.style.opacity = ''; }
+    _aeBusy = false;
+  }
 }
 
 async function onAlNivelChangeAlertas() {

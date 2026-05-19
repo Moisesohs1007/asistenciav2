@@ -229,7 +229,14 @@ const DB = {
     }
 
     try {
-      const selectCols = filtros.columns || '*';
+      let selectCols = filtros.columns || '*';
+      if (typeof selectCols === 'string' && selectCols !== '*') {
+        const required = ['alumno_id', 'tipo', 'fecha', 'hora', 'estado'];
+        const parts = selectCols.split(',').map(s => s.trim()).filter(Boolean);
+        const set = new Set(parts);
+        required.forEach(c => set.add(c));
+        selectCols = [...set].join(',');
+      }
       let q = supabase
         .from('registros')
         .select(selectCols)
@@ -237,9 +244,6 @@ const DB = {
 
       if (filtros.fecha)    q = q.eq('fecha', filtros.fecha);
       if (filtros.alumnoId) q = q.eq('alumno_id', filtros.alumnoId);
-      if (filtros.alumnoIds && Array.isArray(filtros.alumnoIds)) {
-        q = q.in('alumno_id', filtros.alumnoIds);
-      }
       if (filtros.grado)   q = q.eq('grado', filtros.grado);
       if (filtros.seccion) q = q.eq('seccion', filtros.seccion);
       if (filtros.turno)   q = q.eq('turno', filtros.turno);
@@ -265,24 +269,40 @@ const DB = {
         key.startsWith('rango:');
 
       let data = [];
-      if (needsPaging) {
-        const PAGE = 1000;
+      const PAGE = 1000;
+      const qOrdered = (qb) => qb
+        .order('fecha', { ascending: true })
+        .order('alumno_id', { ascending: true })
+        .order('hora', { ascending: true });
+
+      const fetchPaged = async (qb) => {
+        let out = [];
         let from = 0;
         while (true) {
-          const { data: page, error } = await q
-            .order('fecha', { ascending: true })
-            .order('alumno_id', { ascending: true })
-            .order('hora', { ascending: true })
-            .range(from, from + PAGE - 1);
+          const { data: page, error } = await qb.range(from, from + PAGE - 1);
           if (error) { console.error('[DB] getRegistros:', error.message); return []; }
           if (!page || !page.length) break;
-          data = data.concat(page);
+          out = out.concat(page);
           if (page.length < PAGE) break;
           from += PAGE;
           if (from > 200000) break;
         }
+        return out;
+      };
+
+      if (filtros.alumnoIds && Array.isArray(filtros.alumnoIds) && filtros.alumnoIds.length) {
+        const ids = [...new Set(filtros.alumnoIds.map(x => String(x)).filter(Boolean))];
+        const CHUNK = 200;
+        for (let i = 0; i < ids.length; i += CHUNK) {
+          const chunk = ids.slice(i, i + CHUNK);
+          const base = qOrdered(q.in('alumno_id', chunk));
+          const rows = await fetchPaged(base);
+          if (rows.length) data = data.concat(rows);
+        }
+      } else if (needsPaging) {
+        data = await fetchPaged(qOrdered(q));
       } else {
-        const { data: one, error } = await q;
+        const { data: one, error } = await qOrdered(q);
         if (error) { console.error('[DB] getRegistros:', error.message); return []; }
         data = one || [];
       }
@@ -403,6 +423,54 @@ const DB = {
     this._resumenMesCache[mes] = result;
     this._resumenMesCacheTime[mes] = Date.now();
     return result;
+  },
+
+  async getAlertasEnvios(opts = {}) {
+    const desde  = typeof opts.desde === 'string'  ? opts.desde  : '';
+    const hasta  = typeof opts.hasta === 'string'  ? opts.hasta  : '';
+    const turno  = typeof opts.turno === 'string'  ? opts.turno  : '';
+    const grado  = typeof opts.grado === 'string'  ? opts.grado  : '';
+    const seccion= typeof opts.seccion === 'string'? opts.seccion: '';
+    const limit  = Number.isFinite(opts.limit) ? Math.max(1, Math.min(500, opts.limit)) : 200;
+
+    let q = supabase
+      .from('alertas_envios')
+      .select('id,created_at,tipo,periodo_key,contador,alumno_id,alumno_nombre,turno,grado,seccion,telefono_destino,estado,error,sent_at')
+      .eq('colegio_id', COLEGIO_ID)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (desde) q = q.gte('created_at', desde + 'T00:00:00');
+    if (hasta) q = q.lte('created_at', hasta + 'T23:59:59');
+    if (turno) q = q.eq('turno', turno);
+    if (grado) q = q.eq('grado', grado);
+    if (seccion) q = q.eq('seccion', seccion);
+
+    const { data, error } = await q;
+    if (error) { console.warn('[DB] getAlertasEnvios:', error.message); return []; }
+
+    const fmt = (ts) => {
+      if (!ts) return '';
+      const s = String(ts);
+      return s.includes('T') ? s.replace('T', ' ').slice(0, 16) : s;
+    };
+
+    return (data || []).map(r => ({
+      id: r.id,
+      createdAt: fmt(r.created_at),
+      tipo: r.tipo,
+      periodoKey: r.periodo_key || '',
+      contador: r.contador || 0,
+      alumnoId: r.alumno_id || '',
+      alumnoNombre: r.alumno_nombre || '',
+      turno: r.turno || '',
+      grado: r.grado || '',
+      seccion: r.seccion || '',
+      telefonoDestino: r.telefono_destino || '',
+      estado: r.estado || '',
+      error: r.error || '',
+      sentAt: fmt(r.sent_at),
+    }));
   },
 
   async deleteRegistrosByFecha(fecha) {

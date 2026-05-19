@@ -1492,7 +1492,7 @@ function flashGreenFrame() {
 // ── OVERLAY: mostrar resultado visual en la columna derecha ──
 let _overlayTimer = null;
 
-function showOverlay(tipo, nombre, grado, msg, sub) {
+function showOverlay(tipo, nombre, grado, msg, sub, foto) {
   const el = document.getElementById('scan-result-overlay');
   if(!el) return;
   if(_overlayTimer) { clearTimeout(_overlayTimer); _overlayTimer = null; }
@@ -1527,20 +1527,32 @@ function showOverlay(tipo, nombre, grado, msg, sub) {
     `<text x="52" y="62" text-anchor="middle" font-size="34" fill="#f97316" font-family="sans-serif">!</text>`);
 
   const configs = {
-    loading:     { icon: `<div class="sro-spinner"></div>`, dur: null  },
-    ok:          { icon: iconOk,          dur: 3000  },
-    tardanza:    { icon: iconTardanza,    dur: 3500  },
-    sinIngreso:  { icon: iconSinIngreso,  dur: 4000  },
-    yaing:       { icon: iconError,       dur: 3000  },
-    yasal:       { icon: iconError,       dur: 3000  },
-    noqr:        { icon: iconError,       dur: 2500  },
-    nored:       { icon: iconError,       dur: 3000  },
-    salida:      { icon: iconOk,          dur: 3000  },
+    loading:     { icon: `<div class="sro-spinner"></div>`, dur: null, color: '#38bdf8' },
+    ok:          { icon: iconOk,          dur: 3000, color: '#10b981' },
+    tardanza:    { icon: iconTardanza,    dur: 3500, color: '#f59e0b' },
+    sinIngreso:  { icon: iconSinIngreso,  dur: 4000, color: '#f97316' },
+    yaing:       { icon: iconError,       dur: 3000, color: '#ef4444' },
+    yasal:       { icon: iconError,       dur: 3000, color: '#ef4444' },
+    noqr:        { icon: iconError,       dur: 2500, color: '#ef4444' },
+    nored:       { icon: iconError,       dur: 3000, color: '#ef4444' },
+    salida:      { icon: iconOk,          dur: 3000, color: '#10b981' },
   };
   const cfg = configs[tipo] || configs.noqr;
 
+  let visual = cfg.icon;
+  if(foto && tipo !== 'loading') {
+    visual = `<div style="position:relative; display:inline-block; margin-bottom:6px;">
+      <div style="width:104px; height:104px; border-radius:50%; padding:4px; background:${cfg.color}; box-shadow: 0 8px 24px rgba(0,0,0,0.2); margin:0 auto;">
+        <img src="${foto}" style="width:100%; height:100%; object-fit:cover; border-radius:50%; background:#fff;">
+      </div>
+      <div style="position:absolute; bottom:-8px; right:-12px; background:var(--surface2); border-radius:50%; padding:2px; transform: scale(0.6); transform-origin: center;">
+        ${cfg.icon}
+      </div>
+    </div>`;
+  }
+
   el.className = 'show';
-  el.innerHTML = cfg.icon
+  el.innerHTML = visual
     + (nombre ? `<div class="sro-name">${nombre}</div>` : '')
     + (grado  ? `<div class="sro-sub">${grado}</div>` : '')
     + `<div class="sro-msg">${msg}</div>`
@@ -1629,7 +1641,7 @@ async function autoRegistrar(alumno) {
 
     // ── Ya registró INGRESO y SALIDA ──
     if(tieneIngreso && tieneSalida) {
-      showOverlay('yasal', nombre, grado, 'Ya registró ingreso y salida hoy', '');
+      showOverlay('yasal', nombre, grado, 'Ya registró ingreso y salida hoy', '', alumno.foto);
       return;
     }
 
@@ -1648,7 +1660,7 @@ async function autoRegistrar(alumno) {
     if (!tieneIngreso) {
       // Ventana de INGRESO
       if (ahoraMin < apertura) {
-        showOverlay('noqr', nombre, grado, 'Fuera de horario', `El ingreso abre a las ${horario.horaApertura}`);
+        showOverlay('noqr', nombre, grado, 'Fuera de horario', `El ingreso abre a las ${horario.horaApertura}`, alumno.foto);
         return;
       }
       if (ahoraMin > corte) {
@@ -1657,7 +1669,7 @@ async function autoRegistrar(alumno) {
           tipo = 'SALIDA';
           sinIngresoPrevio = true;
         } else {
-          showOverlay('noqr', nombre, grado, 'Ventana de ingreso cerrada', `Solo se acepta ingreso hasta las ${horario.horaCorte}`);
+          showOverlay('noqr', nombre, grado, 'Ventana de ingreso cerrada', `Solo se acepta ingreso hasta las ${horario.horaCorte}`, alumno.foto);
           return;
         }
       } else {
@@ -1666,7 +1678,7 @@ async function autoRegistrar(alumno) {
     } else {
       // Ya ingresó → ventana de SALIDA
       if (ahoraMin < salida) {
-        showOverlay('yaing', nombre, grado, 'Ya registró su ingreso', `La salida es desde las ${horario.horaSalida}`);
+        showOverlay('yaing', nombre, grado, 'Ya registró su ingreso', `La salida es desde las ${horario.horaSalida}`, alumno.foto);
         return;
       }
       tipo = 'SALIDA';
@@ -1685,7 +1697,7 @@ async function autoRegistrar(alumno) {
     };
 
     // Mostrar spinner mientras guarda
-    showOverlay('loading', nombre, grado, 'Registrando ' + tipo.toLowerCase() + '...', '');
+    showOverlay('loading', nombre, grado, 'Registrando ' + tipo.toLowerCase() + '...', '', alumno.foto);
     await DB.saveRegistro(reg);
     // Actualizar Set local inmediatamente — sin esperar re-carga
     actualizarHoyRegs(alumno.id, tipo, tardanza);
@@ -1694,13 +1706,13 @@ async function autoRegistrar(alumno) {
 
     // Mostrar resultado según caso
     if(tipo === 'INGRESO' && tardanza) {
-      showOverlay('tardanza', nombre, grado, '⚠ Tardanza registrada', reg.hora);
+      showOverlay('tardanza', nombre, grado, '⚠ Tardanza registrada', reg.hora, alumno.foto);
     } else if(tipo === 'INGRESO') {
-      showOverlay('ok', nombre, grado, '✔ Ingreso registrado', reg.hora);
+      showOverlay('ok', nombre, grado, '✔ Ingreso registrado', reg.hora, alumno.foto);
     } else if(sinIngresoPrevio) {
-      showOverlay('sinIngreso', nombre, grado, '⚠ Salida sin ingreso previo', reg.hora);
+      showOverlay('sinIngreso', nombre, grado, '⚠ Salida sin ingreso previo', reg.hora, alumno.foto);
     } else {
-      showOverlay('salida', nombre, grado, '🚪 Salida registrada', reg.hora);
+      showOverlay('salida', nombre, grado, '🚪 Salida registrada', reg.hora, alumno.foto);
     }
 
     // Enviar WhatsApp al apoderado
@@ -1726,7 +1738,7 @@ async function autoRegistrar(alumno) {
   } catch(e) {
     const errMsg = e?.message || String(e) || 'Error desconocido';
     console.error('[registrar]', errMsg, e);
-    showOverlay('nored', nombre, grado, 'Error al registrar', errMsg.length < 60 ? errMsg : 'Ver consola (F12)');
+    showOverlay('nored', nombre, grado, 'Error al registrar', errMsg.length < 60 ? errMsg : 'Ver consola (F12)', alumno.foto);
     toast('❌ Error: ' + errMsg, 'error');
   }
 }
@@ -1776,6 +1788,7 @@ async function openModalAlumno(id) {
     const fotoData = a.foto||'';
     document.getElementById('f-foto-data').value = fotoData;
     document.getElementById('f-foto-url').value = fotoData.startsWith('http') ? fotoData : '';
+    document.getElementById('f-foto-file').value = '';
     const fotoImg = document.getElementById('foto-preview-img');
     const fotoPh  = document.getElementById('foto-preview-placeholder');
     if(fotoData){ fotoImg.src=fotoData; fotoImg.style.display='block'; fotoPh.style.display='none'; }
@@ -1784,7 +1797,10 @@ async function openModalAlumno(id) {
     document.getElementById('f-id').readOnly = false;
     document.getElementById('f-id').style.opacity = '1';
     document.getElementById('f-id').title = '';
-    ['f-id','f-nombres','f-apellidos','f-telefono','f-apoderado-nombres','f-apoderado-apellidos','f-telefono2','f-apoderado2-nombres','f-apoderado2-apellidos','f-foto-url','f-foto-data'].forEach(x => document.getElementById(x).value='');
+    ['f-id','f-nombres','f-apellidos','f-telefono','f-apoderado-nombres','f-apoderado-apellidos','f-telefono2','f-apoderado2-nombres','f-apoderado2-apellidos','f-foto-url','f-foto-data','f-foto-file'].forEach(x => {
+      const el = document.getElementById(x);
+      if(el) el.value='';
+    });
     document.getElementById('foto-preview-img').style.display='none';
     document.getElementById('foto-preview-placeholder').style.display='block';
     const fGrado = document.getElementById('f-grado');
@@ -2040,9 +2056,21 @@ async function renderAlumnos() {
 }
 
 function _filaAlumno(a) {
+  const ini = ((a.nombres?.[0]||'') + (a.apellidos?.[0]||'')).toUpperCase();
+  const avatarHtml = a.foto 
+    ? `<img src="${a.foto}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid var(--border);flex-shrink:0;">`
+    : `<div style="width:36px;height:36px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:0.8rem;color:var(--muted);border:1px solid var(--border);flex-shrink:0;">${ini}</div>`;
+
   return `<tr>
     <td class="td-id">${a.id}</td>
-    <td class="td-name">${a.nombres} ${a.apellidos}</td>
+    <td class="td-name">
+      <div style="display:flex;align-items:center;gap:10px;">
+        ${avatarHtml}
+        <div>
+          <div style="font-weight:600;">${a.nombres} ${a.apellidos}</div>
+        </div>
+      </div>
+    </td>
     <td>${a.grado}</td>
     <td>${a.seccion}</td>
     <td>${a.turno}</td>
@@ -2206,20 +2234,27 @@ function previewFotoUrl(url) {
   }
 }
 
-function previewFotoFile(input) {
+async function previewFotoFile(input) {
   if(!input.files || !input.files[0]) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const data = e.target.result;
-    const img = document.getElementById('foto-preview-img');
-    const ph  = document.getElementById('foto-preview-placeholder');
-    img.src = data;
-    img.style.display = 'block';
-    ph.style.display  = 'none';
-    document.getElementById('f-foto-data').value = data;
-    document.getElementById('f-foto-url').value = '';
-  };
-  reader.readAsDataURL(input.files[0]);
+  try {
+    const file = input.files[0];
+    const compressedBlob = await comprimirImagen(file);
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const data = e.target.result;
+      const img = document.getElementById('foto-preview-img');
+      const ph  = document.getElementById('foto-preview-placeholder');
+      img.src = data;
+      img.style.display = 'block';
+      ph.style.display  = 'none';
+      document.getElementById('f-foto-data').value = data;
+      document.getElementById('f-foto-url').value = '';
+    };
+    reader.readAsDataURL(compressedBlob);
+  } catch (err) {
+    console.error('Error al comprimir foto:', err);
+    toast('Error procesando imagen', 'error');
+  }
 }
 
 // ============================================================
