@@ -9,6 +9,7 @@
 // ============================================================
 // eslint-disable-next-line no-var
 var supabase = window._sb; // sobreescribir referencia de librería con el cliente activo
+const _CACHE_VER = 'v2';
 
 const DB = {
 
@@ -20,7 +21,7 @@ const DB = {
 
   async getAlumnos() {
     const uid = (window.currentUser && window.currentUser.uid) ? window.currentUser.uid : 'anon';
-    const cacheKey = 'alumnos:' + COLEGIO_ID + ':' + uid;
+    const cacheKey = 'alumnos:' + _CACHE_VER + ':' + COLEGIO_ID + ':' + uid;
     if (this._alumnosCache && this._alumnosCacheKey === cacheKey) return this._alumnosCache;
     const lsData = LSC.get(cacheKey);
     if (lsData) { this._alumnosCache = lsData; this._alumnosCacheKey = cacheKey; return lsData; }
@@ -58,7 +59,7 @@ const DB = {
       const normArr = arr.map(x => String(x || '').trim().toUpperCase()).filter(Boolean).sort();
       normAsig[String(g)] = normArr;
     });
-    const cacheKey = 'scoped:' + COLEGIO_ID + ':' + uid + ':' + JSON.stringify(normAsig);
+    const cacheKey = 'scoped:' + _CACHE_VER + ':' + COLEGIO_ID + ':' + uid + ':' + JSON.stringify(normAsig);
     if (this._alumnosScopedCache[cacheKey]) return this._alumnosScopedCache[cacheKey];
     const lsData = LSC.get(cacheKey);
     if (lsData) { this._alumnosScopedCache[cacheKey] = lsData; return lsData; }
@@ -113,9 +114,7 @@ const DB = {
       .upsert(row, { onConflict: 'colegio_id,id' });
 
     if (error) throw new Error(error.message);
-    this._alumnosCache = null;
-    this._alumnosScopedCache = {};
-    LSC.del('alumnos');
+    this.invalidarAlumnos();
   },
 
   async deleteAlumno(id) {
@@ -126,9 +125,7 @@ const DB = {
       .eq('id', id);
 
     if (error) throw new Error(error.message);
-    this._alumnosCache = null;
-    this._alumnosScopedCache = {};
-    LSC.del('alumnos');
+    this.invalidarAlumnos();
   },
 
   async updateAlumnoId(oldId, newData) {
@@ -143,9 +140,7 @@ const DB = {
       .insert(_alumnoToRow(newData));
     if (errIns) throw new Error(errIns.message);
 
-    this._alumnosCache = null;
-    this._alumnosScopedCache = {};
-    LSC.del('alumnos');
+    this.invalidarAlumnos();
   },
 
   async getAulas() {

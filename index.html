@@ -7220,6 +7220,7 @@ async function openModalAlumno(id) {
   _modalLockOn();
   editingId = id || null;
   document.getElementById('modal-title-text').textContent = id ? 'Editar Alumno' : 'Nuevo Alumno';
+  try { const ff = document.getElementById('f-foto-file'); if(ff) ff.value = ''; } catch(e) {}
   if(id) {
     const alumnos = await DB.getAlumnos();
     const a = alumnos.find(x => x.id === id);
