@@ -7753,6 +7753,11 @@ function _fotoLoadImage(src) {
 
 async function _fotoFileToDataUrl(file) {
   try {
+    const mime = String(file?.type || '').toLowerCase();
+    if(mime.includes('heic') || mime.includes('heif')) {
+      toast('Formato HEIC/HEIF no soportado. Convierte la foto a JPG/PNG y vuelve a subir.', 'warning');
+      return '';
+    }
     const maxBytesIn = 6 * 1024 * 1024;
     if(file.size > maxBytesIn) {
       toast('La imagen es muy pesada. Usa una foto más ligera.', 'warning');
