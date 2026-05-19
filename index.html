@@ -7347,28 +7347,10 @@ async function saveAlumno() {
     } else if(editingId && editingId === id) {
       // Editar alumno con mismo DNI — solo actualizar datos, NO tocar cuenta apoderado
       await DB.saveAlumno(alumno);
-      try {
-        const fotoWanted = (alumno.foto || '').trim();
-        if (fotoWanted) {
-          const list2 = await DB.getAlumnos();
-          const saved = (list2 || []).find(x => x && x.id === id);
-          const fotoSaved = (saved && saved.foto) ? String(saved.foto).trim() : '';
-          if (!fotoSaved) toast('Se guardó, pero la foto no quedó persistida. Revisa permisos o formato.', 'warning');
-        }
-      } catch(e) {}
       toast('Alumno actualizado','success');
     } else {
       // Nuevo alumno — crear datos y cuenta apoderado
       await DB.saveAlumno(alumno);
-      try {
-        const fotoWanted = (alumno.foto || '').trim();
-        if (fotoWanted) {
-          const list2 = await DB.getAlumnos();
-          const saved = (list2 || []).find(x => x && x.id === id);
-          const fotoSaved = (saved && saved.foto) ? String(saved.foto).trim() : '';
-          if (!fotoSaved) toast('Se guardó, pero la foto no quedó persistida. Revisa permisos o formato.', 'warning');
-        }
-      } catch(e) {}
       await crearCuentaApoderadoSilencioso(alumno);
       toast('Alumno registrado','success');
     }
