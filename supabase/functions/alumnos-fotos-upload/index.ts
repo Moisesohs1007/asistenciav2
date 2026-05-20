@@ -89,19 +89,21 @@ serve(async (req) => {
       .upload(path, bytes, { contentType: 'image/jpeg', upsert: true });
 
     if (upError) {
-      await supabaseAdmin.from('alumnos_fotos_upload_log').insert({
-        colegio_id: colegioId,
-        actor_uid: user.id,
-        actor_email: user.email || null,
-        actor_rol: rol,
-        dni,
-        path,
-        bytes: bytesLen,
-        mime: 'image/jpeg',
-        ok: false,
-        error: upError.message,
-        source: 'edge',
-      }).catch(() => {});
+      try {
+        await supabaseAdmin.from('alumnos_fotos_upload_log').insert({
+          colegio_id: colegioId,
+          actor_uid: user.id,
+          actor_email: user.email || null,
+          actor_rol: rol,
+          dni,
+          path,
+          bytes: bytesLen,
+          mime: 'image/jpeg',
+          ok: false,
+          error: upError.message,
+          source: 'edge',
+        });
+      } catch (_e) {}
       return jsonResponse({ error: upError.message }, 500);
     }
 
@@ -115,6 +117,25 @@ serve(async (req) => {
       .eq('id', dni);
 
     if (updError) {
+      try {
+        await supabaseAdmin.from('alumnos_fotos_upload_log').insert({
+          colegio_id: colegioId,
+          actor_uid: user.id,
+          actor_email: user.email || null,
+          actor_rol: rol,
+          dni,
+          path,
+          bytes: bytesLen,
+          mime: 'image/jpeg',
+          ok: false,
+          error: updError.message,
+          source: 'edge',
+        });
+      } catch (_e) {}
+      return jsonResponse({ error: updError.message }, 500);
+    }
+
+    try {
       await supabaseAdmin.from('alumnos_fotos_upload_log').insert({
         colegio_id: colegioId,
         actor_uid: user.id,
@@ -124,26 +145,11 @@ serve(async (req) => {
         path,
         bytes: bytesLen,
         mime: 'image/jpeg',
-        ok: false,
-        error: updError.message,
+        ok: true,
+        error: null,
         source: 'edge',
-      }).catch(() => {});
-      return jsonResponse({ error: updError.message }, 500);
-    }
-
-    await supabaseAdmin.from('alumnos_fotos_upload_log').insert({
-      colegio_id: colegioId,
-      actor_uid: user.id,
-      actor_email: user.email || null,
-      actor_rol: rol,
-      dni,
-      path,
-      bytes: bytesLen,
-      mime: 'image/jpeg',
-      ok: true,
-      error: null,
-      source: 'edge',
-    }).catch(() => {});
+      });
+    } catch (_e) {}
 
     return jsonResponse({ ok: true, dni, path, url }, 200);
   } catch (e) {
