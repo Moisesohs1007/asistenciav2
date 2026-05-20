@@ -7533,6 +7533,7 @@ async function runFotosMasivoUpload() {
   if(!_fotosMasivoFiles.length) { toast('Selecciona fotos primero', 'warning'); return; }
   if(!confirm(`¿Subir ${_fotosMasivoFiles.length} foto(s) a Storage y actualizar alumnos?`)) return;
   _fotosMasivoRunning = true;
+  const allowStorageFallback = !!window.ALLOW_FOTOS_STORAGE_FALLBACK;
   const btnRun = document.getElementById('btn-fotos-masivo-run');
   if(btnRun) btnRun.disabled = true;
   const bar = document.getElementById('al-fotos-masivo-bar');
@@ -7572,6 +7573,9 @@ async function runFotosMasivoUpload() {
         try {
           url = await _fmUploadFotoEdge(f, dni);
         } catch(e0) {
+          if(!allowStorageFallback) {
+            throw new Error(`Edge falló: ${(e0 && e0.message) ? e0.message : 'Error'}`);
+          }
           const path = `${COLEGIO_ID}/${dni}.jpg`;
           await window._sbStorage.upload('alumnos-fotos', path, f, 'image/jpeg');
           url = `${base}/storage/v1/object/public/alumnos-fotos/${encodeURIComponent(COLEGIO_ID)}/${encodeURIComponent(dni)}.jpg`;

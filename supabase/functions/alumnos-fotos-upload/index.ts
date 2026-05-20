@@ -39,9 +39,11 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
     if (userError || !user) return jsonResponse({ error: 'Token inválido o expirado' }, 401);
 
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    if (!serviceKey) return jsonResponse({ error: 'SUPABASE_SERVICE_ROLE_KEY no configurado' }, 500);
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      serviceKey
     );
 
     const form = await req.formData();
@@ -51,11 +53,6 @@ serve(async (req) => {
 
     if (!/^\d{8}$/.test(dni)) return jsonResponse({ error: 'DNI inválido' }, 400);
     if (!(file instanceof File)) return jsonResponse({ error: 'Archivo requerido' }, 400);
-
-    const colegioIdMeta = safeText(user.app_metadata?.colegio_id).trim();
-    const colegioId = colegioIdMeta || colegioIdBody;
-    if (!colegioId) return jsonResponse({ error: 'Usuario no asociado a un colegio' }, 400);
-    if (colegioIdBody && colegioIdBody !== colegioId) return jsonResponse({ error: 'colegioId no coincide' }, 403);
 
     const rolMeta = safeText(user.app_metadata?.rol).trim().toLowerCase();
     const { data: requesterRows, error: requesterRowError } = await supabaseAdmin
@@ -69,6 +66,11 @@ serve(async (req) => {
     const rolDb = safeText((requesterRow as any)?.rol).trim().toLowerCase();
     const colegioIdDb = safeText((requesterRow as any)?.colegio_id).trim();
     const permisosExtra = (requesterRow as any)?.permisos_extra || {};
+
+    const colegioIdMeta = safeText(user.app_metadata?.colegio_id).trim();
+    const colegioId = colegioIdDb || colegioIdMeta || colegioIdBody;
+    if (!colegioId) return jsonResponse({ error: 'Usuario no asociado a un colegio' }, 400);
+    if (colegioIdBody && colegioIdBody !== colegioId) return jsonResponse({ error: 'colegioId no coincide' }, 403);
 
     const rol = rolDb || rolMeta;
     const okRole = ['admin', 'director', 'coordinador'].includes(rol);
