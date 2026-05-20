@@ -17,8 +17,8 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="compat.js?v=121"></script>
-<script src="db_supabase.js?v=121"></script>
+<script src="compat.js?v=122"></script>
+<script src="db_supabase.js?v=122"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
@@ -2915,6 +2915,7 @@
         <button class="btn btn-primary" id="btn-nuevo-alumno" onclick="openModalAlumno()">+ Nuevo Alumno</button>
         <button class="btn btn-ghost" id="btn-plantilla-alumnos" onclick="downloadAlumnosTemplate()">⬇ Plantilla Excel</button>
         <button class="btn btn-ghost" id="btn-importar-excel" onclick="importExcel()">📊 Importar Excel</button>
+        <button class="btn btn-ghost" id="btn-fotos-masivo" onclick="openModalFotosMasivo()" style="display:none;">🖼 Subir fotos (masivo)</button>
         <button class="btn btn-ghost" id="btn-export-pdf-alumnos" onclick="exportPDFAlumnos()">🖨 Exportar PDF</button>
         <button class="btn btn-ghost" id="btn-export-excel-alumnos" onclick="exportExcelAlumnos()">📊 Exportar Excel</button>
         <!-- Toggle modo carnets -->
@@ -3453,6 +3454,17 @@
           </span>
         </label>
 
+        <div style="font-size:0.9rem;font-weight:850;margin:14px 0 8px 0;">Alumnos</div>
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:0.88rem;font-weight:650;line-height:1.25;">
+          <input type="checkbox" id="pe-alumnos-fotos-masivo" style="margin-top:2px;accent-color:var(--accent);width:16px;height:16px;">
+          <span>
+            Puede subir fotos masivamente
+            <div style="font-size:0.75rem;color:var(--muted);font-weight:500;margin-top:6px;line-height:1.35;">
+              Habilita el botón “Subir fotos (masivo)” en Gestión de Alumnos.
+            </div>
+          </span>
+        </label>
+
         <div style="font-size:0.9rem;font-weight:850;margin:14px 0 8px 0;">Acceso a módulos</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.86rem;font-weight:650;">
@@ -3520,6 +3532,53 @@
       <div style="display:flex;gap:10px;margin-top:18px;">
         <button class="btn btn-primary" onclick="savePermisosEspeciales()" style="flex:1;justify-content:center;">Guardar</button>
         <button class="btn btn-ghost" onclick="closeModal('modal-permisos-especiales')" style="flex:1;justify-content:center;">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Fotos Masivo -->
+  <div class="modal-bg" id="modal-fotos-masivo" onclick="closeModal('modal-fotos-masivo')">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:760px;">
+      <div class="modal-header">
+        <div class="modal-title">🖼 Subir fotos masivamente</div>
+        <button class="modal-close" onclick="closeModal('modal-fotos-masivo')">✕</button>
+      </div>
+      <div class="card" style="padding:14px 16px;margin:0 0 12px 0;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.25);">
+        <div style="font-size:0.85rem;color:var(--text);font-weight:650;margin-bottom:6px;">Formato</div>
+        <div style="font-size:0.8rem;color:var(--muted);line-height:1.35;">
+          Archivos JPG nombrados con el DNI (8 dígitos). Ej: <code>33348255.jpg</code><br>
+          Se suben a <code>alumnos-fotos/&lt;colegio_id&gt;/DNI.jpg</code> y se actualiza el alumno automáticamente.
+        </div>
+      </div>
+      <div class="form-group" style="margin:0 0 10px 0;">
+        <label>Seleccionar fotos (JPG)</label>
+        <input type="file" id="al-fotos-masivo-file" accept="image/jpeg,image/jpg" multiple onchange="onFotosMasivoFileChange(this)" />
+      </div>
+      <div id="al-fotos-masivo-status" style="display:none;margin:10px 0;padding:10px 12px;border-radius:10px;font-size:0.83rem;"></div>
+      <div style="height:8px;background:rgba(148,163,184,0.25);border-radius:999px;overflow:hidden;margin:10px 0 14px 0;">
+        <div id="al-fotos-masivo-bar" style="height:8px;width:0%;background:var(--accent);"></div>
+      </div>
+      <div class="card" style="padding:0;margin-top:8px;">
+        <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <div style="font-weight:650;">Progreso</div>
+          <div id="al-fotos-masivo-counts" style="font-size:0.82rem;color:var(--muted);"></div>
+        </div>
+        <div class="table-wrap" style="max-height:42vh;overflow:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>DNI</th>
+                <th>Archivo</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="al-fotos-masivo-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button class="btn btn-primary" id="btn-fotos-masivo-run" onclick="runFotosMasivoUpload()" style="flex:1;justify-content:center;" disabled>Subir fotos</button>
+        <button class="btn btn-ghost" onclick="closeModal('modal-fotos-masivo')" style="flex:1;justify-content:center;">Cerrar</button>
       </div>
     </div>
   </div>
@@ -5399,7 +5458,7 @@ let currentCargo = '';
 let _repContextoPDF = {}; // contexto guardado para exportar PDF de reportes
 let _repAnioCompletoActivo = false;
 
-let currentPerms = { incidentesDiaLectura: false, incidentesVerTodo: false, modoCarnets: false, verTodasAulas: false, sections: {} };
+let currentPerms = { incidentesDiaLectura: false, incidentesVerTodo: false, modoCarnets: false, verTodasAulas: false, alumnosFotosMasivo: false, sections: {} };
 
 function _normRol(r) {
   const v = String(r || '').trim().toLowerCase();
@@ -6097,6 +6156,7 @@ auth.onAuthStateChanged(async user => {
       incidentesVerTodo:    !!px.incidentesVerTodo,
       modoCarnets:          !!px.modoCarnets,
       verTodasAulas:        !!px.verTodasAulas,
+      alumnosFotosMasivo:   !!px.alumnosFotosMasivo,
       sections:             (px.sections && typeof px.sections === 'object') ? px.sections : {}
     };
     currentCargo = String(uData.cargo || '').trim();
@@ -6265,9 +6325,11 @@ function aplicarPermisos(rol) {
     const b1 = document.getElementById('btn-nuevo-alumno');
     const b2 = document.getElementById('btn-importar-excel');
     const b3 = document.getElementById('btn-plantilla-alumnos');
+    const b4 = document.getElementById('btn-fotos-masivo');
     if(b1) b1.style.display = canManageAlumnos ? '' : 'none';
     if(b2) b2.style.display = canManageAlumnos ? '' : 'none';
     if(b3) b3.style.display = (_normRol(currentRol) === 'admin') ? '' : 'none';
+    if(b4) b4.style.display = (canManageAlumnos || !!currentPerms?.alumnosFotosMasivo) ? '' : 'none';
   } catch(e) {}
 
   try {
@@ -6328,6 +6390,8 @@ function showSectionDirect(id) {
     if(labelCarnets) {
       labelCarnets.style.display = (_isAdminDirectorOrCoord() || !!currentPerms?.modoCarnets) ? 'flex' : 'none';
     }
+    const btnFotos = document.getElementById('btn-fotos-masivo');
+    if(btnFotos) btnFotos.style.display = (_isAdminDirectorOrCoord() || !!currentPerms?.alumnosFotosMasivo) ? '' : 'none';
   }
   if(id==='registro') {
     poblarSelectorMes('reg-mes-select');
@@ -7364,6 +7428,134 @@ async function saveAlumno() {
     toast('Error al guardar: ' + msg, 'error');
     console.error(e);
   }
+}
+
+let _fotosMasivoFiles = [];
+let _fotosMasivoRunning = false;
+
+function _canFotosMasivo() {
+  return _isAdminDirectorOrCoord() || !!currentPerms?.alumnosFotosMasivo;
+}
+
+function openModalFotosMasivo() {
+  if(!_canFotosMasivo()) { toast('No autorizado', 'warning'); return; }
+  _fotosMasivoFiles = [];
+  _fotosMasivoRunning = false;
+  const fileEl = document.getElementById('al-fotos-masivo-file');
+  if(fileEl) fileEl.value = '';
+  const tb = document.getElementById('al-fotos-masivo-tbody');
+  if(tb) tb.innerHTML = '';
+  const counts = document.getElementById('al-fotos-masivo-counts');
+  if(counts) counts.textContent = '';
+  const bar = document.getElementById('al-fotos-masivo-bar');
+  if(bar) bar.style.width = '0%';
+  const st = document.getElementById('al-fotos-masivo-status');
+  if(st) st.style.display = 'none';
+  const btnRun = document.getElementById('btn-fotos-masivo-run');
+  if(btnRun) btnRun.disabled = true;
+  const m = document.getElementById('modal-fotos-masivo');
+  if(m) { m.style.display = ''; _modalLockOn(); m.classList.add('open'); }
+}
+
+function _fmSetStatus(msg, kind='info') {
+  const st = document.getElementById('al-fotos-masivo-status');
+  if(!st) return;
+  st.style.display = '';
+  const bg = kind==='error' ? 'rgba(239,68,68,0.12)'
+    : kind==='success' ? 'rgba(16,185,129,0.12)'
+    : kind==='warning' ? 'rgba(245,158,11,0.12)'
+    : 'rgba(96,165,250,0.10)';
+  const bd = kind==='error' ? 'rgba(239,68,68,0.35)'
+    : kind==='success' ? 'rgba(16,185,129,0.35)'
+    : kind==='warning' ? 'rgba(245,158,11,0.35)'
+    : 'rgba(96,165,250,0.30)';
+  st.style.background = bg;
+  st.style.border = '1px solid ' + bd;
+  st.textContent = msg;
+}
+
+function _fmExtractDni(filename) {
+  const m = String(filename || '').match(/(\d{8})/);
+  return m ? m[1] : '';
+}
+
+function onFotosMasivoFileChange(input) {
+  if(_fotosMasivoRunning) return;
+  const files = Array.from(input?.files || []);
+  _fotosMasivoFiles = files;
+  const tb = document.getElementById('al-fotos-masivo-tbody');
+  if(tb) {
+    tb.innerHTML = files.map(f => {
+      const dni = _fmExtractDni(f.name);
+      const okDni = !!dni;
+      const okType = String(f.type || '').toLowerCase().includes('jpeg') || /\.jpe?g$/i.test(f.name);
+      const st = (!okDni) ? 'DNI inválido'
+        : (!okType) ? 'Solo JPG'
+        : 'Listo';
+      const color = (!okDni || !okType) ? 'var(--danger)' : 'var(--muted)';
+      return `<tr data-dni="${dni||''}">
+        <td style="font-family:monospace;">${dni || '-'}</td>
+        <td>${(f.name || '').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</td>
+        <td class="fm-status" style="color:${color};">${st}</td>
+      </tr>`;
+    }).join('');
+  }
+  const counts = document.getElementById('al-fotos-masivo-counts');
+  if(counts) counts.textContent = `${files.length} archivo(s) seleccionados`;
+  const btnRun = document.getElementById('btn-fotos-masivo-run');
+  if(btnRun) btnRun.disabled = files.length === 0;
+}
+
+async function runFotosMasivoUpload() {
+  if(_fotosMasivoRunning) return;
+  if(!_canFotosMasivo()) { toast('No autorizado', 'warning'); return; }
+  if(!_fotosMasivoFiles.length) { toast('Selecciona fotos primero', 'warning'); return; }
+  if(!confirm(`¿Subir ${_fotosMasivoFiles.length} foto(s) a Storage y actualizar alumnos?`)) return;
+  _fotosMasivoRunning = true;
+  const btnRun = document.getElementById('btn-fotos-masivo-run');
+  if(btnRun) btnRun.disabled = true;
+  const bar = document.getElementById('al-fotos-masivo-bar');
+  const counts = document.getElementById('al-fotos-masivo-counts');
+  let ok = 0, fail = 0, skip = 0;
+  _fmSetStatus('Subiendo...', 'info');
+
+  const base = String(window.SUPABASE_URL || '').replace(/\/+$/,'');
+  for(let i=0;i<_fotosMasivoFiles.length;i++) {
+    const f = _fotosMasivoFiles[i];
+    const dni = _fmExtractDni(f.name);
+    const okType = String(f.type || '').toLowerCase().includes('jpeg') || /\.jpe?g$/i.test(f.name);
+    const row = document.querySelector(`#al-fotos-masivo-tbody tr:nth-child(${i+1}) .fm-status`);
+    const setRow = (msg, kind) => {
+      if(!row) return;
+      row.textContent = msg;
+      row.style.color = kind==='error' ? 'var(--danger)' : kind==='success' ? 'var(--success)' : 'var(--muted)';
+    };
+    if(!dni || !okType) {
+      skip++;
+      setRow(!dni ? 'DNI inválido' : 'Solo JPG', 'error');
+    } else {
+      try {
+        const path = `${COLEGIO_ID}/${dni}.jpg`;
+        await window._sbStorage.upload('alumnos-fotos', path, f, 'image/jpeg');
+        const url = `${base}/storage/v1/object/public/alumnos-fotos/${encodeURIComponent(COLEGIO_ID)}/${encodeURIComponent(dni)}.jpg`;
+        await DB.updateAlumnoFoto(dni, url);
+        ok++;
+        setRow('OK', 'success');
+      } catch(e) {
+        fail++;
+        setRow((e && e.message) ? e.message : 'Error', 'error');
+      }
+    }
+    const pct = Math.round(((i+1) / _fotosMasivoFiles.length) * 100);
+    if(bar) bar.style.width = pct + '%';
+    if(counts) counts.textContent = `OK ${ok} · Error ${fail} · Omitidos ${skip} · ${i+1}/${_fotosMasivoFiles.length}`;
+    await new Promise(r => setTimeout(r, 30));
+  }
+  _fotosMasivoRunning = false;
+  if(btnRun) btnRun.disabled = false;
+  if(fail === 0) _fmSetStatus(`Listo. OK ${ok}. Omitidos ${skip}.`, 'success');
+  else _fmSetStatus(`Finalizado. OK ${ok}. Error ${fail}. Omitidos ${skip}.`, 'warning');
+  try { renderAlumnos(); } catch(e0) {}
 }
 
 async function verificarCuentasHuerfanas() {
@@ -17704,6 +17896,7 @@ function _getPermisosEspecialesFromForm() {
     incidentesVerTodo:    !!px.incidentesVerTodo,
     modoCarnets:          !!px.modoCarnets,
     verTodasAulas:        !!px.verTodasAulas,
+    alumnosFotosMasivo:   !!px.alumnosFotosMasivo,
     sections:             (px.sections && typeof px.sections === 'object') ? px.sections : {}
   };
 }
@@ -17714,6 +17907,7 @@ function _applyPermisosEspecialesToForm(perms) {
     incidentesVerTodo:    !!perms?.incidentesVerTodo,
     modoCarnets:          !!perms?.modoCarnets,
     verTodasAulas:        !!perms?.verTodasAulas,
+    alumnosFotosMasivo:   !!perms?.alumnosFotosMasivo,
     sections:             (perms?.sections && typeof perms.sections === 'object') ? perms.sections : {}
   };
   const jsonEl = document.getElementById('u-permisos-extra-json');
@@ -17731,6 +17925,7 @@ function actualizarResumenPermisosEspeciales() {
   if(p.incidentesVerTodo) labels.push('Incidentes: historial');
   else if(p.incidentesDiaLectura) labels.push('Incidentes: día');
   if(p.modoCarnets) labels.push('Fotochex');
+  if(p.alumnosFotosMasivo) labels.push('Fotos: masivo');
   const secKeys = Object.keys(p.sections || {}).filter(k => !!p.sections[k]);
   if(secKeys.length) labels.push('Módulos: ' + secKeys.length);
   resumen.textContent = labels.length ? labels.join(' · ') : 'Sin permisos especiales';
@@ -17747,6 +17942,8 @@ function openModalPermisosEspeciales() {
   if(chkCarn) chkCarn.checked = !!_permisosEspecialesDraft?.modoCarnets;
   const chkAllA = document.getElementById('pe-ver-todas-aulas');
   if(chkAllA) chkAllA.checked = !!_permisosEspecialesDraft?.verTodasAulas;
+  const chkFotos = document.getElementById('pe-alumnos-fotos-masivo');
+  if(chkFotos) chkFotos.checked = !!_permisosEspecialesDraft?.alumnosFotosMasivo;
 
   const secs = _permisosEspecialesDraft?.sections || {};
   [
@@ -17769,6 +17966,7 @@ function savePermisosEspeciales() {
   const chkAllInc = document.getElementById('pe-incidentes-ver-todo');
   const chkCarn = document.getElementById('pe-modo-carnets');
   const chkAllA = document.getElementById('pe-ver-todas-aulas');
+  const chkFotos = document.getElementById('pe-alumnos-fotos-masivo');
   const sections = {};
   [
     'scan','alumnos','registro','reportes','incidentes','materiales','materiales-entrega',
@@ -17782,6 +17980,7 @@ function savePermisosEspeciales() {
     incidentesVerTodo: !!chkAllInc?.checked,
     modoCarnets: !!chkCarn?.checked,
     verTodasAulas: !!chkAllA?.checked,
+    alumnosFotosMasivo: !!chkFotos?.checked,
     sections
   });
   actualizarResumenPermisosEspeciales();

@@ -131,6 +131,22 @@ const DB = {
     this.invalidarAlumnos();
   },
 
+  async updateAlumnoFoto(id, foto) {
+    const sid = String(id || '').trim();
+    const f = String(foto || '').trim();
+    if (!sid) throw new Error('ID inválido');
+    const { data, error } = await supabase
+      .from('alumnos')
+      .update({ foto: f })
+      .eq('colegio_id', COLEGIO_ID)
+      .eq('id', sid)
+      .select('id')
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error('Alumno no encontrado en base de datos');
+    this.invalidarAlumnos();
+  },
+
   async deleteAlumno(id) {
     const { error } = await supabase
       .from('alumnos')
