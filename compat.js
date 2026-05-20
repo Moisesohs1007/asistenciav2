@@ -31,6 +31,8 @@ window.APO_DOMAIN      = '@apo.jad.pe';          // dominio de cuentas de apoder
 const SUPABASE_URL      = 'https://bqnhlzwdibcmstqzspmj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbmhsendkaWJjbXN0cXpzcG1qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODY2MTAsImV4cCI6MjA5MDY2MjYxMH0.mm7eMEOMzylzKeWJbcI_gHaHbwnGpQo0UVhZUOB9q2s';
 window.COLEGIO_ID       = 'sigece'; // slug del colegio, debe existir en tabla colegios
+window.SUPABASE_URL     = SUPABASE_URL;
+window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
 
 // ── Inicializar cliente Supabase ─────────────────────────────
 const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {

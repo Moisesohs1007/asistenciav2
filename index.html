@@ -7506,6 +7506,27 @@ function onFotosMasivoFileChange(input) {
   if(btnRun) btnRun.disabled = files.length === 0;
 }
 
+async function _fmUploadFotoEdge(file, dni) {
+  const base = String(window.SUPABASE_URL || '').replace(/\/+$/,'');
+  const { data: { session } } = await window._sb.auth.getSession();
+  if(!session?.access_token) throw new Error('Sesión no iniciada');
+  const fd = new FormData();
+  fd.append('dni', String(dni || ''));
+  fd.append('colegioId', String(COLEGIO_ID || ''));
+  fd.append('file', file, file?.name || `${dni}.jpg`);
+  const res = await fetch(`${base}/functions/v1/alumnos-fotos-upload`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'apikey': String(window.SUPABASE_ANON_KEY || ''),
+    },
+    body: fd,
+  });
+  const j = await res.json().catch(() => ({}));
+  if(!res.ok) throw new Error(j?.error || j?.message || (res.status + ' ' + res.statusText));
+  return String(j?.url || '');
+}
+
 async function runFotosMasivoUpload() {
   if(_fotosMasivoRunning) return;
   if(!_canFotosMasivo()) { toast('No autorizado', 'warning'); return; }
@@ -7547,10 +7568,15 @@ async function runFotosMasivoUpload() {
       setRow(!dni ? 'DNI inválido' : 'Solo JPG', 'error');
     } else {
       try {
-        const path = `${COLEGIO_ID}/${dni}.jpg`;
-        await window._sbStorage.upload('alumnos-fotos', path, f, 'image/jpeg');
-        const url = `${base}/storage/v1/object/public/alumnos-fotos/${encodeURIComponent(COLEGIO_ID)}/${encodeURIComponent(dni)}.jpg`;
-        await DB.updateAlumnoFoto(dni, url);
+        let url = '';
+        try {
+          url = await _fmUploadFotoEdge(f, dni);
+        } catch(e0) {
+          const path = `${COLEGIO_ID}/${dni}.jpg`;
+          await window._sbStorage.upload('alumnos-fotos', path, f, 'image/jpeg');
+          url = `${base}/storage/v1/object/public/alumnos-fotos/${encodeURIComponent(COLEGIO_ID)}/${encodeURIComponent(dni)}.jpg`;
+          await DB.updateAlumnoFoto(dni, url);
+        }
         ok++;
         setRow('OK', 'success');
       } catch(e) {
