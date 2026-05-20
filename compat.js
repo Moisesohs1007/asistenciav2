@@ -38,6 +38,33 @@ const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 window._sb = _sb; // disponible para db_supabase.js
 
+// #region debug-point storage-rls-upload
+window.__ASMQR_DBG = window.__ASMQR_DBG || (function(){
+  const SESSION_ID = 'storage-rls-upload';
+  const URLS = [
+    'http://127.0.0.1:7777/event',
+    'http://127.0.0.1:7778/event',
+  ];
+  async function send(event, data) {
+    const payload = {
+      sessionId: SESSION_ID,
+      event,
+      ts: new Date().toISOString(),
+      colegioId: window.COLEGIO_ID || '',
+      data: data || {},
+    };
+    const body = JSON.stringify(payload);
+    for (const u of URLS) {
+      try {
+        await fetch(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive: true });
+        return;
+      } catch(e) {}
+    }
+  }
+  return { send };
+})();
+// #endregion debug-point storage-rls-upload
+
 window.ASMQR_COST_AUDIT = window.ASMQR_COST_AUDIT || (function(){
   function _nowIso() {
     const d = new Date();
@@ -758,6 +785,20 @@ const _sbStorage = {
     const base = String(SUPABASE_URL || '').replace(/\/+$/, '');
     const parts = cleanPath.split('/').map(p => encodeURIComponent(p));
     const url = `${base}/storage/v1/object/${encodeURIComponent(cleanBucket)}/${parts.join('/')}`;
+
+    try {
+      await window.__ASMQR_DBG?.send?.('storage.upload.pre', {
+        url,
+        bucket: cleanBucket,
+        path: cleanPath,
+        contentType: ct,
+        hasToken: true,
+        uid: session?.user?.id || '',
+        rol: (session?.user?.app_metadata?.rol || session?.user?.user_metadata?.rol || '') || '',
+        blobSize: (typeof blob?.size === 'number') ? blob.size : null,
+      });
+    } catch(e) {}
+
     const res = await fetch(url, {
       method: 'POST',
       headers: {
@@ -776,8 +817,28 @@ const _sbStorage = {
       } catch(e) {
         try { msg = await res.text(); } catch(_) {}
       }
+      try {
+        await window.__ASMQR_DBG?.send?.('storage.upload.fail', {
+          url,
+          bucket: cleanBucket,
+          path: cleanPath,
+          status: res.status,
+          statusText: res.statusText,
+          message: msg || '',
+          uid: session?.user?.id || '',
+        });
+      } catch(e) {}
       throw new Error('[storage] ' + (msg || (res.status + ' ' + res.statusText)));
     }
+    try {
+      await window.__ASMQR_DBG?.send?.('storage.upload.ok', {
+        url,
+        bucket: cleanBucket,
+        path: cleanPath,
+        status: res.status,
+        uid: session?.user?.id || '',
+      });
+    } catch(e) {}
   },
   async signedUrl(bucket, path, seconds) {
     const { data, error } = await _sb.storage.from(bucket)
