@@ -7519,6 +7519,18 @@ async function runFotosMasivoUpload() {
   let ok = 0, fail = 0, skip = 0;
   _fmSetStatus('Subiendo...', 'info');
 
+  try {
+    const s0 = await window._sb?.auth?.getSession?.();
+    const sess0 = s0?.data?.session || null;
+    if(!sess0) throw new Error('Sesión no iniciada');
+    await window._sb?.auth?.refreshSession?.();
+  } catch(e) {
+    _fotosMasivoRunning = false;
+    if(btnRun) btnRun.disabled = false;
+    _fmSetStatus((e && e.message) ? e.message : 'Sesión inválida', 'error');
+    return;
+  }
+
   const base = String(window.SUPABASE_URL || '').replace(/\/+$/,'');
   for(let i=0;i<_fotosMasivoFiles.length;i++) {
     const f = _fotosMasivoFiles[i];

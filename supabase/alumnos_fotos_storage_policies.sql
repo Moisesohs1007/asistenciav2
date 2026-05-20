@@ -25,11 +25,12 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
   SELECT
-    EXISTS (
+    LOWER(COALESCE(auth.jwt() -> 'app_metadata' ->> 'rol', '')) IN ('admin','director','coordinador')
+    OR EXISTS (
       SELECT 1
       FROM public.usuarios u
       WHERE u.id = auth.uid()
-        AND COALESCE(u.rol,'') IN ('admin','director','coordinador')
+        AND LOWER(COALESCE(u.rol,'')) IN ('admin','director','coordinador')
       LIMIT 1
     )
     OR COALESCE((
