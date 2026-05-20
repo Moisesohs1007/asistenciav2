@@ -746,9 +746,38 @@ const storage = {
 // ============================================================
 const _sbStorage = {
   async upload(bucket, path, blob, contentType = 'image/jpeg') {
-    const { error } = await _sb.storage.from(bucket)
-      .upload(path, blob, { upsert: true, contentType });
-    if (error) throw new Error('[storage] ' + error.message);
+    const cleanBucket = String(bucket || '').trim();
+    const cleanPath = String(path || '').replace(/^\/+/, '');
+    const ct = String(contentType || 'image/jpeg') || 'image/jpeg';
+    if (!cleanBucket) throw new Error('[storage] bucket requerido');
+    if (!cleanPath) throw new Error('[storage] path requerido');
+
+    const { data: { session } } = await _sb.auth.getSession();
+    if (!session?.access_token) throw new Error('[storage] Sesión no iniciada');
+
+    const base = String(SUPABASE_URL || '').replace(/\/+$/, '');
+    const parts = cleanPath.split('/').map(p => encodeURIComponent(p));
+    const url = `${base}/storage/v1/object/${encodeURIComponent(cleanBucket)}/${parts.join('/')}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': SUPABASE_ANON_KEY,
+        'Content-Type': ct,
+        'x-upsert': 'true',
+      },
+      body: blob,
+    });
+    if (!res.ok) {
+      let msg = '';
+      try {
+        const j = await res.json();
+        msg = j?.message || j?.error || JSON.stringify(j);
+      } catch(e) {
+        try { msg = await res.text(); } catch(_) {}
+      }
+      throw new Error('[storage] ' + (msg || (res.status + ' ' + res.statusText)));
+    }
   },
   async signedUrl(bucket, path, seconds) {
     const { data, error } = await _sb.storage.from(bucket)
