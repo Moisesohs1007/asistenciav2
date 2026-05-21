@@ -10291,7 +10291,7 @@ function matRenderReceipt(alumno) {
 function matSetDelivered(templateItemId, value) {
   const id = String(templateItemId||'');
   const it = _matItems.find(x => String(x.id) === id) || null;
-  const req = it ? Math.max(0, Math.round(Number((it as any).cantidadRequerida || 0))) : 0;
+  const req = it ? Math.max(0, Math.round(Number(it.cantidadRequerida || 0))) : 0;
   const v0 = Number(value || 0);
   let v = (isFinite(v0) && v0 >= 0) ? Math.round(v0) : 0;
   if(req > 0 && v > req) v = req;
