@@ -3892,7 +3892,7 @@
             </div>
             <div class="form-group">
               <label>Cantidad</label>
-              <input id="mat-item-qty" type="number" min="0" step="0.5" value="1">
+              <input id="mat-item-qty" type="number" min="0" step="1" value="1">
             </div>
             <div class="form-group">
               <label>Unidad</label>
@@ -4082,7 +4082,7 @@
           </div>
           <div class="form-group">
             <label>Cantidad</label>
-            <input id="mat-req-qty" type="number" min="0" step="0.5" value="1">
+            <input id="mat-req-qty" type="number" min="0" step="1" value="1">
           </div>
         </div>
         <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;">
@@ -9867,11 +9867,13 @@ function matCancelEditTemplate() {
 function matAddDraftItem() {
   const cat = String(document.getElementById('mat-item-cat')?.value || 'Materiales');
   const name = String(document.getElementById('mat-item-name')?.value || '').trim();
-  const qty = Number(document.getElementById('mat-item-qty')?.value || 0);
+  const qtyRaw = Number(document.getElementById('mat-item-qty')?.value || 0);
   const unit = String(document.getElementById('mat-item-unit')?.value || 'UND');
   const unitOther = String(document.getElementById('mat-item-unit-other')?.value || '').trim();
   if(!name) { toast('Ingresa el nombre del material','warning'); return; }
-  if(!isFinite(qty) || qty <= 0) { toast('Cantidad inválida','warning'); return; }
+  if(!isFinite(qtyRaw) || qtyRaw <= 0) { toast('Cantidad inválida','warning'); return; }
+  if(Math.floor(qtyRaw) !== qtyRaw) { toast('La cantidad debe ser entera (1 en 1)','warning'); return; }
+  const qty = qtyRaw;
   if(unit === 'OTROS' && !unitOther) { toast('Especifica la unidad','warning'); return; }
   _matDraftItems.push({ categoria: cat, nombreItem: name, nombreKey: matNormKey(name), unidad: unit, unidadOtro: unit==='OTROS'?unitOther:'', cantidadRequerida: qty });
   document.getElementById('mat-item-name').value = '';
@@ -10248,17 +10250,26 @@ function matRenderReceipt(alumno) {
   const tb = document.getElementById('mat-receipt-items');
   if(!tb) return;
   const rows = _matItems.map(it => {
-    const got = _matReceiptItems.get(String(it.id))?.cantidadEntregada || 0;
     const req = Number(it.cantidadRequerida||0);
-    const falta = Math.max(0, req - got);
+    const reqInt = Math.max(0, Math.round(req));
+    let got = _matReceiptItems.get(String(it.id))?.cantidadEntregada || 0;
+    got = Math.max(0, Math.round(Number(got||0)));
+    if(got > reqInt) {
+      const cur = _matReceiptItems.get(String(it.id)) || { id:'', templateItemId: String(it.id), cantidadEntregada: 0 };
+      cur.cantidadEntregada = reqInt;
+      _matReceiptItems.set(String(it.id), cur);
+      got = reqInt;
+    }
+    const falta = Math.max(0, reqInt - got);
     const unit = it.unidad === 'OTROS' ? (it.unidadOtro||'OTROS') : it.unidad;
+    const disabled = (reqInt <= 0) || (got >= reqInt);
     return `
       <tr>
         <td>${_escHtml(it.nombreItem||'')}</td>
-        <td style="text-align:center;">${_escHtml(_matFmtQty(req))} ${_escHtml(unit)}</td>
+        <td style="text-align:center;">${_escHtml(_matFmtQty(reqInt))} ${_escHtml(unit)}</td>
         <td style="text-align:center;">
-          <input type="number" min="0" step="0.5" value="${_escHtml(_matFmtQty(got))}"
-            style="width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 8px;font-family:var(--font-body);font-size:0.85rem;text-align:center;"
+          <input type="number" min="0" step="1" max="${_escHtml(_matFmtQty(reqInt))}" value="${_escHtml(_matFmtQty(got))}" ${disabled ? 'disabled' : ''}
+            style="width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 8px;font-family:var(--font-body);font-size:0.85rem;text-align:center;${disabled ? 'opacity:0.6;' : ''}"
             onchange="matSetDelivered('${_escHtml(it.id)}', this.value)">
         </td>
         <td style="text-align:center;">${_escHtml(_matFmtQty(falta))}</td>
@@ -10278,20 +10289,27 @@ function matRenderReceipt(alumno) {
 }
 
 function matSetDelivered(templateItemId, value) {
-  const v = Number(value || 0);
   const id = String(templateItemId||'');
+  const it = _matItems.find(x => String(x.id) === id) || null;
+  const req = it ? Math.max(0, Math.round(Number((it as any).cantidadRequerida || 0))) : 0;
+  const v0 = Number(value || 0);
+  let v = (isFinite(v0) && v0 >= 0) ? Math.round(v0) : 0;
+  if(req > 0 && v > req) v = req;
   const cur = _matReceiptItems.get(id) || { id:'', templateItemId: id, cantidadEntregada: 0 };
-  cur.cantidadEntregada = (isFinite(v) && v >= 0) ? v : 0;
+  cur.cantidadEntregada = v;
   _matReceiptItems.set(id, cur);
-  if(_matReceipt?.alumnoId) matUpdateReceiptStatus(_matReceipt.alumnoId);
+  if(_matReceipt?.alumnoId) {
+    const al = _matAlumnos.find(a => String(a.id) === String(_matReceipt.alumnoId));
+    if(al) matRenderReceipt(al); else matUpdateReceiptStatus(_matReceipt.alumnoId);
+  }
 }
 
 function matUpdateReceiptStatus(alumnoId) {
   const st = document.getElementById('mat-receipt-status');
   if(!_matTemplate || !_matReceipt) { if(st) st.textContent = '—'; return; }
   const pending = _matItems.filter(it => {
-    const req = Number(it.cantidadRequerida||0);
-    const got = _matReceiptItems.get(String(it.id))?.cantidadEntregada || 0;
+    const req = Math.max(0, Math.round(Number(it.cantidadRequerida||0)));
+    const got = Math.max(0, Math.round(Number(_matReceiptItems.get(String(it.id))?.cantidadEntregada || 0)));
     return got < req;
   });
   if(st) st.textContent = pending.length ? `Pendientes: ${pending.length}` : '✅ Completo';
@@ -10323,12 +10341,14 @@ async function matSaveReceiptAll() {
   if(!_matTemplate || !_matReceipt) { toast('Selecciona un estudiante','warning'); return; }
   try {
     const rows = _matItems.map(it => {
-      const got = _matReceiptItems.get(String(it.id))?.cantidadEntregada || 0;
+      const req = Math.max(0, Math.round(Number(it.cantidadRequerida||0)));
+      let got = Math.max(0, Math.round(Number(_matReceiptItems.get(String(it.id))?.cantidadEntregada || 0)));
+      if(req > 0 && got > req) got = req;
       return {
         colegio_id: COLEGIO_ID,
         receipt_id: _matReceipt.id,
         template_item_id: it.id,
-        cantidad_entregada: Number(got||0),
+        cantidad_entregada: got,
         updated_by: currentUser?.uid || null,
         updated_at: new Date().toISOString(),
       };
@@ -10339,7 +10359,7 @@ async function matSaveReceiptAll() {
       .select('id,template_item_id,cantidad_entregada');
     if(eup) throw new Error(eup.message);
     (up||[]).forEach(x => {
-      _matReceiptItems.set(String(x.template_item_id), { id: x.id, templateItemId: x.template_item_id, cantidadEntregada: Number(x.cantidad_entregada||0) });
+      _matReceiptItems.set(String(x.template_item_id), { id: x.id, templateItemId: x.template_item_id, cantidadEntregada: Math.max(0, Math.round(Number(x.cantidad_entregada||0))) });
     });
     const { error: erup } = await _sb
       .from('material_receipts')
@@ -10347,7 +10367,11 @@ async function matSaveReceiptAll() {
       .eq('colegio_id', COLEGIO_ID)
       .eq('id', _matReceipt.id);
     if(erup) throw new Error(erup.message);
-    const pending = _matItems.filter(it => (_matReceiptItems.get(String(it.id))?.cantidadEntregada || 0) < Number(it.cantidadRequerida||0)).length;
+    const pending = _matItems.filter(it => {
+      const req = Math.max(0, Math.round(Number(it.cantidadRequerida||0)));
+      const got = Math.max(0, Math.round(Number(_matReceiptItems.get(String(it.id))?.cantidadEntregada || 0)));
+      return got < req;
+    }).length;
     const estado = pending ? 'incompleto' : 'completo';
     const { error: er2 } = await _sb
       .from('material_receipts')
@@ -10382,10 +10406,10 @@ async function matSendReminders() {
         .eq('receipt_id', rid);
       if(error) throw new Error(error.message);
       const map = new Map();
-      (data||[]).forEach(x => map.set(String(x.template_item_id), Number(x.cantidad_entregada||0)));
+      (data||[]).forEach(x => map.set(String(x.template_item_id), Math.max(0, Math.round(Number(x.cantidad_entregada||0)))));
       const falt = _matItems.map(it => {
-        const req = Number(it.cantidadRequerida||0);
-        const got = map.get(String(it.id)) || 0;
+        const req = Math.max(0, Math.round(Number(it.cantidadRequerida||0)));
+        const got = Math.max(0, Math.round(Number(map.get(String(it.id)) || 0)));
         const miss = Math.max(0, req - got);
         if(miss <= 0) return '';
         const unit = it.unidad === 'OTROS' ? (it.unidadOtro||'OTROS') : it.unidad;
@@ -10465,7 +10489,7 @@ async function matBuildHandoffDraft() {
         nombreKey: ti.nombreKey || matNormKey(ti.nombreItem),
         unidad: u,
         unidadOtro: uo,
-        cantidad: Math.round(avail*100)/100,
+        cantidad: Math.max(0, Math.round(avail)),
       });
     });
     _matHandoffDraft = draft.sort((a,b)=>String(a.nombreItem||'').localeCompare(String(b.nombreItem||'')));
@@ -10486,9 +10510,9 @@ function matRenderHandoffDraft() {
       <tr>
         <td>${_escHtml(it.nombreItem||'')}</td>
         <td style="text-align:center;">
-          <input type="number" min="0" step="0.5" value="${_escHtml(_matFmtQty(it.cantidad))}"
+          <input type="number" min="0" step="1" value="${_escHtml(_matFmtQty(it.cantidad))}"
             style="width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:6px 8px;font-family:var(--font-body);font-size:0.85rem;text-align:center;"
-            onchange="_matHandoffDraft[${i}].cantidad = Number(this.value||0)">
+            onchange="_matHandoffDraft[${i}].cantidad = Math.max(0, Math.round(Number(this.value||0)))">
         </td>
         <td style="text-align:center;">${_escHtml(unit)}</td>
       </tr>
@@ -10567,9 +10591,11 @@ async function matLoadMyStockAndRequests() {
 
 function matAddRequestItem() {
   const sid = String(document.getElementById('mat-req-item')?.value || '');
-  const qty = Number(document.getElementById('mat-req-qty')?.value || 0);
+  const qtyRaw = Number(document.getElementById('mat-req-qty')?.value || 0);
   if(!sid) { toast('Selecciona un material','warning'); return; }
-  if(!isFinite(qty) || qty <= 0) { toast('Cantidad inválida','warning'); return; }
+  if(!isFinite(qtyRaw) || qtyRaw <= 0) { toast('Cantidad inválida','warning'); return; }
+  if(Math.floor(qtyRaw) !== qtyRaw) { toast('La cantidad debe ser entera (1 en 1)','warning'); return; }
+  const qty = qtyRaw;
   const st = _matMyStock.find(x => String(x.id) === sid);
   if(!st) { toast('Material inválido','warning'); return; }
   _matReqDraft.push({
