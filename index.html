@@ -9809,6 +9809,7 @@ let _matEditingExisting = false;
 let _matReceiptLoading = false;
 let _matReceipt = null;
 let _matReceiptItems = new Map();
+let _matReceiptItemsSaved = new Map();
 let _matHandoffDraft = [];
 let _matMyStock = [];
 let _matReqDraft = [];
@@ -10200,6 +10201,7 @@ async function matOnStudentChange() {
   if(btnSave) btnSave.disabled = true;
   _matReceipt = null;
   _matReceiptItems = new Map();
+  _matReceiptItemsSaved = new Map();
   const tb = document.getElementById('mat-receipt-items');
   if(tb) tb.innerHTML = `<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:14px;">Selecciona un estudiante</td></tr>`;
   const phoneWrap = document.getElementById('mat-student-phone');
@@ -10222,6 +10224,7 @@ async function matOnStudentChange() {
       .eq('receipt_id', rid);
     if(error) throw new Error(error.message);
     (data||[]).forEach(x => _matReceiptItems.set(String(x.template_item_id), { id: x.id, templateItemId: x.template_item_id, cantidadEntregada: Number(x.cantidad_entregada||0) }));
+    _matReceiptItems.forEach((v, k) => _matReceiptItemsSaved.set(String(k), { id: v.id, templateItemId: v.templateItemId, cantidadEntregada: v.cantidadEntregada }));
     matRenderReceipt(alumno);
   } catch(e) {
     toast('Error cargando recepción: ' + e.message, 'error');
@@ -10254,6 +10257,8 @@ function matRenderReceipt(alumno) {
     const reqInt = Math.max(0, Math.round(req));
     let got = _matReceiptItems.get(String(it.id))?.cantidadEntregada || 0;
     got = Math.max(0, Math.round(Number(got||0)));
+    let savedGot = _matReceiptItemsSaved.get(String(it.id))?.cantidadEntregada || 0;
+    savedGot = Math.max(0, Math.round(Number(savedGot||0)));
     if(got > reqInt) {
       const cur = _matReceiptItems.get(String(it.id)) || { id:'', templateItemId: String(it.id), cantidadEntregada: 0 };
       cur.cantidadEntregada = reqInt;
@@ -10262,7 +10267,7 @@ function matRenderReceipt(alumno) {
     }
     const falta = Math.max(0, reqInt - got);
     const unit = it.unidad === 'OTROS' ? (it.unidadOtro||'OTROS') : it.unidad;
-    const disabled = (reqInt <= 0) || (got >= reqInt);
+    const disabled = (reqInt <= 0) || (savedGot >= reqInt && reqInt > 0);
     return `
       <tr>
         <td>${_escHtml(it.nombreItem||'')}</td>
@@ -10380,8 +10385,14 @@ async function matSaveReceiptAll() {
       .eq('id', _matReceipt.id);
     if(er2) throw new Error(er2.message);
     _matReceipts.set(String(_matReceipt.alumnoId), { id: _matReceipt.id, alumnoId: _matReceipt.alumnoId, estado });
+    _matReceiptItemsSaved = new Map();
+    _matReceiptItems.forEach((v, k) => _matReceiptItemsSaved.set(String(k), { id: v.id, templateItemId: v.templateItemId, cantidadEntregada: v.cantidadEntregada }));
     toast('✅ Guardado','success');
     matRenderStudentList();
+    try {
+      const al = _matAlumnos.find(a => String(a.id) === String(_matReceipt?.alumnoId));
+      if(al) matRenderReceipt(al);
+    } catch(e0) {}
     await matLoadMyStockAndRequests();
   } catch(e) {
     toast('Error al guardar: ' + e.message, 'error');
