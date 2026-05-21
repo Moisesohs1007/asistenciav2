@@ -10167,6 +10167,10 @@ function matOpenAlumno(alumnoId) {
   if(sel) {
     sel.value = alumnoId;
     matOnStudentChange();
+    try {
+      const el = document.getElementById('mat-student');
+      if(el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch(e) {}
   }
 }
 
