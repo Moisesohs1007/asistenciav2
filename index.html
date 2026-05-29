@@ -6274,6 +6274,19 @@ auth.onAuthStateChanged(async user => {
     // Garantizar login visible al final pase lo que pase
     if(_ls) { _ls.style.display = 'flex'; _ls.style.zIndex = '10005'; }
   }
+  else {
+    if(_autoLogoutPending) {
+      _autoLogoutPending = false;
+      sessionStorage.removeItem('splashMostrado');
+      try { localStorage.removeItem('asmqr_lastTab'); } catch(e) {}
+      try { localStorage.removeItem('asmqr_lastSection'); } catch(e) {}
+      try { sessionStorage.removeItem('asmqr_lastSection'); } catch(e) {}
+      try { if(window.history && window.history.replaceState) window.history.replaceState(null, '', window.location.pathname + window.location.search); } catch(e) {}
+      if(_alumnosTsUnsubscribe) { _alumnosTsUnsubscribe(); _alumnosTsUnsubscribe = null; }
+      if(_configUnsubscribe) { _configUnsubscribe(); _configUnsubscribe = null; }
+      try { auth.signOut(); } catch(e) {}
+    }
+  }
 });
 
 function aplicarPermisos(rol) {
@@ -6523,7 +6536,15 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+const _AUTO_LOGOUT_FLAG_KEY = 'asmqr_auto_logout_on_leave';
+let _autoLogoutPending = false;
+try {
+  _autoLogoutPending = localStorage.getItem(_AUTO_LOGOUT_FLAG_KEY) === '1';
+  if(_autoLogoutPending) localStorage.removeItem(_AUTO_LOGOUT_FLAG_KEY);
+} catch(e) {}
+
 window.addEventListener('beforeunload', function(e) {
+  try { localStorage.setItem(_AUTO_LOGOUT_FLAG_KEY, '1'); } catch(err) {}
   e.preventDefault();
   e.returnValue = '';
   return '';
