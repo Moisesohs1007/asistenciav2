@@ -6523,6 +6523,12 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+window.addEventListener('beforeunload', function(e) {
+  e.preventDefault();
+  e.returnValue = '';
+  return '';
+});
+
 // ============================================================
 // CACHE PERSISTENTE — localStorage con TTL
 // Reduce lecturas Firestore entre sesiones del mismo día
