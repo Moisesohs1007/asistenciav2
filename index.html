@@ -6523,7 +6523,20 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+if(typeof window.ASMQR_CONFIRM_ON_LEAVE === 'undefined') window.ASMQR_CONFIRM_ON_LEAVE = true;
+let _asmqrSkipUnloadOnce = false;
+window.addEventListener('keydown', function(e) {
+  try {
+    const k = String(e && e.key || '').toLowerCase();
+    if(k === 'f5' || ((e.ctrlKey || e.metaKey) && k === 'r')) {
+      _asmqrSkipUnloadOnce = true;
+      setTimeout(function(){ _asmqrSkipUnloadOnce = false; }, 1200);
+    }
+  } catch(_) {}
+}, true);
+
 window.addEventListener('beforeunload', function(e) {
+  if(_asmqrSkipUnloadOnce) return;
   if(window.ASMQR_CONFIRM_ON_LEAVE !== true) return;
   e.preventDefault();
   e.returnValue = '';
