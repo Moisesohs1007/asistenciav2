@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Banco de conclusiones descriptivas para todas las modalidades de la Educación Básica (EBR, EBA, EBE).">
+<title>Conclusiones Descriptivas · Selector de Modalidad</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --paper:        #f5efe4;
+  --paper-soft:   #faf6ec;
+  --card:         #fffaf0;
+  --card-hover:   #fff5e1;
+  --line:         #d9cdb4;
+  --shadow-ink:   0 1px 0 #00000008, 0 4px 14px #1a1a2e10;
+  --shadow-up:    0 1px 0 #00000010, 0 12px 28px #1a1a2e1f;
+  --ink:          #1a1a1f;
+  --ink-soft:     #3b3b46;
+  --ink-mute:     #6c6c7a;
+  --accent:       #b14724;
+  --accent-deep:  #8a3318;
+  --font-display: "Fraunces", "Times New Roman", Georgia, serif;
+  --font-body:    "Plus Jakarta Sans", system-ui, sans-serif;
+  --radius:       12px;
+  --radius-lg:    18px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--paper);
+  background-image:
+    radial-gradient(at 12% 8%, #ffe9d033 0px, transparent 50%),
+    radial-gradient(at 92% 16%, #e8d4ff22 0px, transparent 50%),
+    radial-gradient(at 50% 100%, #d4f0e022 0px, transparent 55%);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+body::before {
+  content: "";
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.12 0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: multiply;
+}
+
+.wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 60px 24px 80px;
+}
+
+.hero {
+  text-align: center;
+  margin-bottom: 56px;
+}
+.hero .logo {
+  width: 56px; height: 56px;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--paper-soft);
+  display: inline-grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 28px;
+  margin-bottom: 18px;
+  box-shadow: 0 3px 0 var(--accent), var(--shadow-up);
+}
+.hero h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variation-settings: "opsz" 96;
+  font-size: 44px;
+  line-height: 1.1;
+  margin: 0 0 14px;
+  letter-spacing: -0.02em;
+}
+.hero p {
+  font-size: 17px;
+  color: var(--ink-soft);
+  margin: 0 auto;
+  max-width: 620px;
+}
+.hero .pill {
+  display: inline-block;
+  margin-bottom: 16px;
+  padding: 5px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-mute);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.modalities {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 22px;
+  margin-bottom: 48px;
+}
+
+.modality {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 28px 26px;
+  box-shadow: var(--shadow-ink);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  position: relative;
+  overflow: hidden;
+}
+.modality::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 60%, var(--accent-tint, transparent) 100%);
+  opacity: 0.5;
+  pointer-events: none;
+}
+.modality:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-up);
+}
+.modality:active { transform: translateY(0); }
+
+.modality .icon {
+  width: 48px; height: 48px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  margin-bottom: 18px;
+  color: #fff;
+}
+.modality .icon.ebr { background: linear-gradient(135deg, #b14724, #8a3318); }
+.modality .icon.eba { background: linear-gradient(135deg, #1c5a35, #103e22); }
+.modality .icon.ebe { background: linear-gradient(135deg, #1c3f76, #102a52); }
+
+.modality h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  margin: 0 0 4px;
+  letter-spacing: -0.015em;
+}
+.modality .sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 14px;
+}
+.modality p {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin: 0 0 18px;
+  line-height: 1.55;
+}
+.modality .levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.modality .levels span {
+  font-size: 11.5px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+.modality .cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.modality .cta::after {
+  content: "→";
+  transition: transform 0.16s ease;
+}
+.modality:hover .cta::after { transform: translateX(4px); }
+
+.info-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  box-shadow: var(--shadow-ink);
+}
+.info-card h3 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  margin: 0 0 6px;
+}
+.info-card p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+.info-card code {
+  font-family: ui-monospace, monospace;
+  background: var(--paper);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12.5px;
+  border: 1px solid var(--line);
+}
+
+footer {
+  margin-top: 56px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--ink-mute);
+  letter-spacing: 0.04em;
+}
+footer .ornament {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+@media (max-width: 600px) {
+  .wrap { padding: 36px 18px 60px; }
+  .hero h1 { font-size: 32px; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="hero">
+    <span class="logo">C</span>
+    <span class="pill">MINEDU · CNEB 2016</span>
+    <h1>Conclusiones Descriptivas</h1>
+    <p>Banco de conclusiones descriptivas para reportes de fin de período en las tres modalidades de la Educación Básica del Perú. Filtra por nivel, grado, área y competencia. Edita, agrega y exporta a Excel.</p>
+  </header>
+
+  <main class="modalities">
+
+    <a class="modality" href="EBR.html">
+      <span class="icon ebr">EBR</span>
+      <h2>Educación Básica Regular</h2>
+      <p class="sub">Niños, adolescentes</p>
+      <p>Comprende los niveles de Inicial, Primaria y Secundaria. Atención escolarizada en edades regulares.</p>
+      <div class="levels">
+        <span>Inicial (3, 4, 5 años)</span>
+        <span>Primaria (1°–6°)</span>
+        <span>Secundaria (1°–5°)</span>
+      </div>
+      <span class="cta">Entrar al banco</span>
+    </a>
+
+    <a class="modality" href="EBA.html">
+      <span class="icon eba">EBA</span>
+      <h2>Educación Básica Alternativa</h2>
+      <p class="sub">Jóvenes, adultos</p>
+      <p>Para personas que no accedieron oportunamente a la EBR o no la culminaron. Equivale a Primaria y Secundaria.</p>
+      <div class="levels">
+        <span>Ciclo Inicial</span>
+        <span>Ciclo Intermedio</span>
+        <span>Ciclo Avanzado (1°–4°)</span>
+      </div>
+      <span class="cta">Entrar al banco</span>
+    </a>
+
+    <a class="modality" href="EBE.html">
+      <span class="icon ebe">EBE</span>
+      <h2>Educación Básica Especial</h2>
+      <p class="sub">Necesidades educativas asociadas a discapacidad</p>
+      <p>Atención educativa con enfoque inclusivo para estudiantes con discapacidad severa o multidiscapacidad.</p>
+      <div class="levels">
+        <span>Inicial (0–5 años)</span>
+        <span>Primaria (6–20 años)</span>
+      </div>
+      <span class="cta">Entrar al banco</span>
+    </a>
+
+  </main>
+
+  <section class="info-card">
+    <h3>¿Cómo funciona?</h3>
+    <p>Cada modalidad tiene su propia base de datos independiente almacenada en <code>IndexedDB</code> dentro de tu navegador. Los datos no salen de tu equipo. Puedes importar/exportar archivos <code>.xlsx</code> en cada banco. Las conclusiones siguen la estructura del Currículo Nacional de Educación Básica (CNEB) del Perú.</p>
+  </section>
+
+  <footer>
+    <span class="ornament">⁂</span>
+    Sistema construido en archivos HTML autocontenidos · Datos persistidos por modalidad
+  </footer>
+
+</div>
+
+</body>
+</html>

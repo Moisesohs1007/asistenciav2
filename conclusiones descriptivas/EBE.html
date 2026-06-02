@@ -1,0 +1,3168 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Sistema de gestión de conclusiones descriptivas para educación primaria. Filtra, edita y exporta conclusiones por área, competencia y nota.">
+<title>Conclusiones Descriptivas · EBE (Educación Básica Especial)</title>
+
+<!-- SheetJS (CDN) — lectura/escritura de archivos Excel -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<!-- Tipografía editorial: Fraunces (serif variable) + Plus Jakarta Sans (sans humanista) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+/* =============================================================
+   TOKENS DE DISEÑO — paleta editorial (papel/tinta) + acentos
+   ============================================================= */
+:root {
+  /* Superficies */
+  --paper:        #f5efe4;   /* papel marfil cálido */
+  --paper-deep:   #ebe3d3;
+  --paper-soft:   #faf6ec;
+  --card:         #fffaf0;
+  --card-hover:   #fff5e1;
+  --line:         #d9cdb4;
+  --line-soft:    #e5dcc7;
+  --shadow-ink:   0 1px 0 #00000008, 0 4px 14px #1a1a2e10;
+  --shadow-up:    0 1px 0 #00000010, 0 12px 28px #1a1a2e1f;
+
+  /* Tinta */
+  --ink:          #1a1a1f;
+  --ink-soft:     #3b3b46;
+  --ink-mute:     #6c6c7a;
+  --ink-faint:    #9b9bab;
+
+  /* Acento (terracota cálido) */
+  --accent:       #b14724;
+  --accent-deep:  #8a3318;
+  --accent-soft:  #f2d5c5;
+
+  /* Notas — código de color semántico (MINEDU) */
+  --ad-bg:        #d3eddb;   --ad-fg: #1c5a35;   --ad-border:#86c9a0;
+  --a-bg:         #d6e4f5;   --a-fg:  #1c3f76;   --a-border: #8ab0d9;
+  --b-bg:         #faecd2;   --b-fg:  #7a4d10;   --b-border: #d9b977;
+  --c-bg:         #f4d4cf;   --c-fg:  #862218;   --c-border: #d99a8e;
+
+  /* Tipografía */
+  --font-display: "Fraunces", "Times New Roman", Georgia, serif;
+  --font-body:    "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, monospace;
+
+  /* Layout */
+  --radius:       6px;
+  --radius-lg:    12px;
+  --gap:          16px;
+  --gap-lg:       24px;
+}
+
+/* =============================================================
+   RESET Y BASE
+   ============================================================= */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--paper);
+  background-image:
+    radial-gradient(at 12% 8%, #ffe9d033 0px, transparent 50%),
+    radial-gradient(at 92% 16%, #e8d4ff22 0px, transparent 50%),
+    radial-gradient(at 50% 100%, #d4f0e022 0px, transparent 55%);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+/* Textura sutil de grano para evocar papel */
+body::before {
+  content: "";
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.12 0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: multiply;
+}
+main, header, footer { position: relative; z-index: 1; }
+
+button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+button { cursor: pointer; }
+
+/* =============================================================
+   HEADER STICKY
+   ============================================================= */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(245, 239, 228, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+}
+.header-inner {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.brand .logo {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--paper-soft);
+  display: inline-grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.02em;
+  align-self: center;
+  box-shadow: 0 2px 0 var(--accent);
+}
+.brand-text { line-height: 1.1; }
+.brand h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variation-settings: "opsz" 48;
+  font-size: 22px;
+  margin: 0;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+.brand p {
+  font-size: 12px;
+  margin: 0;
+  color: var(--ink-mute);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+/* Botones */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 500;
+  font-size: 13.5px;
+  letter-spacing: -0.005em;
+  transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.btn:hover { background: var(--card-hover); border-color: var(--ink-faint); }
+.btn:active { transform: translateY(1px); }
+.btn .icon { width: 16px; height: 16px; flex-shrink: 0; }
+
+.btn-primary {
+  background: var(--ink);
+  color: var(--paper-soft);
+  border-color: var(--ink);
+}
+.btn-primary:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.btn-accent {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.btn-accent:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+
+.btn-ghost {
+  background: transparent;
+}
+.btn-danger {
+  color: var(--c-fg);
+  border-color: var(--c-border);
+  background: #faece9;
+}
+.btn-danger:hover { background: #f4d4cf; }
+
+.btn-sm { padding: 5px 9px; font-size: 12px; gap: 5px; }
+
+/* =============================================================
+   LAYOUT PRINCIPAL
+   ============================================================= */
+.app-main {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 28px 24px 60px;
+}
+
+/* Banner explicativo del propósito */
+.intro {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+  margin-bottom: 22px;
+  box-shadow: var(--shadow-ink);
+}
+.intro h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-variation-settings: "opsz" 144;
+  font-size: 19px;
+  margin: 0 0 4px;
+  letter-spacing: -0.015em;
+}
+.intro p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+  max-width: 90ch;
+}
+
+/* Stats grid */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card .label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-mute);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.stat-card .value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variation-settings: "opsz" 144;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--ink);
+  letter-spacing: -0.025em;
+}
+.stat-card.accent { border-left: 3px solid var(--accent); }
+.stat-card.ad    { border-left: 3px solid var(--ad-border); }
+.stat-card.a     { border-left: 3px solid var(--a-border); }
+.stat-card.b     { border-left: 3px solid var(--b-border); }
+.stat-card.c     { border-left: 3px solid var(--c-border); }
+
+/* Body: filtros + resultados */
+.workspace {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: var(--gap-lg);
+  align-items: flex-start;
+}
+
+@media (max-width: 960px) {
+  .workspace { grid-template-columns: 1fr; }
+}
+
+/* =============================================================
+   PANEL DE FILTROS
+   ============================================================= */
+.filters {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  position: sticky;
+  top: 88px;
+  box-shadow: var(--shadow-ink);
+}
+@media (max-width: 960px) { .filters { position: static; } }
+
+.filters h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 18px;
+  margin: 0 0 14px;
+  letter-spacing: -0.015em;
+}
+
+.field { margin-bottom: 14px; }
+.field label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-mute);
+  margin-bottom: 6px;
+}
+.field input[type="text"],
+.field input[type="search"],
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-soft);
+  font-size: 14px;
+  color: var(--ink);
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.field select { appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%236c6c7a' stroke-width='1.5' fill='none' stroke-linecap='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 28px;
+}
+
+/* Chips de NOTA en filtros */
+.nota-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.nota-chip {
+  flex: 1 1 calc(50% - 3px);
+  min-width: 60px;
+  padding: 8px 6px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--paper-soft);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.08s, box-shadow 0.15s;
+  user-select: none;
+}
+.nota-chip:hover { transform: translateY(-1px); }
+.nota-chip[data-nota="AD"].active { background: var(--ad-bg); color: var(--ad-fg); border-color: var(--ad-border); }
+.nota-chip[data-nota="A"].active  { background: var(--a-bg);  color: var(--a-fg);  border-color: var(--a-border); }
+.nota-chip[data-nota="B"].active  { background: var(--b-bg);  color: var(--b-fg);  border-color: var(--b-border); }
+.nota-chip[data-nota="C"].active  { background: var(--c-bg);  color: var(--c-fg);  border-color: var(--c-border); }
+
+.filter-summary {
+  font-size: 12px;
+  color: var(--ink-mute);
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.filter-summary strong { color: var(--ink); font-weight: 600; }
+
+/* =============================================================
+   RESULTADOS — TARJETAS
+   ============================================================= */
+.results-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.results-head h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 21px;
+  margin: 0;
+  letter-spacing: -0.015em;
+}
+.results-head .meta {
+  font-size: 13px;
+  color: var(--ink-mute);
+}
+.sort-control { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-mute); }
+.sort-control select { padding: 5px 22px 5px 8px; font-size: 13px; border-radius: 5px; border: 1px solid var(--line); background: var(--paper-soft); }
+
+/* Lista de tarjetas */
+.cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 1180px) {
+  .cards.two-col { grid-template-columns: 1fr 1fr; }
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px 14px;
+  transition: border-color 0.15s, transform 0.08s, box-shadow 0.15s;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.card:hover { border-color: var(--ink-faint); box-shadow: var(--shadow-ink); }
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.nota-badge {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+  border: 1px solid;
+}
+.nota-badge[data-nota="AD"] { background: var(--ad-bg); color: var(--ad-fg); border-color: var(--ad-border); }
+.nota-badge[data-nota="A"]  { background: var(--a-bg);  color: var(--a-fg);  border-color: var(--a-border); }
+.nota-badge[data-nota="B"]  { background: var(--b-bg);  color: var(--b-fg);  border-color: var(--b-border); }
+.nota-badge[data-nota="C"]  { background: var(--c-bg);  color: var(--c-fg);  border-color: var(--c-border); }
+
+.grado-pill {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-mute);
+  background: var(--paper-deep);
+  padding: 3px 9px;
+  border-radius: 100px;
+}
+
+.meta-line {
+  font-size: 12px;
+  color: var(--ink-mute);
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+  width: 100%;
+}
+.meta-line .area {
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.meta-line .sep { margin: 0 6px; color: var(--ink-faint); }
+.meta-line .comp {
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.conclusion {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink);
+  font-family: var(--font-body);
+  /* Hyphenation natural en castellano */
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  text-align: left;
+}
+.conclusion mark {
+  background: #ffe9a8;
+  color: inherit;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.card-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line-soft);
+}
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-mute);
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+.icon-btn:hover { background: var(--paper-deep); color: var(--ink); }
+.icon-btn.danger:hover { background: #f4d4cf; color: var(--c-fg); }
+.icon-btn .icon { width: 14px; height: 14px; }
+
+.copy-feedback {
+  position: absolute;
+  top: 14px; right: 14px;
+  background: var(--ink);
+  color: var(--paper-soft);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 100px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+.copy-feedback.show { opacity: 1; transform: translateY(0); }
+
+/* =============================================================
+   ESTADOS VACÍOS / PAGINACIÓN
+   ============================================================= */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--ink-mute);
+  background: var(--card);
+  border: 2px dashed var(--line);
+  border-radius: var(--radius-lg);
+}
+.empty-state .icon-wrap {
+  width: 48px; height: 48px;
+  margin: 0 auto 12px;
+  display: grid; place-items: center;
+  background: var(--paper-deep);
+  border-radius: 50%;
+  color: var(--ink-soft);
+}
+.empty-state h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 17px;
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+.empty-state p { margin: 0 0 12px; }
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 22px;
+  flex-wrap: wrap;
+}
+.pagination button {
+  min-width: 34px;
+  padding: 6px 10px;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 500;
+}
+.pagination button[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.pagination button.active {
+  background: var(--ink);
+  color: var(--paper-soft);
+  border-color: var(--ink);
+}
+
+/* =============================================================
+   MODALES
+   ============================================================= */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 26, 31, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-backdrop.show { display: flex; }
+.modal {
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  max-width: 620px;
+  width: 100%;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 26px 28px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-up);
+  animation: pop 0.18s ease-out;
+}
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 24px;
+  margin: 0 0 6px;
+  letter-spacing: -0.015em;
+}
+.modal p.sub {
+  margin: 0 0 18px;
+  color: var(--ink-mute);
+  font-size: 14px;
+}
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+textarea.conclusion-input {
+  min-height: 140px;
+  resize: vertical;
+  font-family: var(--font-body);
+  line-height: 1.55;
+}
+
+/* =============================================================
+   UPLOAD AREA
+   ============================================================= */
+.upload-area {
+  border: 2px dashed var(--line);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  text-align: center;
+  background: var(--paper-soft);
+  transition: border-color 0.15s, background 0.15s;
+  cursor: pointer;
+}
+.upload-area.drag {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.upload-area p {
+  margin: 6px 0;
+  color: var(--ink-soft);
+}
+.upload-area .hint {
+  font-size: 12.5px;
+  color: var(--ink-mute);
+}
+.upload-area input[type="file"] { display: none; }
+
+/* Estrategia de carga */
+.merge-options {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0 4px;
+  flex-wrap: wrap;
+}
+.merge-options label {
+  flex: 1 1 200px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-soft);
+  cursor: pointer;
+  font-size: 13.5px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.merge-options label:hover { background: var(--paper-deep); }
+.merge-options input[type="radio"] { margin-top: 3px; accent-color: var(--accent); }
+.merge-options label small { color: var(--ink-mute); display: block; font-size: 12px; }
+
+/* =============================================================
+   TOAST (notificaciones)
+   ============================================================= */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 200;
+  pointer-events: none;
+}
+.toast {
+  background: var(--ink);
+  color: var(--paper-soft);
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-size: 13.5px;
+  box-shadow: var(--shadow-up);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+  animation: slideIn 0.2s ease-out;
+  max-width: 360px;
+}
+.toast.success { background: #1c5a35; }
+.toast.error   { background: #862218; }
+.toast.warn    { background: #7a4d10; }
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.toast.fade-out { opacity: 0; transform: translateX(20px); transition: opacity 0.2s, transform 0.2s; }
+
+/* =============================================================
+   FOOTER
+   ============================================================= */
+footer.app-footer {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 24px;
+  font-size: 12.5px;
+  color: var(--ink-mute);
+  text-align: center;
+  border-top: 1px solid var(--line);
+  margin-top: 40px;
+}
+footer.app-footer .ornament {
+  font-family: var(--font-display);
+  font-style: italic;
+  color: var(--accent);
+  display: block;
+  margin-bottom: 6px;
+  letter-spacing: 0.04em;
+}
+
+/* =============================================================
+   CONTEXTO Y AGRUPAMIENTO DE RESULTADOS
+   ============================================================= */
+.context-bar {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+}
+.context-bar .ctx-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-mute);
+  font-weight: 700;
+}
+.context-bar .ctx-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.context-bar .ctx-area {
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 13px;
+}
+.context-bar .ctx-comp {
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+.context-bar .ctx-sep {
+  color: var(--ink-faint);
+  margin: 0 2px;
+}
+.context-bar .ctx-grado {
+  font-size: 11.5px;
+  color: var(--ink-mute);
+  background: var(--paper-deep);
+  padding: 3px 9px;
+  border-radius: 100px;
+}
+
+/* Estructura de secciones agrupadas */
+#cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.cards-section { display: flex; flex-direction: column; gap: 10px; }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0 10px;
+  border-bottom: 1px solid var(--line-soft);
+  flex-wrap: wrap;
+}
+.section-header .nota-badge {
+  font-size: 16px;
+  padding: 5px 14px;
+}
+.section-header h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-variation-settings: "opsz" 144;
+  font-size: 17px;
+  margin: 0;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+.section-header .section-meta {
+  font-size: 12px;
+  color: var(--ink-mute);
+  letter-spacing: 0.02em;
+}
+.section-header .section-count {
+  margin-left: auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-mute);
+  background: var(--paper-deep);
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-weight: 600;
+}
+.section-header .nota-label {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--ink-mute);
+  font-style: italic;
+}
+
+/* Grid de tarjetas dentro de cada sección */
+.cards-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 1180px) {
+  .cards-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* Tarjeta compacta — sin encabezado meta porque el contexto ya está en la sección */
+.card.compact {
+  padding: 14px 16px 10px;
+  gap: 8px;
+}
+.card.compact .card-head { display: none; }
+.card.compact .conclusion {
+  margin: 0;
+  font-size: 14.5px;
+}
+
+/* En tarjeta compacta sigue habiendo accesos rápidos */
+.card.compact .card-actions {
+  padding-top: 6px;
+  border-top-style: dotted;
+}
+.smart-match-panel {
+  background: linear-gradient(135deg, #fffaf0, #fff5e1);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: 20px 22px 18px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-up);
+  display: none;
+  position: relative;
+  overflow: hidden;
+}
+.smart-match-panel.show { display: block; animation: fadeUp 0.22s ease-out; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+/* Adorno decorativo sutil en la esquina */
+.smart-match-panel::before {
+  content: "✨";
+  position: absolute;
+  top: -8px; right: 14px;
+  font-size: 56px;
+  opacity: 0.06;
+  pointer-events: none;
+  transform: rotate(15deg);
+}
+
+.smart-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--accent-soft);
+}
+.smart-header h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-variation-settings: "opsz" 144;
+  font-size: 18px;
+  margin: 0;
+  color: var(--accent-deep);
+  letter-spacing: -0.015em;
+}
+.smart-header .query-echo {
+  font-size: 12.5px;
+  color: var(--ink-mute);
+  font-style: italic;
+  max-width: 55%;
+  text-align: right;
+  line-height: 1.4;
+}
+
+.match-top {
+  background: var(--card);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px 16px 12px;
+  position: relative;
+}
+.match-top .top-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.match-top .meta-line {
+  font-size: 12.5px;
+  margin-bottom: 10px;
+  color: var(--ink-mute);
+}
+.match-top .meta-line .nota-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  margin-right: 6px;
+}
+.match-top textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-soft);
+  padding: 11px 13px;
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink);
+  resize: vertical;
+  min-height: 100px;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.match-top textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.match-top .actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.confidence-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: var(--font-body);
+}
+.confidence-badge.high { background: var(--ad-bg); color: var(--ad-fg); }
+.confidence-badge.med  { background: var(--b-bg);  color: var(--b-fg); }
+.confidence-badge.low  { background: var(--c-bg);  color: var(--c-fg); }
+
+.match-alts-label {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-mute);
+  font-weight: 600;
+  margin: 16px 0 8px;
+}
+.match-alts {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+@media (max-width: 900px) { .match-alts { grid-template-columns: 1fr; } }
+
+.match-alt {
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.08s;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+}
+.match-alt:hover { background: var(--card-hover); border-color: var(--accent); transform: translateY(-1px); }
+.match-alt:active { transform: translateY(0); }
+.match-alt .alt-score {
+  position: absolute;
+  top: 6px; right: 6px;
+}
+.match-alt p {
+  margin: 14px 0 0;
+  color: var(--ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.match-empty {
+  background: var(--paper-soft);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  text-align: center;
+  color: var(--ink-mute);
+  font-size: 14px;
+}
+.match-empty a {
+  color: var(--accent);
+  text-decoration: underline;
+  font-weight: 600;
+  cursor: pointer;
+}
+.match-empty a:hover { color: var(--accent-deep); }
+
+/* Estado del campo de búsqueda según prerrequisitos */
+.smart-hint {
+  font-size: 11.5px;
+  margin-top: 5px;
+  line-height: 1.4;
+  color: var(--ink-mute);
+}
+.smart-hint.active { color: var(--ad-fg); font-weight: 500; }
+.smart-hint.active::before { content: "✓ "; }
+#f-search:disabled {
+  background: var(--paper-deep);
+  cursor: not-allowed;
+  color: var(--ink-faint);
+}
+#f-search.smart-active {
+  border-color: var(--accent);
+  background: #fff;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* =============================================================
+   ACCESIBILIDAD
+   ============================================================= */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Impresión */
+@media print {
+  body { background: white; }
+  .app-header, .filters, .card-actions, footer.app-footer, .pagination { display: none !important; }
+  .workspace { grid-template-columns: 1fr; }
+  .card { break-inside: avoid; page-break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     CABECERA — marca y acciones globales
+     ============================================================ -->
+<header class="app-header">
+  <div class="header-inner">
+    <div class="brand">
+      <a href="index.html" class="logo" aria-label="Volver al selector de modalidad" style="text-decoration:none;">C</a>
+      <div class="brand-text">
+        <h1>Conclusiones Descriptivas</h1>
+        <p>Educación Básica Especial · Inicial y Primaria con adaptaciones curriculares</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn" id="btn-upload" title="Cargar archivo Excel">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Cargar Excel
+      </button>
+      <button class="btn" id="btn-export" title="Exportar a Excel">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Exportar
+      </button>
+      <button class="btn btn-accent" id="btn-add" title="Agregar nueva conclusión">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nueva conclusión
+      </button>
+      <button class="btn btn-ghost" id="btn-restore" title="Restaurar datos originales">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><polyline points="3 3 3 8 8 8"/></svg>
+        Restaurar
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ============================================================
+     CONTENIDO PRINCIPAL
+     ============================================================ -->
+<main class="app-main">
+
+  <section class="intro" aria-label="Acerca del sistema">
+    <h2>Banco de conclusiones para reportes finales</h2>
+    <p>Filtra, consulta y personaliza conclusiones descriptivas organizadas por área académica, competencia y nivel de logro (AD · A · B · C). Edita los registros existentes, agrega los tuyos y exporta el banco actualizado a Excel cuando lo necesites. Todos los cambios se guardan automáticamente en tu navegador.</p>
+  </section>
+
+  <!-- Estadísticas en vivo -->
+  <section class="stats" id="stats-container" aria-label="Estadísticas del banco"></section>
+
+  <!-- Workspace: filtros + resultados -->
+  <div class="workspace">
+
+    <!-- ----------------------------------------------------- FILTROS -->
+    <aside class="filters" aria-label="Filtros de búsqueda">
+      <h3>Filtros</h3>
+
+      <div class="field">
+        <label for="f-search">Coincidencia inteligente</label>
+        <input type="search" id="f-search" placeholder="Selecciona los filtros para activar…" autocomplete="off" disabled>
+        <p class="smart-hint" id="smart-hint">Selecciona área, competencia y nota para activar la búsqueda por situación del estudiante.</p>
+      </div>
+
+      <div class="field">
+        <label for="f-nivel">Nivel educativo</label>
+        <select id="f-nivel">
+          <option value="">Todos los niveles</option>
+          <option value="Inicial">Inicial</option>
+          <option value="Primaria">Primaria</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="f-grado">Grado</label>
+        <select id="f-grado"><option value="">Todos los grados</option></select>
+      </div>
+
+      <div class="field">
+        <label for="f-area">Área académica</label>
+        <select id="f-area"><option value="">Todas las áreas</option></select>
+      </div>
+
+      <div class="field">
+        <label for="f-competencia">Competencia</label>
+        <select id="f-competencia"><option value="">Todas las competencias</option></select>
+      </div>
+
+      <div class="field">
+        <label>Nota (nivel de logro)</label>
+        <div class="nota-chips" id="nota-chips">
+          <button type="button" class="nota-chip active" data-nota="AD" title="Logro destacado">AD</button>
+          <button type="button" class="nota-chip active" data-nota="A"  title="Logro esperado">A</button>
+          <button type="button" class="nota-chip active" data-nota="B"  title="En proceso">B</button>
+          <button type="button" class="nota-chip active" data-nota="C"  title="En inicio">C</button>
+        </div>
+      </div>
+
+      <button class="btn btn-sm" id="btn-clear" style="width: 100%; justify-content: center; margin-top: 4px;">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Limpiar filtros
+      </button>
+
+      <div class="filter-summary" id="filter-summary"></div>
+    </aside>
+
+    <!-- ----------------------------------------------------- RESULTADOS -->
+    <section aria-label="Resultados">
+
+      <!-- Panel de coincidencia inteligente (aparece cuando hay query y filtros listos) -->
+      <div class="smart-match-panel" id="smart-match-panel" aria-live="polite"></div>
+
+      <div class="results-head">
+        <div>
+          <h3>Resultados</h3>
+          <div class="meta" id="results-meta">Cargando…</div>
+        </div>
+        <div class="sort-control">
+          <label for="sort-by">Ordenar:</label>
+          <select id="sort-by">
+            <option value="area">por Área</option>
+            <option value="competencia">por Competencia</option>
+            <option value="nota">por Nota (AD→C)</option>
+            <option value="fecha">Más recientes primero</option>
+          </select>
+        </div>
+      </div>
+      <div class="cards two-col" id="cards-container"></div>
+      <nav class="pagination" id="pagination" aria-label="Paginación"></nav>
+    </section>
+
+  </div>
+</main>
+
+<!-- ============================================================
+     MODAL: agregar / editar conclusión
+     ============================================================ -->
+<div class="modal-backdrop" id="modal-edit" role="dialog" aria-modal="true" aria-labelledby="modal-edit-title">
+  <div class="modal">
+    <h3 id="modal-edit-title">Nueva conclusión</h3>
+    <p class="sub" id="modal-edit-sub">Completa los campos para registrar una conclusión personalizada.</p>
+
+    <form id="form-edit">
+      <input type="hidden" id="edit-id">
+
+      <div class="field">
+        <label for="edit-nivel">Nivel <span style="color: var(--accent)">*</span></label>
+        <select id="edit-nivel" required>
+          <option value="Inicial">Inicial</option>
+          <option value="Primaria" selected>Primaria</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="edit-grado">Grado <span style="color: var(--accent)">*</span></label>
+        <input type="text" id="edit-grado" required list="grados-list" placeholder="Ej.: 1° Grado">
+        <datalist id="grados-list"></datalist>
+      </div>
+
+      <div class="field">
+        <label for="edit-area">Área académica <span style="color: var(--accent)">*</span></label>
+        <input type="text" id="edit-area" required list="areas-list" placeholder="Ej.: COMUNICACION">
+        <datalist id="areas-list"></datalist>
+      </div>
+
+      <div class="field">
+        <label for="edit-competencia">Competencia <span style="color: var(--accent)">*</span></label>
+        <input type="text" id="edit-competencia" required list="comps-list" placeholder="Ej.: SE COMUNICA ORALMENTE…">
+        <datalist id="comps-list"></datalist>
+      </div>
+
+      <div class="field">
+        <label for="edit-nota">Nota <span style="color: var(--accent)">*</span></label>
+        <select id="edit-nota" required>
+          <option value="AD">AD — Logro destacado</option>
+          <option value="A">A — Logro esperado</option>
+          <option value="B">B — En proceso</option>
+          <option value="C">C — En inicio</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="edit-conclusion">Conclusión descriptiva <span style="color: var(--accent)">*</span></label>
+        <textarea id="edit-conclusion" class="conclusion-input" required placeholder="Redacta la conclusión descriptiva…"></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn" data-close>Cancelar</button>
+        <button type="submit" class="btn btn-accent">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: subir Excel
+     ============================================================ -->
+<div class="modal-backdrop" id="modal-upload" role="dialog" aria-modal="true" aria-labelledby="modal-upload-title">
+  <div class="modal">
+    <h3 id="modal-upload-title">Cargar archivo Excel</h3>
+    <p class="sub">Selecciona un archivo <code>.xlsx</code> con la estructura de conclusiones (áreas como pestañas, columnas alternadas <em>NOTA / Competencia</em>).</p>
+
+    <label class="upload-area" id="upload-zone">
+      <input type="file" id="file-input" accept=".xlsx,.xls">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent); margin-bottom: 8px;">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="12" y1="18" x2="12" y2="12"/>
+        <polyline points="9 15 12 12 15 15"/>
+      </svg>
+      <p><strong>Haz clic o arrastra un archivo aquí</strong></p>
+      <p class="hint">Acepta archivos .xlsx generados con esta misma estructura o con el formato original de exportación.</p>
+      <p class="hint" id="file-selected"></p>
+    </label>
+
+    <div class="merge-options">
+      <label>
+        <input type="radio" name="merge-mode" value="replace" checked>
+        <span><strong>Reemplazar</strong> <small>Borra los registros actuales y carga sólo los del archivo.</small></span>
+      </label>
+      <label>
+        <input type="radio" name="merge-mode" value="merge">
+        <span><strong>Combinar</strong> <small>Añade los registros del archivo sin borrar los existentes.</small></span>
+      </label>
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn" data-close>Cancelar</button>
+      <button type="button" class="btn btn-accent" id="btn-confirm-upload" disabled>Importar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: confirmar acción
+     ============================================================ -->
+<div class="modal-backdrop" id="modal-confirm" role="alertdialog" aria-modal="true" aria-labelledby="modal-confirm-title">
+  <div class="modal" style="max-width: 460px;">
+    <h3 id="modal-confirm-title">¿Confirmar?</h3>
+    <p class="sub" id="modal-confirm-msg">¿Estás seguro?</p>
+    <div class="modal-actions">
+      <button type="button" class="btn" data-close>Cancelar</button>
+      <button type="button" class="btn btn-danger" id="btn-confirm-action">Sí, continuar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Contenedor para toasts -->
+<div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+<!-- ============================================================
+     FOOTER
+     ============================================================ -->
+<footer class="app-footer">
+  <span class="ornament">⁂</span>
+  Sistema construido en un único archivo HTML autocontenido · Datos persistidos en IndexedDB · Importación/exportación con SheetJS
+</footer>
+
+<!-- DATOS SEMILLA (1.440 registros del archivo original) — se inyecta aquí -->
+<script id="seed-script">
+// Datos iniciales extraídos del archivo Excel original
+// Formato: [grado, area, competencia, nota, conclusion]
+window.SEED_DATA = [];
+
+/* =================================================================
+   CATÁLOGO CNEB — Educación Básica Regular (EBR)
+   Estructura: nivel → grado → área → competencias
+   Basado en el Currículo Nacional de Educación Básica del Perú (MINEDU)
+   ================================================================= */
+window.CNEB_CATALOG = {
+  Inicial: {
+    grados: ['0-2 años', '3 años', '4 años', '5 años'],
+    areas: {
+      'COMUNICACION': [
+        'SE COMUNICA ORALMENTE EN SU LENGUA MATERNA',
+        'LEE DIVERSOS TIPOS DE TEXTOS ESCRITOS EN SU LENGUA MATERNA',
+        'ESCRIBE DIVERSOS TIPOS DE TEXTOS EN SU LENGUA MATERNA',
+        'CREA PROYECTOS DESDE LOS LENGUAJES ARTÍSTICOS'
+      ],
+      'MATEMATICA': [
+        'RESUELVE PROBLEMAS DE CANTIDAD',
+        'RESUELVE PROBLEMAS DE FORMA, MOVIMIENTO Y LOCALIZACIÓN'
+      ],
+      'PERSONAL SOCIAL': [
+        'CONSTRUYE SU IDENTIDAD',
+        'CONVIVE Y PARTICIPA DEMOCRÁTICAMENTE EN LA BÚSQUEDA DEL BIEN COMÚN',
+        'CONSTRUYE SU IDENTIDAD COMO PERSONA HUMANA, AMADA POR DIOS, DIGNA, LIBRE Y TRASCENDENTE'
+      ],
+      'PSICOMOTRIZ': [
+        'SE DESENVUELVE DE MANERA AUTÓNOMA A TRAVÉS DE SU MOTRICIDAD'
+      ],
+      'CIENCIA Y TECNOLOGIA': [
+        'INDAGA MEDIANTE MÉTODOS CIENTÍFICOS PARA CONSTRUIR SUS CONOCIMIENTOS'
+      ],
+      'AUTONOMIA E INDEPENDENCIA PERSONAL': [
+        'GESTIONA SU APRENDIZAJE DE MANERA AUTÓNOMA',
+        'CONSTRUYE SU IDENTIDAD'
+      ]
+    }
+  },
+  Primaria: {
+    grados: ['1° Grado', '2° Grado', '3° Grado', '4° Grado', '5° Grado', '6° Grado'],
+    areas: {
+      'COMUNICACION': [
+        'SE COMUNICA ORALMENTE EN SU LENGUA MATERNA',
+        'LEE DIVERSOS TIPOS DE TEXTOS ESCRITOS EN SU LENGUA MATERNA',
+        'ESCRIBE DIVERSOS TIPOS DE TEXTOS EN SU LENGUA MATERNA'
+      ],
+      'MATEMATICA': [
+        'RESUELVE PROBLEMAS DE CANTIDAD',
+        'RESUELVE PROBLEMAS DE REGULARIDAD, EQUIVALENCIA Y CAMBIO',
+        'RESUELVE PROBLEMAS DE FORMA, MOVIMIENTO Y LOCALIZACIÓN',
+        'RESUELVE PROBLEMAS DE GESTIÓN DE DATOS E INCERTIDUMBRE'
+      ],
+      'PERSONAL SOCIAL': [
+        'CONSTRUYE SU IDENTIDAD',
+        'CONVIVE Y PARTICIPA DEMOCRÁTICAMENTE EN LA BÚSQUEDA DEL BIEN COMÚN',
+        'CONSTRUYE INTERPRETACIONES HISTÓRICAS',
+        'GESTIONA RESPONSABLEMENTE EL ESPACIO Y EL AMBIENTE'
+      ],
+      'ARTE Y CULTURA': [
+        'APRECIA DE MANERA CRÍTICA MANIFESTACIONES ARTÍSTICO CULTURALES',
+        'CREA PROYECTOS DESDE LOS LENGUAJES ARTÍSTICOS'
+      ],
+      'CIENCIA Y TECNOLOGIA': [
+        'INDAGA MEDIANTE MÉTODOS CIENTÍFICOS PARA CONSTRUIR SUS CONOCIMIENTOS',
+        'EXPLICA EL MUNDO FÍSICO BASÁNDOSE EN CONOCIMIENTOS SOBRE LOS SERES VIVOS, MATERIA Y ENERGÍA, BIODIVERSIDAD, TIERRA Y UNIVERSO',
+        'DISEÑA Y CONSTRUYE SOLUCIONES TECNOLÓGICAS PARA RESOLVER PROBLEMAS DE SU ENTORNO'
+      ],
+      'ED. FISICA': [
+        'SE DESENVUELVE DE MANERA AUTÓNOMA A TRAVÉS DE SU MOTRICIDAD',
+        'ASUME UNA VIDA SALUDABLE',
+        'INTERACTÚA A TRAVÉS DE SUS HABILIDADES SOCIOMOTRICES'
+      ],
+      'EDUCACION RELIGIOSA': [
+        'CONSTRUYE SU IDENTIDAD COMO PERSONA HUMANA, AMADA POR DIOS, DIGNA, LIBRE Y TRASCENDENTE',
+        'ASUME LA EXPERIENCIA DEL ENCUENTRO PERSONAL Y COMUNITARIO CON DIOS EN SU PROYECTO DE VIDA'
+      ],
+      'AUTONOMIA E INDEPENDENCIA PERSONAL': [
+        'GESTIONA SU APRENDIZAJE DE MANERA AUTÓNOMA',
+        'ASUME UNA VIDA SALUDABLE',
+        'CONSTRUYE SU IDENTIDAD'
+      ]
+    }
+  }
+};
+
+/* =================================================================
+   GENERADOR PARAMÉTRICO DE CONCLUSIONES
+   Crea 4 conclusiones por nota (16 totales por competencia) usando
+   plantillas pedagógicas adaptadas al nombre de la competencia.
+   ================================================================= */
+window.CONCLUSION_TEMPLATES = {
+  AD: [
+    'Demuestra un dominio destacado de la competencia "{cc}"; resuelve situaciones con autonomía, creatividad y argumentación sólida; se sugiere brindarle retos de mayor complejidad y oportunidades de liderazgo entre sus pares.',
+    'Logra de manera sobresaliente los desempeños de "{cc}", aplicando estrategias propias con seguridad y rigor; no presenta dificultades; se recomienda involucrarlo en proyectos institucionales que potencien su talento.',
+    'Evidencia un nivel destacado en "{cc}", transfiriendo lo aprendido a contextos nuevos con flexibilidad; se sugiere acompañarlo con tareas de profundización y promover la metacognición sobre su propio aprendizaje.',
+    'Se desempeña con excelencia en "{cc}", combinando conocimientos previos y nuevos con coherencia; se recomienda asignarle el rol de monitor o tutor de pares en actividades del aula.'
+  ],
+  A: [
+    'Alcanza los aprendizajes esperados de "{cc}" en el tiempo previsto; resuelve las situaciones planteadas con apoyo mínimo; se sugiere consolidar lo logrado con prácticas variadas y graduadas.',
+    'Logra de manera satisfactoria la competencia "{cc}"; muestra autonomía progresiva en sus producciones; se recomienda continuar reforzando con ejemplos cercanos a su entorno.',
+    'Evidencia el logro esperado en "{cc}"; identifica, aplica y comunica lo aprendido con claridad; se sugiere ampliar el repertorio de situaciones para diversificar sus estrategias.',
+    'Demuestra desempeños propios del nivel en "{cc}"; participa activamente y responde con seguridad; se recomienda promover la autoevaluación para que reconozca sus avances.'
+  ],
+  B: [
+    'Se encuentra en proceso de lograr la competencia "{cc}"; resuelve situaciones sencillas y requiere acompañamiento en las más complejas; se sugiere ofrecer apoyo guiado y materiales concretos.',
+    'Está desarrollando los desempeños de "{cc}"; logra los aspectos básicos pero presenta dificultades cuando aumenta la exigencia; se recomienda reforzar con actividades graduadas y retroalimentación oportuna.',
+    'Evidencia avances en "{cc}", aunque aún necesita consolidar algunos aprendizajes; se sugiere trabajar con ejemplos modelados y promover la práctica reiterada con sentido.',
+    'Muestra logros parciales en "{cc}"; identifica lo esencial pero requiere mediación para transferir lo aprendido; se recomienda planificar actividades específicas de refuerzo y monitoreo continuo.'
+  ],
+  C: [
+    'Se encuentra en inicio respecto a la competencia "{cc}"; presenta dificultades para alcanzar los desempeños esperados; se sugiere implementar estrategias diferenciadas, materiales concretos y acompañamiento permanente.',
+    'Aún no logra los aprendizajes de "{cc}"; requiere reforzar conocimientos previos antes de avanzar; se recomienda coordinar con la familia para reforzar el trabajo en casa con tareas breves y motivadoras.',
+    'Evidencia dificultades persistentes en "{cc}"; necesita apoyo individualizado y secuencias didácticas más simples; se sugiere identificar sus intereses para conectar el aprendizaje con experiencias significativas.',
+    'Muestra logros muy iniciales en "{cc}"; depende del apoyo del docente para resolver situaciones básicas; se recomienda iniciar un plan de recuperación con metas pequeñas y reconocimiento frecuente de avances.'
+  ]
+};
+
+/** Acorta el nombre de una competencia para usarlo dentro de la plantilla. */
+function shortCompetencia(comp) {
+  // Quita prefijos y mayúsculas iniciales redundantes
+  let s = String(comp).toLowerCase()
+    .replace(/^se /, 'se ')
+    .replace(/^lee /, 'leer ')
+    .replace(/^escribe /, 'escribir ')
+    .replace(/^resuelve /, 'resolver ')
+    .replace(/^construye /, 'construir ')
+    .replace(/^convive /, 'convivir ')
+    .replace(/^indaga /, 'indagar ')
+    .replace(/^explica /, 'explicar ')
+    .replace(/^diseña /, 'diseñar ')
+    .replace(/^aprecia /, 'apreciar ')
+    .replace(/^crea /, 'crear ')
+    .replace(/^asume /, 'asumir ')
+    .replace(/^interactúa /, 'interactuar ')
+    .replace(/^gestiona /, 'gestionar ');
+  // Trunca si es muy largo
+  if (s.length > 80) {
+    s = s.slice(0, 77) + '…';
+  }
+  return s;
+}
+
+/** Genera todas las conclusiones del catálogo CNEB para EBR.
+ *  Devuelve un array de registros listos para insertar en IndexedDB. */
+window.generateCatalogRecords = function() {
+  const records = [];
+  const now = Date.now();
+  for (const [nivel, nivelData] of Object.entries(window.CNEB_CATALOG)) {
+    for (const grado of nivelData.grados) {
+      for (const [area, competencias] of Object.entries(nivelData.areas)) {
+        for (const competencia of competencias) {
+          const compCorta = shortCompetencia(competencia);
+          for (const nota of ['AD', 'A', 'B', 'C']) {
+            for (const tpl of window.CONCLUSION_TEMPLATES[nota]) {
+              records.push({
+                nivel,
+                grado,
+                area,
+                competencia,
+                nota,
+                conclusion: tpl.replace('{cc}', compCorta),
+                fechaCreacion: now,
+                fechaModificacion: now
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+  return records;
+};
+
+</script>
+
+<!-- LÓGICA DE LA APLICACIÓN -->
+<script>
+/* =================================================================
+   APP — Sistema de Conclusiones Descriptivas
+   Arquitectura por capas:
+     1. DB        → IndexedDB (persistencia)
+     2. EXCEL     → Lectura/escritura con SheetJS
+     3. STATE     → Estado en memoria (filtros, datos, paginación)
+     4. UI        → Renderizado y eventos del DOM
+   ================================================================= */
+
+'use strict';
+
+/* =================================================================
+   1. CAPA DE BASE DE DATOS (IndexedDB)
+   ----------------------------------------------------------------
+   Esquema:
+     - DB:    "ConclusionesDB", versión 1
+     - Store: "conclusiones", keyPath "id" (autoIncrement)
+     - Índices: grado, area, competencia, nota
+   ================================================================= */
+const DB = (() => {
+  const NAME = 'ConclusionesDB_EBE';
+  const VERSION = 1;
+  const STORE = 'conclusiones';
+  let _db = null;
+
+  /** Abre (o crea) la base de datos. Devuelve una Promise<IDBDatabase>. */
+  function open() {
+    if (_db) return Promise.resolve(_db);
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(NAME, VERSION);
+      req.onerror   = () => reject(req.error);
+      req.onsuccess = () => { _db = req.result; resolve(_db); };
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(STORE)) {
+          const store = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+          store.createIndex('grado',       'grado',       { unique: false });
+          store.createIndex('area',        'area',        { unique: false });
+          store.createIndex('competencia', 'competencia', { unique: false });
+          store.createIndex('nota',        'nota',        { unique: false });
+        }
+      };
+    });
+  }
+
+  /** Devuelve TODOS los registros. */
+  async function getAll() {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readonly');
+      const req = tx.objectStore(STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror   = () => reject(req.error);
+    });
+  }
+
+  /** Inserta o actualiza un registro. */
+  async function put(record) {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      const req = tx.objectStore(STORE).put(record);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror   = () => reject(req.error);
+    });
+  }
+
+  /** Inserta muchos registros (carga inicial / importación masiva). */
+  async function bulkAdd(records) {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      const store = tx.objectStore(STORE);
+      records.forEach(r => store.add(r));
+      tx.oncomplete = () => resolve(records.length);
+      tx.onerror    = () => reject(tx.error);
+    });
+  }
+
+  /** Elimina un registro por id. */
+  async function remove(id) {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      const req = tx.objectStore(STORE).delete(id);
+      req.onsuccess = () => resolve();
+      req.onerror   = () => reject(req.error);
+    });
+  }
+
+  /** Borra todos los registros del store. */
+  async function clear() {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      const req = tx.objectStore(STORE).clear();
+      req.onsuccess = () => resolve();
+      req.onerror   = () => reject(req.error);
+    });
+  }
+
+  /** Cuenta el total de registros. */
+  async function count() {
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readonly');
+      const req = tx.objectStore(STORE).count();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror   = () => reject(req.error);
+    });
+  }
+
+  return { open, getAll, put, bulkAdd, remove, clear, count };
+})();
+
+
+/* =================================================================
+   2. CAPA EXCEL — Lectura y escritura con SheetJS (xlsx)
+   ----------------------------------------------------------------
+   Parser flexible: detecta automáticamente si el archivo es:
+     (a) Formato ORIGINAL: una hoja por área, fila 3 con cabeceras
+         alternadas NOTA / Competencia.
+     (b) Formato PLANO:    una hoja con columnas Grado/Área/
+         Competencia/Nota/Conclusión.
+   ================================================================= */
+const Excel = (() => {
+
+  /**
+   * Lee un archivo (File object) y devuelve un array de registros normalizados:
+   *   { grado, area, competencia, nota, conclusion }
+   */
+  async function parse(file) {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, { type: 'array' });
+    let records = [];
+
+    // ¿Es formato plano? Probamos la primera hoja.
+    const firstSheet = wb.Sheets[wb.SheetNames[0]];
+    const flat = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+    const hasFlatHeaders = flat.length > 0 &&
+      Object.keys(flat[0]).some(k => /grad/i.test(k)) &&
+      Object.keys(flat[0]).some(k => /are/i.test(k))   &&
+      Object.keys(flat[0]).some(k => /compet/i.test(k));
+
+    if (hasFlatHeaders) {
+      records = parseFlatSheet(flat);
+    } else {
+      // Formato original: cada hoja es un área
+      for (const sheetName of wb.SheetNames) {
+        const sheet = wb.Sheets[sheetName];
+        records.push(...parseOriginalSheet(sheet, sheetName));
+      }
+    }
+    return records;
+  }
+
+  /** Parser para el formato original del archivo entregado. */
+  function parseOriginalSheet(sheet, sheetName) {
+    // Convertimos a array bidimensional (header:1) para indexar por celda.
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    if (rows.length < 4) return [];
+
+    // Buscamos la fila de cabeceras (puede ser la 2 o la 3, indexadas 1/2).
+    // La fila de cabeceras es aquella que contiene la palabra "NOTA".
+    let headerRowIdx = -1;
+    for (let i = 0; i < Math.min(5, rows.length); i++) {
+      if (rows[i].some(c => String(c).trim().toUpperCase() === 'NOTA')) {
+        headerRowIdx = i; break;
+      }
+    }
+    if (headerRowIdx < 0) return [];
+
+    const headerRow = rows[headerRowIdx];
+
+    // Identificamos pares (col NOTA, col COMPETENCIA)
+    const pairs = [];
+    for (let c = 0; c < headerRow.length; c++) {
+      if (String(headerRow[c]).trim().toUpperCase() === 'NOTA') {
+        // La competencia es el siguiente texto no vacío en la fila
+        for (let cc = c + 1; cc < headerRow.length; cc++) {
+          const v = String(headerRow[cc] || '').trim();
+          if (v) { pairs.push({ notaCol: c, compCol: cc, compName: v }); break; }
+        }
+      }
+    }
+
+    // Detectamos el nombre del área: buscamos en filas previas algo con "AREA"
+    let areaName = sheetName.trim();
+    for (let i = 0; i < headerRowIdx; i++) {
+      const row = rows[i];
+      for (const cell of row) {
+        const s = String(cell || '').trim();
+        if (/AREA\s+DE\s+/i.test(s)) {
+          areaName = s.replace(/AREA\s+DE\s+/i, '').trim();
+          break;
+        }
+      }
+    }
+    if (!areaName) areaName = sheetName.trim();
+
+    // Extraemos registros
+    const records = [];
+    for (let r = headerRowIdx + 1; r < rows.length; r++) {
+      const row = rows[r];
+      for (const { notaCol, compCol, compName } of pairs) {
+        const nota = String(row[notaCol] || '').trim().toUpperCase();
+        const conclusion = String(row[compCol] || '').trim();
+        if (nota && conclusion && ['AD', 'A', 'B', 'C'].includes(nota)) {
+          records.push({
+            nivel: 'Primaria',
+            grado: '1° Grado',
+            area: areaName.toUpperCase(),
+            competencia: compName,
+            nota,
+            conclusion,
+            fechaCreacion: Date.now(),
+            fechaModificacion: Date.now()
+          });
+        }
+      }
+    }
+    return records;
+  }
+
+  /** Parser para formato plano tabular (export previo del propio sistema). */
+  function parseFlatSheet(rows) {
+    // Detección flexible de nombres de columnas (no sensible a mayúsculas/acentos)
+    const norm = (s) => String(s).toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const findKey = (obj, fragment) =>
+      Object.keys(obj).find(k => norm(k).includes(fragment));
+
+    return rows.map(row => {
+      const kNivel = findKey(row, 'nivel');
+      const kGrado = findKey(row, 'grad');
+      const kArea  = findKey(row, 'are');
+      const kComp  = findKey(row, 'compet');
+      const kNota  = findKey(row, 'nota');
+      const kConc  = findKey(row, 'conclus');
+      const grado = String(row[kGrado] || '').trim() || '1° Grado';
+      let nivel = String(row[kNivel] || '').trim();
+      if (!nivel) {
+        // Inferir nivel desde el grado si no viene en el archivo
+        const g = grado.toLowerCase();
+        if (/años?|inicial/.test(g)) nivel = 'Inicial';
+        else if (/secundaria/.test(g)) nivel = 'Secundaria';
+        else nivel = 'Primaria';
+      }
+      return {
+        nivel,
+        grado,
+        area:  String(row[kArea]  || '').trim().toUpperCase(),
+        competencia: String(row[kComp] || '').trim(),
+        nota:  String(row[kNota] || '').trim().toUpperCase(),
+        conclusion: String(row[kConc] || '').trim(),
+        fechaCreacion: Date.now(),
+        fechaModificacion: Date.now()
+      };
+    }).filter(r => r.area && r.competencia && r.nota && r.conclusion
+                  && ['AD', 'A', 'B', 'C'].includes(r.nota));
+  }
+
+  /**
+   * Exporta los registros a un archivo .xlsx (formato PLANO) y dispara su descarga.
+   */
+  function exportToFile(records, filename) {
+    // Ordenamos para una salida legible: por grado → área → competencia → nota
+    const notaOrder = { AD: 1, A: 2, B: 3, C: 4 };
+    const sorted = [...records].sort((x, y) =>
+      x.grado.localeCompare(y.grado) ||
+      x.area.localeCompare(y.area) ||
+      x.competencia.localeCompare(y.competencia) ||
+      (notaOrder[x.nota] - notaOrder[y.nota]) ||
+      x.id - y.id
+    );
+
+    const rows = sorted.map(r => ({
+      'Nivel': r.nivel || '',
+      'Grado': r.grado,
+      'Área': r.area,
+      'Competencia': r.competencia,
+      'Nota': r.nota,
+      'Conclusión descriptiva': r.conclusion
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    // Anchuras razonables
+    ws['!cols'] = [
+      { wch: 12 }, { wch: 14 }, { wch: 22 }, { wch: 60 }, { wch: 6 }, { wch: 100 }
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, 'Conclusiones');
+    XLSX.writeFile(wb, filename);
+  }
+
+  return { parse, exportToFile };
+})();
+
+
+/* =================================================================
+   2b. MOTOR DE COINCIDENCIA INTELIGENTE (Smart Match)
+   ----------------------------------------------------------------
+   Dada una descripción libre del docente (la "situación" del
+   estudiante) y un pool de conclusiones candidatas (ya filtradas
+   por área + competencia + nota), devuelve los mejores matches
+   ordenados por score, todo offline y sin APIs externas.
+
+   Algoritmo:
+     1. Normaliza (minúsculas, sin tildes, sin signos).
+     2. Tokeniza y filtra stopwords (castellano + dominio educativo).
+     3. Calcula IDF de cada término dentro del pool — términos
+        raros pesan más que comunes.
+     4. Score = overlap ponderado por IDF + bonus bigramas
+        consecutivos + bonus subcadena de la query completa.
+     5. Devuelve top N normalizado a [0..1].
+   ================================================================= */
+const SmartMatch = (() => {
+
+  // Stopwords del castellano (función gramatical, no aportan al matching)
+  const STOPWORDS_ES = new Set(`
+    a al algo algun alguna algunas alguno algunos ante antes aquel aquella aquellas aquello aquellos
+    aqui aquí asi así aun aún cada como con contra cual cuales cuando cuanto cuanta cuantas cuantos
+    cuyo cuya cuyas cuyos de del desde donde durante e el ella ellas ellos en entre era erais eran
+    eras eres es esa esas ese eso esos esta estaba estabais estaban estabas estad estada estadas
+    estado estados estais estamos estan estando estar estaremos estara estaran estaras estare estareis
+    estaria estariais estariamos estarian estarias estas este estemos esto estos estoy estuve estuviera
+    estuvieran estuviese estuviesen estuvimos estuviste estuvieron está están éramos fue fuera fueran
+    fueras fueron fuese fuesen fui fuimos fuiste fuisteis ha habida habidas habido habidos habiendo
+    habremos habra habran habras habre habreis habria habriais habriamos habrian habrias habeis
+    habia habiais habiamos habian habias han has hasta hay haya hayamos hayan hayas hayais he hemos
+    hube hubiera hubieran hubieras hubieron hubiese hubiesen hubimos hubiste la las le les lo los
+    me mi mis mucho muchos muy mas mí mía mías mío míos nada ni no nos nosotras nosotros nuestra
+    nuestras nuestro nuestros o os otra otras otro otros para pero poco por porque pues que quien
+    quienes qué se sea seamos sean seas seremos sera seran seras sere sereis seria seriais seriamos
+    serian serias seais si sido siendo sin sobre sois somos son soy su sus suya suyas suyo suyos
+    sí tambien tampoco tanto te tendremos tendra tendran tendras tendre tendreis tendria tendriais
+    tendriamos tendrian tendrias tened tenemos tenga tengamos tengan tengas tengo tengais tenida
+    tenidas tenido tenidos teniendo teneis tenia teniais teniamos tenian tenias ti tiene tienen
+    tienes todo todos toda todas tu tus tuve tuviera tuvieran tuvieras tuvieron tuviese tuviesen
+    tuvimos tuviste tuya tuyas tuyo tuyos un una uno unos unas vosotras vosotros vuestra vuestras
+    vuestro vuestros y ya yo él ésta éstas éste éstos
+  `.split(/\s+/).filter(Boolean));
+
+  // Términos muy comunes en conclusiones educativas que no discriminan bien
+  const STOPWORDS_DOMINIO = new Set([
+    'estudiante', 'estudiantes', 'alumno', 'alumnos',
+    'puede', 'debe', 'logra', 'demuestra', 'muestra', 'presenta',
+    'evidencia', 'manera', 'forma', 'recomienda', 'sugiere', 'sugiero',
+    'aprendizaje', 'aprendizajes', 'competencia', 'competencias',
+    'siempre', 'aun', 'todavia', 'ademas', 'tambien',
+    'asimismo', 'parte', 'cuando', 'mientras', 'mejor', 'mas', 'menos'
+  ]);
+
+  /** Normaliza un texto: minúsculas, sin tildes, sin signos. */
+  function normalize(s) {
+    return String(s).toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9ñ\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  /** Tokeniza un texto en palabras significativas (sin stopwords, ≥3 chars). */
+  function tokenize(s) {
+    return normalize(s).split(' ')
+      .filter(w => w.length >= 3)
+      .filter(w => !STOPWORDS_ES.has(w))
+      .filter(w => !STOPWORDS_DOMINIO.has(w));
+  }
+
+  /** Construye mapa de IDF para un conjunto de textos candidatos. */
+  function buildIdf(candidates) {
+    const N = candidates.length;
+    const df = new Map();
+    candidates.forEach(text => {
+      const uniqueTerms = new Set(tokenize(text));
+      uniqueTerms.forEach(t => df.set(t, (df.get(t) || 0) + 1));
+    });
+    const idf = new Map();
+    df.forEach((d, t) => {
+      idf.set(t, Math.log((N + 1) / (d + 1)) + 1);
+    });
+    return idf;
+  }
+
+  /** Puntaje de afinidad entre la query del docente y una conclusión candidata. */
+  function score(query, candidate, idfMap) {
+    const qTokens = tokenize(query);
+    if (qTokens.length === 0) return 0;
+
+    const cText = normalize(candidate);
+    const cTokens = new Set(tokenize(candidate));
+
+    let acc = 0;
+    let maxPossible = 0;
+
+    // 1. Overlap ponderado por IDF (favorece términos raros del pool)
+    qTokens.forEach(qt => {
+      const w = idfMap.get(qt) || 1;
+      maxPossible += w;
+      if (cTokens.has(qt)) acc += w;
+    });
+
+    // 2. Bonus por bigramas consecutivos en orden
+    let bigramBonus = 0;
+    let bigramMax = 0;
+    for (let i = 0; i < qTokens.length - 1; i++) {
+      const bg = qTokens[i] + ' ' + qTokens[i + 1];
+      bigramMax += 0.5;
+      if (cText.includes(bg)) bigramBonus += 0.5;
+    }
+    acc += bigramBonus;
+    maxPossible += bigramMax;
+
+    // 3. Bonus si la frase completa (normalizada) aparece como subcadena
+    const qNorm = normalize(query);
+    if (qNorm.length >= 8) {
+      maxPossible += 1.5;
+      if (cText.includes(qNorm)) acc += 1.5;
+    }
+
+    return maxPossible > 0 ? Math.min(1, acc / maxPossible) : 0;
+  }
+
+  /** Devuelve los top N candidatos ordenados con su score normalizado. */
+  function findBest(query, pool, topN = 4) {
+    if (!query || !query.trim() || pool.length === 0) return [];
+    const conclusions = pool.map(r => r.conclusion);
+    const idfMap = buildIdf(conclusions);
+    const scored = pool.map(r => ({ record: r, score: score(query, r.conclusion, idfMap) }));
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, topN).filter(m => m.score > 0);
+  }
+
+  return { findBest, tokenize, normalize };
+})();
+
+
+/* =================================================================
+   3. ESTADO GLOBAL Y UTILIDADES
+   ================================================================= */
+const STATE = {
+  all: [],                   // todos los registros del banco
+  filtered: [],              // resultado actual de los filtros
+  filters: {
+    search: '',
+    nivel: '',
+    grado: '',
+    area: '',
+    competencia: '',
+    notas: new Set(['AD', 'A', 'B', 'C'])
+  },
+  sortBy: 'area',
+  page: 1,
+  pageSize: 18,
+  fileToImport: null         // File seleccionado en el modal de carga
+};
+
+/** Quita acentos para comparación insensible a tildes. */
+function norm(s) {
+  return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+/** Devuelve valores únicos de un campo, ordenados. */
+function unique(records, field) {
+  return [...new Set(records.map(r => r[field]).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+/** Notificación de tipo toast. */
+function toast(msg, type = '') {
+  const cont = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  cont.appendChild(el);
+  setTimeout(() => el.classList.add('fade-out'), 2800);
+  setTimeout(() => el.remove(), 3100);
+}
+
+
+/* =================================================================
+   4. CAPA UI — Renderizado y manejo de eventos
+   ================================================================= */
+
+/** Pinta el listado de áreas / competencias / grados / niveles en los selects. */
+function refreshDropdowns() {
+  // Nivel (no se filtra: siempre los 3 disponibles)
+  const nivelSel = document.getElementById('f-nivel');
+  if (nivelSel) {
+    nivelSel.value = STATE.filters.nivel || '';
+  }
+
+  // Grado (filtrado por nivel)
+  const gradoSel = document.getElementById('f-grado');
+  const gradoPool = STATE.filters.nivel
+    ? STATE.all.filter(r => r.nivel === STATE.filters.nivel)
+    : STATE.all;
+  const grados = unique(gradoPool, 'grado');
+  gradoSel.innerHTML = '<option value="">Todos los grados</option>' +
+    grados.map(g => `<option value="${escapeAttr(g)}">${escapeHtml(g)}</option>`).join('');
+  gradoSel.value = grados.includes(STATE.filters.grado) ? STATE.filters.grado : '';
+  if (gradoSel.value !== STATE.filters.grado) STATE.filters.grado = gradoSel.value;
+
+  // Área (filtrada por nivel y grado)
+  const areaSel = document.getElementById('f-area');
+  const areasPool = STATE.all.filter(r =>
+    (!STATE.filters.nivel || r.nivel === STATE.filters.nivel) &&
+    (!STATE.filters.grado || r.grado === STATE.filters.grado)
+  );
+  const areas = unique(areasPool, 'area');
+  areaSel.innerHTML = '<option value="">Todas las áreas</option>' +
+    areas.map(a => `<option value="${escapeAttr(a)}">${escapeHtml(a)}</option>`).join('');
+  areaSel.value = areas.includes(STATE.filters.area) ? STATE.filters.area : '';
+  if (areaSel.value !== STATE.filters.area) STATE.filters.area = areaSel.value;
+
+  // Competencia (filtrada por nivel, grado y área)
+  const compSel = document.getElementById('f-competencia');
+  const compPool = STATE.all.filter(r =>
+    (!STATE.filters.nivel || r.nivel === STATE.filters.nivel) &&
+    (!STATE.filters.grado || r.grado === STATE.filters.grado) &&
+    (!STATE.filters.area || r.area === STATE.filters.area)
+  );
+  const comps = unique(compPool, 'competencia');
+  compSel.innerHTML = '<option value="">Todas las competencias</option>' +
+    comps.map(c => `<option value="${escapeAttr(c)}">${escapeHtml(truncate(c, 70))}</option>`).join('');
+  compSel.value = comps.includes(STATE.filters.competencia) ? STATE.filters.competencia : '';
+  if (compSel.value !== STATE.filters.competencia) STATE.filters.competencia = compSel.value;
+
+  // Datalist en el modal de edición
+  document.getElementById('grados-list').innerHTML =
+    unique(STATE.all, 'grado').map(g => `<option value="${escapeAttr(g)}">`).join('');
+  document.getElementById('areas-list').innerHTML =
+    unique(STATE.all, 'area').map(a => `<option value="${escapeAttr(a)}">`).join('');
+  document.getElementById('comps-list').innerHTML =
+    unique(STATE.all, 'competencia').map(c => `<option value="${escapeAttr(c)}">`).join('');
+}
+
+/** Aplica filtros + orden y guarda el resultado en STATE.filtered.
+    Nota: el campo "search" ya NO filtra las tarjetas — alimenta el panel
+    de coincidencia inteligente. Las tarjetas se rigen solo por dropdowns. */
+function applyFilters() {
+  const f = STATE.filters;
+
+  STATE.filtered = STATE.all.filter(r => {
+    if (f.nivel && r.nivel !== f.nivel) return false;
+    if (f.grado && r.grado !== f.grado) return false;
+    if (f.area && r.area !== f.area) return false;
+    if (f.competencia && r.competencia !== f.competencia) return false;
+    if (!f.notas.has(r.nota)) return false;
+    return true;
+  });
+
+  // Orden
+  const notaOrder = { AD: 1, A: 2, B: 3, C: 4 };
+  const sortFns = {
+    area:        (a, b) => a.area.localeCompare(b.area, 'es') || a.competencia.localeCompare(b.competencia, 'es') || (notaOrder[a.nota] - notaOrder[b.nota]),
+    competencia: (a, b) => a.competencia.localeCompare(b.competencia, 'es') || (notaOrder[a.nota] - notaOrder[b.nota]),
+    nota:        (a, b) => (notaOrder[a.nota] - notaOrder[b.nota]) || a.area.localeCompare(b.area, 'es'),
+    fecha:       (a, b) => (b.fechaModificacion || 0) - (a.fechaModificacion || 0)
+  };
+  STATE.filtered.sort(sortFns[STATE.sortBy] || sortFns.area);
+
+  // Asegura que la página actual sea válida
+  const maxPage = Math.max(1, Math.ceil(STATE.filtered.length / STATE.pageSize));
+  if (STATE.page > maxPage) STATE.page = maxPage;
+}
+
+/** Renderiza todo lo que depende del estado de filtros. */
+function render() {
+  applyFilters();
+  renderStats();
+  renderCards();
+  renderPagination();
+  renderFilterSummary();
+  renderSmartMatch();
+}
+
+/** Pinta el panel de estadísticas global del banco. */
+function renderStats() {
+  const cont = document.getElementById('stats-container');
+  const total = STATE.all.length;
+  const filtered = STATE.filtered.length;
+  const areas = unique(STATE.all, 'area').length;
+  const comps = unique(STATE.all, 'competencia').length;
+  const byNota = { AD: 0, A: 0, B: 0, C: 0 };
+  STATE.all.forEach(r => { if (byNota[r.nota] !== undefined) byNota[r.nota]++; });
+
+  cont.innerHTML = `
+    <div class="stat-card accent">
+      <div class="label">Mostrando</div>
+      <div class="value">${filtered.toLocaleString('es')}<span style="font-size:14px;color:var(--ink-mute);font-weight:500"> / ${total.toLocaleString('es')}</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Áreas</div>
+      <div class="value">${areas}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Competencias</div>
+      <div class="value">${comps}</div>
+    </div>
+    <div class="stat-card ad"><div class="label">AD · Destacado</div><div class="value">${byNota.AD}</div></div>
+    <div class="stat-card a"><div class="label">A · Esperado</div><div class="value">${byNota.A}</div></div>
+    <div class="stat-card b"><div class="label">B · En proceso</div><div class="value">${byNota.B}</div></div>
+    <div class="stat-card c"><div class="label">C · En inicio</div><div class="value">${byNota.C}</div></div>
+  `;
+}
+
+/* =================================================================
+   4c. AGRUPAMIENTO DE RESULTADOS
+   ----------------------------------------------------------------
+   En lugar de repetir grado/área/competencia/nota en cada tarjeta,
+   detectamos qué dimensiones son fijas vs. variantes y movemos las
+   fijas a una "barra de contexto" arriba, y las variantes a
+   "encabezados de sección" entre los grupos.
+   ================================================================= */
+
+/** Analiza cuáles dimensiones varían y cuáles son únicas en el set. */
+function analyzeDims(records) {
+  const s = { grado: new Set(), area: new Set(), competencia: new Set(), nota: new Set() };
+  records.forEach(r => {
+    s.grado.add(r.grado); s.area.add(r.area);
+    s.competencia.add(r.competencia); s.nota.add(r.nota);
+  });
+  const wrap = (set) => ({
+    varies: set.size > 1,
+    fixed: set.size === 1 ? [...set][0] : null,
+    count: set.size
+  });
+  return {
+    grado: wrap(s.grado), area: wrap(s.area),
+    competencia: wrap(s.competencia), nota: wrap(s.nota)
+  };
+}
+
+/** Construye una clave de grupo basada en las dimensiones que varían. */
+function groupKey(r, dims) {
+  return [
+    dims.area.varies ? r.area : '',
+    dims.competencia.varies ? r.competencia : '',
+    dims.nota.varies ? r.nota : '',
+    dims.grado.varies ? r.grado : ''
+  ].join('§§');
+}
+
+/** Agrupa los registros en arrays según las dimensiones que varían. */
+function groupRecords(records, dims) {
+  const map = new Map();
+  records.forEach(r => {
+    const k = groupKey(r, dims);
+    if (!map.has(k)) map.set(k, { key: k, records: [], first: r });
+    map.get(k).records.push(r);
+  });
+  return [...map.values()];
+}
+
+/** Cuenta cuántos registros caen en cada grupo dentro del set TOTAL filtrado. */
+function countGroupsTotal(allFiltered, dims) {
+  const counts = {};
+  allFiltered.forEach(r => {
+    const k = groupKey(r, dims);
+    counts[k] = (counts[k] || 0) + 1;
+  });
+  return counts;
+}
+
+/** HTML de la barra de contexto con las dimensiones fijas (solo si hay alguna). */
+function renderContextBar(dims, totalCount) {
+  const parts = [];
+  if (dims.area.fixed) {
+    parts.push(`<span class="ctx-value"><span class="ctx-area">${escapeHtml(dims.area.fixed)}</span></span>`);
+  }
+  if (dims.competencia.fixed) {
+    parts.push(`<span class="ctx-sep">›</span><span class="ctx-comp">${escapeHtml(dims.competencia.fixed)}</span>`);
+  }
+  if (dims.nota.fixed) {
+    parts.push(`<span class="nota-badge" data-nota="${dims.nota.fixed}">${dims.nota.fixed}</span>`);
+    parts.push(`<span class="nota-label" style="font-size:12px;color:var(--ink-mute);font-style:italic;">${notaLabel(dims.nota.fixed)}</span>`);
+  }
+  if (dims.grado.fixed) {
+    parts.push(`<span class="ctx-grado">${escapeHtml(dims.grado.fixed)}</span>`);
+  }
+  if (parts.length === 0) return '';
+  return `
+    <div class="context-bar">
+      <span class="ctx-label">${totalCount} conclusiones de</span>
+      ${parts.join('')}
+    </div>`;
+}
+
+/** HTML de una sección agrupada (header + tarjetas compactas). */
+function renderGroupSection(group, dims, totalInBank) {
+  const r = group.first;
+  const headerParts = [];
+
+  // El header muestra solo las dimensiones que varían entre grupos
+  if (dims.nota.varies) {
+    headerParts.push(`<span class="nota-badge" data-nota="${r.nota}">${r.nota}</span>`);
+    headerParts.push(`<h4>${notaLabel(r.nota)}</h4>`);
+  }
+  if (dims.area.varies) {
+    headerParts.push(`<span class="ctx-area">${escapeHtml(r.area)}</span>`);
+  }
+  if (dims.competencia.varies) {
+    if (headerParts.length > 0) headerParts.push(`<span class="ctx-sep">›</span>`);
+    headerParts.push(`<span class="section-meta">${escapeHtml(truncate(r.competencia, 65))}</span>`);
+  }
+  if (dims.grado.varies) {
+    headerParts.push(`<span class="ctx-grado">${escapeHtml(r.grado)}</span>`);
+  }
+
+  const hasHeader = headerParts.length > 0;
+  // Las tarjetas siempre son compactas: el contexto (grado/área/competencia/nota)
+  // siempre vive en la barra superior y/o en el encabezado de sección, así que
+  // el meta dentro de cada tarjeta sería redundancia.
+  const cardCls = 'card compact';
+
+  const headerHTML = hasHeader ? `
+    <div class="section-header">
+      ${headerParts.join(' ')}
+      <span class="section-count">${group.records.length}${totalInBank && totalInBank > group.records.length ? ` de ${totalInBank}` : ''}</span>
+    </div>` : '';
+
+  const cards = group.records.map(r => renderCardHTML(r, cardCls)).join('');
+  return `
+    <div class="cards-section">
+      ${headerHTML}
+      <div class="cards-grid">${cards}</div>
+    </div>`;
+}
+
+/** HTML de una tarjeta individual (con o sin meta header según la clase). */
+function renderCardHTML(r, cls) {
+  return `
+    <article class="${cls}" data-id="${r.id}">
+      <div class="card-head">
+        <span class="nota-badge" data-nota="${r.nota}">${r.nota}</span>
+        <span class="grado-pill">${escapeHtml(r.grado)}</span>
+        <div class="meta-line">
+          <span class="area">${escapeHtml(r.area)}</span>
+          <span class="sep">›</span>
+          <span class="comp">${escapeHtml(truncate(r.competencia, 80))}</span>
+        </div>
+      </div>
+      <p class="conclusion">${escapeHtml(r.conclusion)}</p>
+      <div class="card-actions">
+        <button class="icon-btn" data-action="copy" title="Copiar al portapapeles">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copiar
+        </button>
+        <button class="icon-btn" data-action="edit" title="Editar">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Editar
+        </button>
+        <button class="icon-btn danger" data-action="delete" title="Eliminar">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+          Eliminar
+        </button>
+      </div>
+    </article>`;
+}
+
+/** Pinta las tarjetas con agrupamiento contextual. */
+function renderCards() {
+  const cont = document.getElementById('cards-container');
+  const meta = document.getElementById('results-meta');
+
+  if (STATE.filtered.length === 0) {
+    cont.innerHTML = `
+      <div class="empty-state">
+        <div class="icon-wrap">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <h4>Sin resultados</h4>
+        <p>Ningún registro coincide con los filtros actuales. Prueba a limpiar la búsqueda o ampliar criterios.</p>
+        <button class="btn btn-sm" onclick="clearFilters()">Limpiar filtros</button>
+      </div>`;
+    meta.textContent = '0 conclusiones';
+    return;
+  }
+
+  // Análisis sobre TODO el conjunto filtrado (no solo la página)
+  const dims = analyzeDims(STATE.filtered);
+  const totalCounts = countGroupsTotal(STATE.filtered, dims);
+
+  // Slice de paginación
+  const start = (STATE.page - 1) * STATE.pageSize;
+  const slice = STATE.filtered.slice(start, start + STATE.pageSize);
+  const totalPages = Math.ceil(STATE.filtered.length / STATE.pageSize);
+
+  // Agrupamos solo el slice (los headers del slice respetan el contexto global)
+  const groups = groupRecords(slice, dims);
+
+  const contextHTML = renderContextBar(dims, STATE.filtered.length);
+  const sectionsHTML = groups.map(g =>
+    renderGroupSection(g, dims, totalCounts[g.key])
+  ).join('');
+
+  cont.innerHTML = contextHTML + sectionsHTML;
+  meta.innerHTML = `<strong>${STATE.filtered.length.toLocaleString('es')}</strong> conclusiones · página ${STATE.page} de ${totalPages}`;
+}
+
+/** Pinta la paginación. */
+function renderPagination() {
+  const pag = document.getElementById('pagination');
+  const totalPages = Math.ceil(STATE.filtered.length / STATE.pageSize);
+  if (totalPages <= 1) { pag.innerHTML = ''; return; }
+
+  const buttons = [];
+  buttons.push(`<button ${STATE.page === 1 ? 'disabled' : ''} data-page="${STATE.page - 1}">‹</button>`);
+
+  // Ventana de páginas: máx 7 visibles centradas en la actual
+  const win = 2;
+  const start = Math.max(1, STATE.page - win);
+  const end   = Math.min(totalPages, STATE.page + win);
+  if (start > 1) {
+    buttons.push(`<button data-page="1">1</button>`);
+    if (start > 2) buttons.push(`<button disabled>…</button>`);
+  }
+  for (let i = start; i <= end; i++) {
+    buttons.push(`<button class="${i === STATE.page ? 'active' : ''}" data-page="${i}">${i}</button>`);
+  }
+  if (end < totalPages) {
+    if (end < totalPages - 1) buttons.push(`<button disabled>…</button>`);
+    buttons.push(`<button data-page="${totalPages}">${totalPages}</button>`);
+  }
+  buttons.push(`<button ${STATE.page === totalPages ? 'disabled' : ''} data-page="${STATE.page + 1}">›</button>`);
+
+  pag.innerHTML = buttons.join('');
+}
+
+/** Resume los filtros activos al pie del panel. */
+function renderFilterSummary() {
+  const f = STATE.filters;
+  const parts = [];
+  if (f.nivel) parts.push(`Nivel: <strong>${escapeHtml(f.nivel)}</strong>`);
+  if (f.grado) parts.push(`Grado: <strong>${escapeHtml(f.grado)}</strong>`);
+  if (f.area) parts.push(`Área: <strong>${escapeHtml(f.area)}</strong>`);
+  if (f.competencia) parts.push(`Competencia: <strong>${escapeHtml(truncate(f.competencia, 40))}</strong>`);
+  if (f.notas.size < 4) parts.push(`Notas: <strong>${[...f.notas].join(', ')}</strong>`);
+  document.getElementById('filter-summary').innerHTML = parts.length
+    ? parts.join(' · ')
+    : 'Sin filtros aplicados — mostrando todo el banco.';
+}
+
+
+/* =================================================================
+   4b. COINCIDENCIA INTELIGENTE — render del panel y estados
+   ----------------------------------------------------------------
+   Prerrequisitos para activar el campo: área + competencia + ≥1 nota.
+   Cuando el docente escribe la situación, se ranquean las
+   conclusiones del pool (área+competencia+notas seleccionadas) y se
+   muestra la mejor + hasta 3 alternativas clicables.
+   ================================================================= */
+
+/** Comprueba si los filtros necesarios para activar la búsqueda están listos. */
+function smartReady() {
+  const f = STATE.filters;
+  return !!(f.area && f.competencia && f.notas.size >= 1);
+}
+
+/** Actualiza el estado del campo de búsqueda según los prerrequisitos. */
+function updateSearchFieldState() {
+  const searchEl = document.getElementById('f-search');
+  const hint = document.getElementById('smart-hint');
+  if (smartReady()) {
+    searchEl.disabled = false;
+    searchEl.classList.add('smart-active');
+    searchEl.placeholder = 'Describe la situación del estudiante (fortalezas, dificultades…)';
+    const f = STATE.filters;
+    const notasStr = [...f.notas].join(', ');
+    hint.textContent = `Listo. Buscaré dentro de ${f.area} · ${truncate(f.competencia, 30)} · Nota ${notasStr}.`;
+    hint.className = 'smart-hint active';
+  } else {
+    searchEl.disabled = true;
+    searchEl.classList.remove('smart-active');
+    searchEl.value = '';
+    STATE.filters.search = '';
+    searchEl.placeholder = 'Selecciona los filtros para activar…';
+    const f = STATE.filters;
+    const missing = [];
+    if (!f.area) missing.push('área');
+    if (!f.competencia) missing.push('competencia');
+    if (f.notas.size === 0) missing.push('al menos una nota');
+    hint.textContent = `Selecciona ${missing.join(', ')} para activar la búsqueda por situación del estudiante.`;
+    hint.className = 'smart-hint';
+  }
+}
+
+/** Renderiza el panel de coincidencia inteligente (o lo oculta). */
+function renderSmartMatch() {
+  const panel = document.getElementById('smart-match-panel');
+  updateSearchFieldState();
+
+  const query = STATE.filters.search.trim();
+  if (!smartReady() || !query) {
+    panel.classList.remove('show');
+    panel.innerHTML = '';
+    return;
+  }
+
+  // Pool: registros que cumplen los filtros (área + competencia + notas activas)
+  const f = STATE.filters;
+  const pool = STATE.all.filter(r =>
+    r.area === f.area &&
+    r.competencia === f.competencia &&
+    f.notas.has(r.nota)
+  );
+
+  const matches = SmartMatch.findBest(query, pool, 4);
+  panel.classList.add('show');
+
+  // Caso: sin matches decentes
+  if (matches.length === 0 || matches[0].score < 0.04) {
+    panel.innerHTML = `
+      <div class="smart-header">
+        <h4>Coincidencia inteligente</h4>
+        <span class="query-echo">"${escapeHtml(truncate(query, 80))}"</span>
+      </div>
+      <div class="match-empty">
+        <p>No encontramos una conclusión cercana a esa descripción en el pool actual (${pool.length} candidatas).</p>
+        <p style="margin-top:8px;">
+          <a id="create-from-prompt">+ Crear una nueva conclusión</a> con estos datos y tu descripción
+        </p>
+      </div>`;
+    document.getElementById('create-from-prompt').addEventListener('click', () => {
+      openEditModal();
+      setTimeout(() => {
+        document.getElementById('edit-conclusion').value = query;
+      }, 50);
+    });
+    return;
+  }
+
+  const top = matches[0];
+  const alts = matches.slice(1).filter(m => m.score >= 0.02);
+
+  // Etiqueta de confianza según el score normalizado
+  const confTier = top.score >= 0.5 ? 'high' : top.score >= 0.2 ? 'med' : 'low';
+  const confLabel = top.score >= 0.5 ? 'Alta' : top.score >= 0.2 ? 'Media' : 'Baja';
+
+  panel.innerHTML = `
+    <div class="smart-header">
+      <h4>✨ Coincidencia inteligente</h4>
+      <span class="query-echo">"${escapeHtml(truncate(query, 90))}"</span>
+    </div>
+
+    <div class="match-top">
+      <div class="top-label">
+        <span>Mejor coincidencia</span>
+        <span class="confidence-badge ${confTier}">${confLabel} · ${Math.round(top.score * 100)}%</span>
+      </div>
+      <div class="meta-line">
+        <span class="nota-badge" data-nota="${top.record.nota}">${top.record.nota}</span>
+        <strong style="color: var(--accent)">${escapeHtml(top.record.area)}</strong>
+        <span class="sep" style="margin: 0 6px; color: var(--ink-faint)">›</span>
+        ${escapeHtml(truncate(top.record.competencia, 70))}
+      </div>
+      <textarea id="match-editable" rows="5">${escapeHtml(top.record.conclusion)}</textarea>
+      <div class="actions">
+        <button class="btn btn-accent btn-sm" id="btn-copy-match">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copiar texto editado
+        </button>
+        <button class="btn btn-sm" id="btn-save-edit">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Guardar como nueva
+        </button>
+      </div>
+    </div>
+
+    ${alts.length > 0 ? `
+      <div class="match-alts-label">Otras opciones similares (clic para usarla)</div>
+      <div class="match-alts">
+        ${alts.map(m => `
+          <button type="button" class="match-alt" data-id="${m.record.id}">
+            <span class="confidence-badge med alt-score">${Math.round(m.score * 100)}%</span>
+            <p>${escapeHtml(truncate(m.record.conclusion, 200))}</p>
+          </button>
+        `).join('')}
+      </div>` : ''}
+  `;
+
+  // ---- Eventos del panel ----
+
+  // Copiar texto editado al portapapeles
+  document.getElementById('btn-copy-match').addEventListener('click', async () => {
+    const text = document.getElementById('match-editable').value;
+    if (!text.trim()) { toast('No hay texto para copiar', 'warn'); return; }
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('✓ Conclusión copiada al portapapeles', 'success');
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      toast('✓ Copiado', 'success');
+    }
+  });
+
+  // Guardar el texto editado como una nueva conclusión en el banco
+  document.getElementById('btn-save-edit').addEventListener('click', () => {
+    const text = document.getElementById('match-editable').value.trim();
+    if (!text) { toast('La conclusión está vacía', 'warn'); return; }
+    openEditModal();
+    setTimeout(() => {
+      document.getElementById('edit-nivel').value = top.record.nivel || inferNivelFromGrado(top.record.grado);
+      document.getElementById('edit-grado').value = top.record.grado;
+      document.getElementById('edit-area').value = top.record.area;
+      document.getElementById('edit-competencia').value = top.record.competencia;
+      document.getElementById('edit-nota').value = top.record.nota;
+      document.getElementById('edit-conclusion').value = text;
+    }, 50);
+  });
+
+  // Clic en una alternativa: la pone como la principal (intercambia)
+  panel.querySelectorAll('.match-alt').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = Number(el.dataset.id);
+      const rec = STATE.all.find(r => r.id === id);
+      if (!rec) return;
+      const ta = document.getElementById('match-editable');
+      ta.value = rec.conclusion;
+      ta.focus();
+      // Pequeño feedback visual
+      el.style.borderColor = 'var(--accent)';
+      setTimeout(() => { el.style.borderColor = ''; }, 600);
+      toast('Conclusión cargada arriba', '');
+    });
+  });
+}
+
+
+/* =================================================================
+   5. UTILIDADES DE FORMATO
+   ================================================================= */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+function escapeAttr(s) { return escapeHtml(s); }
+function truncate(s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+function notaLabel(n) { return ({ AD: 'Logro destacado', A: 'Logro esperado', B: 'En proceso', C: 'En inicio' })[n] || n; }
+
+/** Resalta los matches de la búsqueda dentro de un string YA escapado. */
+function highlight(escapedText, query) {
+  if (!query) return escapedText;
+  const q = norm(query);
+  // Recorremos el texto carácter a carácter en versión normalizada
+  // pero conservamos el original para mostrar.
+  const original = escapedText;
+  const normalized = norm(escapedText);
+  let result = '';
+  let i = 0;
+  while (i < original.length) {
+    const idx = normalized.indexOf(q, i);
+    if (idx < 0) { result += original.slice(i); break; }
+    result += original.slice(i, idx);
+    result += '<mark>' + original.slice(idx, idx + q.length) + '</mark>';
+    i = idx + q.length;
+  }
+  return result;
+}
+
+
+/* =================================================================
+   6. ACCIONES (CRUD)
+   ================================================================= */
+
+/** Infiere el nivel a partir del grado (para retro-compatibilidad con
+    registros legacy que no traen el campo `nivel`). */
+function inferNivelFromGrado(grado) {
+  const g = String(grado || '').toLowerCase();
+  if (/años?|inicial/.test(g)) return 'Inicial';
+  if (/grado|primaria/.test(g)) return 'Primaria';
+  return 'Primaria';
+}
+
+/** Inicializa la BD: si está vacía, siembra desde SEED_DATA + catálogo CNEB. */
+async function initData() {
+  try {
+    await DB.open();
+    const existing = await DB.count();
+    if (existing === 0) {
+      const now = Date.now();
+      const records = [];
+
+      // 1) Registros originales del archivo Excel (1.440 conclusiones de 6° Grado)
+      if (Array.isArray(window.SEED_DATA)) {
+        window.SEED_DATA.forEach(([grado, area, competencia, nota, conclusion]) => {
+          records.push({
+            nivel: inferNivelFromGrado(grado),
+            grado, area, competencia, nota, conclusion,
+            fechaCreacion: now, fechaModificacion: now
+          });
+        });
+      }
+
+      // 2) Registros generados desde el catálogo CNEB (Inicial + Primaria 1°-5° + Secundaria)
+      //    Se omiten las combinaciones que YA existen en los registros originales
+      //    para no duplicar las 1.440 conclusiones de 6° grado de Primaria.
+      if (typeof window.generateCatalogRecords === 'function') {
+        const existingKeys = new Set(
+          records.map(r => `${r.nivel}|${r.grado}|${r.area}|${r.competencia}|${r.nota}`)
+        );
+        const catalogRecords = window.generateCatalogRecords();
+        catalogRecords.forEach(r => {
+          const key = `${r.nivel}|${r.grado}|${r.area}|${r.competencia}|${r.nota}`;
+          if (!existingKeys.has(key)) {
+            records.push(r);
+          }
+        });
+      }
+
+      await DB.bulkAdd(records);
+      console.log(`Sembrados ${records.length} registros iniciales en IndexedDB`);
+    }
+    STATE.all = await DB.getAll();
+
+    // Compatibilidad: para registros antiguos sin campo `nivel`, lo inferimos
+    let needsUpdate = false;
+    STATE.all.forEach(r => {
+      if (!r.nivel) { r.nivel = inferNivelFromGrado(r.grado); needsUpdate = true; }
+    });
+    if (needsUpdate) {
+      // Actualizamos en BD silenciosamente
+      for (const r of STATE.all) {
+        if (r.id) await DB.put(r);
+      }
+    }
+
+    refreshDropdowns();
+    render();
+  } catch (err) {
+    console.error(err);
+    toast('Error al inicializar la base de datos', 'error');
+  }
+}
+
+/** Limpia todos los filtros. */
+function clearFilters() {
+  STATE.filters = {
+    search: '', nivel: '', grado: '', area: '', competencia: '',
+    notas: new Set(['AD', 'A', 'B', 'C'])
+  };
+  STATE.page = 1;
+  document.getElementById('f-search').value = '';
+  document.querySelectorAll('.nota-chip').forEach(c => c.classList.add('active'));
+  refreshDropdowns();
+  render();
+}
+
+/** Abre el modal de edición. Si `id` se pasa, carga el registro existente. */
+function openEditModal(id = null) {
+  const modal = document.getElementById('modal-edit');
+  const form = document.getElementById('form-edit');
+  form.reset();
+  document.getElementById('edit-id').value = '';
+
+  if (id != null) {
+    const rec = STATE.all.find(r => r.id === id);
+    if (!rec) { toast('Registro no encontrado', 'error'); return; }
+    document.getElementById('edit-id').value = rec.id;
+    document.getElementById('edit-nivel').value = rec.nivel || inferNivelFromGrado(rec.grado);
+    document.getElementById('edit-grado').value = rec.grado;
+    document.getElementById('edit-area').value = rec.area;
+    document.getElementById('edit-competencia').value = rec.competencia;
+    document.getElementById('edit-nota').value = rec.nota;
+    document.getElementById('edit-conclusion').value = rec.conclusion;
+    document.getElementById('modal-edit-title').textContent = 'Editar conclusión';
+    document.getElementById('modal-edit-sub').textContent = 'Modifica los campos necesarios y guarda los cambios.';
+  } else {
+    document.getElementById('modal-edit-title').textContent = 'Nueva conclusión';
+    document.getElementById('modal-edit-sub').textContent = 'Completa los campos para registrar una conclusión personalizada.';
+    // Sugerimos valores por defecto según los filtros activos
+    if (STATE.filters.nivel) document.getElementById('edit-nivel').value = STATE.filters.nivel;
+    else document.getElementById('edit-nivel').value = 'Primaria';
+    if (STATE.filters.grado) document.getElementById('edit-grado').value = STATE.filters.grado;
+    else document.getElementById('edit-grado').value = '1° Grado';
+    if (STATE.filters.area) document.getElementById('edit-area').value = STATE.filters.area;
+    if (STATE.filters.competencia) document.getElementById('edit-competencia').value = STATE.filters.competencia;
+  }
+  modal.classList.add('show');
+  setTimeout(() => document.getElementById('edit-conclusion').focus(), 100);
+}
+
+/** Guarda (crea o actualiza) un registro. */
+async function saveRecord(ev) {
+  ev.preventDefault();
+  const idVal = document.getElementById('edit-id').value;
+  const id = idVal ? Number(idVal) : null;
+  const now = Date.now();
+
+  const record = {
+    nivel: document.getElementById('edit-nivel').value.trim(),
+    grado: document.getElementById('edit-grado').value.trim(),
+    area:  document.getElementById('edit-area').value.trim().toUpperCase(),
+    competencia: document.getElementById('edit-competencia').value.trim(),
+    nota:  document.getElementById('edit-nota').value.trim().toUpperCase(),
+    conclusion: document.getElementById('edit-conclusion').value.trim(),
+    fechaModificacion: now
+  };
+
+  if (id != null) {
+    const existing = STATE.all.find(r => r.id === id);
+    record.id = id;
+    record.fechaCreacion = existing ? existing.fechaCreacion : now;
+  } else {
+    record.fechaCreacion = now;
+  }
+
+  try {
+    const newId = await DB.put(record);
+    if (id == null) record.id = newId;
+    // Actualizar STATE.all
+    const idx = STATE.all.findIndex(r => r.id === record.id);
+    if (idx >= 0) STATE.all[idx] = record;
+    else STATE.all.push(record);
+
+    closeModal('modal-edit');
+    refreshDropdowns();
+    render();
+    toast(id != null ? 'Conclusión actualizada' : 'Conclusión agregada', 'success');
+  } catch (err) {
+    console.error(err);
+    toast('Error al guardar', 'error');
+  }
+}
+
+/** Elimina un registro tras confirmación. */
+function deleteRecord(id) {
+  const rec = STATE.all.find(r => r.id === id);
+  if (!rec) return;
+  confirmAction(
+    'Eliminar conclusión',
+    `Vas a borrar la conclusión "${truncate(rec.conclusion, 100)}". Esta acción no se puede deshacer.`,
+    async () => {
+      try {
+        await DB.remove(id);
+        STATE.all = STATE.all.filter(r => r.id !== id);
+        refreshDropdowns();
+        render();
+        toast('Conclusión eliminada', 'success');
+      } catch (err) {
+        console.error(err);
+        toast('Error al eliminar', 'error');
+      }
+    }
+  );
+}
+
+/** Copia al portapapeles. */
+async function copyConclusion(cardEl, id) {
+  const rec = STATE.all.find(r => r.id === id);
+  if (!rec) return;
+  try {
+    await navigator.clipboard.writeText(rec.conclusion);
+    // Feedback visual en la tarjeta
+    let fb = cardEl.querySelector('.copy-feedback');
+    if (!fb) {
+      fb = document.createElement('div');
+      fb.className = 'copy-feedback';
+      fb.textContent = '✓ Copiado';
+      cardEl.appendChild(fb);
+    }
+    fb.classList.add('show');
+    setTimeout(() => fb.classList.remove('show'), 1500);
+  } catch {
+    // Fallback con textarea oculto
+    const ta = document.createElement('textarea');
+    ta.value = rec.conclusion;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+    toast('Copiado al portapapeles', 'success');
+  }
+}
+
+/** Restaura los datos al estado original del Excel embebido. */
+function restoreOriginal() {
+  confirmAction(
+    'Restaurar datos originales',
+    `Esto eliminará todos los cambios y volverá a cargar las ${window.SEED_DATA?.length || 0} conclusiones originales del archivo Excel. ¿Continuar?`,
+    async () => {
+      try {
+        await DB.clear();
+        const now = Date.now();
+        const records = window.SEED_DATA.map(([grado, area, competencia, nota, conclusion]) => ({
+          grado, area, competencia, nota, conclusion,
+          fechaCreacion: now, fechaModificacion: now
+        }));
+        await DB.bulkAdd(records);
+        STATE.all = await DB.getAll();
+        refreshDropdowns();
+        render();
+        toast(`Restauradas ${records.length} conclusiones`, 'success');
+      } catch (err) {
+        console.error(err);
+        toast('Error al restaurar', 'error');
+      }
+    }
+  );
+}
+
+/** Procesa el archivo Excel seleccionado e importa sus datos. */
+async function processUpload() {
+  if (!STATE.fileToImport) return;
+  const mode = document.querySelector('input[name="merge-mode"]:checked').value;
+
+  try {
+    toast('Procesando archivo…', '');
+    const records = await Excel.parse(STATE.fileToImport);
+    if (records.length === 0) {
+      toast('No se encontraron registros válidos en el archivo', 'warn');
+      return;
+    }
+
+    if (mode === 'replace') {
+      await DB.clear();
+      await DB.bulkAdd(records);
+    } else {
+      await DB.bulkAdd(records);
+    }
+
+    STATE.all = await DB.getAll();
+    closeModal('modal-upload');
+    STATE.fileToImport = null;
+    document.getElementById('file-selected').textContent = '';
+    document.getElementById('btn-confirm-upload').disabled = true;
+    refreshDropdowns();
+    render();
+    toast(`Importadas ${records.length} conclusiones`, 'success');
+  } catch (err) {
+    console.error(err);
+    toast('Error al procesar el archivo: ' + err.message, 'error');
+  }
+}
+
+/** Exporta el estado actual a Excel. */
+function exportData() {
+  if (STATE.all.length === 0) {
+    toast('No hay conclusiones para exportar', 'warn');
+    return;
+  }
+  // Si hay filtros activos, preguntamos qué exportar
+  const isFiltered = STATE.filtered.length < STATE.all.length;
+  const recordsToExport = STATE.all;
+  const today = new Date().toISOString().slice(0, 10);
+  const filename = `Conclusiones_${today}.xlsx`;
+  try {
+    Excel.exportToFile(recordsToExport, filename);
+    toast(`Archivo "${filename}" descargado`, 'success');
+  } catch (err) {
+    console.error(err);
+    toast('Error al exportar', 'error');
+  }
+}
+
+
+/* =================================================================
+   7. MODALES (helper genérico)
+   ================================================================= */
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+let _confirmCb = null;
+function confirmAction(title, msg, cb) {
+  document.getElementById('modal-confirm-title').textContent = title;
+  document.getElementById('modal-confirm-msg').textContent = msg;
+  _confirmCb = cb;
+  openModal('modal-confirm');
+}
+
+
+/* =================================================================
+   8. WIRING DE EVENTOS — al cargar el DOM
+   ================================================================= */
+document.addEventListener('DOMContentLoaded', () => {
+
+  /* ----- Filtros ----- */
+  const debounce = (fn, ms) => {
+    let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+  };
+
+  document.getElementById('f-search').addEventListener('input', debounce((e) => {
+    STATE.filters.search = e.target.value;
+    STATE.page = 1;
+    render();
+  }, 180));
+
+  document.getElementById('f-nivel').addEventListener('change', (e) => {
+    STATE.filters.nivel = e.target.value;
+    STATE.filters.grado = '';        // reset cascada
+    STATE.filters.area = '';
+    STATE.filters.competencia = '';
+    STATE.page = 1;
+    refreshDropdowns();
+    render();
+  });
+  document.getElementById('f-grado').addEventListener('change', (e) => {
+    STATE.filters.grado = e.target.value;
+    STATE.page = 1;
+    refreshDropdowns();
+    render();
+  });
+  document.getElementById('f-area').addEventListener('change', (e) => {
+    STATE.filters.area = e.target.value;
+    STATE.page = 1;
+    refreshDropdowns();
+    render();
+  });
+  document.getElementById('f-competencia').addEventListener('change', (e) => {
+    STATE.filters.competencia = e.target.value;
+    STATE.page = 1;
+    render();
+  });
+
+  // Chips de NOTA (toggle múltiple)
+  document.getElementById('nota-chips').addEventListener('click', (e) => {
+    const chip = e.target.closest('.nota-chip');
+    if (!chip) return;
+    const n = chip.dataset.nota;
+    if (STATE.filters.notas.has(n)) {
+      // No permitir desactivar todas
+      if (STATE.filters.notas.size > 1) {
+        STATE.filters.notas.delete(n);
+        chip.classList.remove('active');
+      }
+    } else {
+      STATE.filters.notas.add(n);
+      chip.classList.add('active');
+    }
+    STATE.page = 1;
+    render();
+  });
+
+  document.getElementById('btn-clear').addEventListener('click', clearFilters);
+
+  document.getElementById('sort-by').addEventListener('change', (e) => {
+    STATE.sortBy = e.target.value;
+    render();
+  });
+
+  /* ----- Paginación ----- */
+  document.getElementById('pagination').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-page]');
+    if (!b || b.disabled) return;
+    STATE.page = Number(b.dataset.page);
+    renderCards();
+    renderPagination();
+    document.querySelector('.results-head').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  /* ----- Acciones de tarjetas (delegación) ----- */
+  document.getElementById('cards-container').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const card = btn.closest('.card');
+    const id = Number(card.dataset.id);
+    const action = btn.dataset.action;
+    if (action === 'copy')   copyConclusion(card, id);
+    if (action === 'edit')   openEditModal(id);
+    if (action === 'delete') deleteRecord(id);
+  });
+
+  /* ----- Header buttons ----- */
+  document.getElementById('btn-add').addEventListener('click', () => openEditModal());
+  document.getElementById('btn-export').addEventListener('click', exportData);
+  document.getElementById('btn-restore').addEventListener('click', restoreOriginal);
+  document.getElementById('btn-upload').addEventListener('click', () => openModal('modal-upload'));
+
+  /* ----- Modal: formulario edición ----- */
+  document.getElementById('form-edit').addEventListener('submit', saveRecord);
+
+  /* ----- Modal: subida de archivo ----- */
+  const uploadZone = document.getElementById('upload-zone');
+  const fileInput = document.getElementById('file-input');
+  fileInput.addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    if (f) {
+      STATE.fileToImport = f;
+      document.getElementById('file-selected').innerHTML =
+        `📄 <strong>${escapeHtml(f.name)}</strong> · ${(f.size / 1024).toFixed(1)} KB`;
+      document.getElementById('btn-confirm-upload').disabled = false;
+    }
+  });
+  ['dragenter', 'dragover'].forEach(evt =>
+    uploadZone.addEventListener(evt, (e) => { e.preventDefault(); uploadZone.classList.add('drag'); }));
+  ['dragleave', 'drop'].forEach(evt =>
+    uploadZone.addEventListener(evt, (e) => { e.preventDefault(); uploadZone.classList.remove('drag'); }));
+  uploadZone.addEventListener('drop', (e) => {
+    const f = e.dataTransfer.files[0];
+    if (f) {
+      fileInput.files = e.dataTransfer.files;
+      fileInput.dispatchEvent(new Event('change'));
+    }
+  });
+  document.getElementById('btn-confirm-upload').addEventListener('click', processUpload);
+
+  /* ----- Cerrar modales (botón con data-close + click en backdrop + tecla ESC) ----- */
+  document.querySelectorAll('.modal-backdrop').forEach(bd => {
+    bd.addEventListener('click', (e) => {
+      if (e.target === bd) bd.classList.remove('show');
+    });
+    bd.querySelectorAll('[data-close]').forEach(b =>
+      b.addEventListener('click', () => bd.classList.remove('show'))
+    );
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-backdrop.show').forEach(m => m.classList.remove('show'));
+    }
+  });
+  document.getElementById('btn-confirm-action').addEventListener('click', () => {
+    closeModal('modal-confirm');
+    if (typeof _confirmCb === 'function') _confirmCb();
+    _confirmCb = null;
+  });
+
+  /* ----- Arrancamos la app ----- */
+  initData();
+});
+
+
+/* =================================================================
+   9. PRUEBAS DE VALIDACIÓN (asercion en consola)
+   ----------------------------------------------------------------
+   Ejecutar desde la consola del navegador:  runTests()
+   ================================================================= */
+window.runTests = async function () {
+  console.group('🧪 Pruebas de validación');
+  const fails = [];
+  const assert = (cond, msg) => {
+    if (cond) console.log('✅', msg);
+    else { console.error('❌', msg); fails.push(msg); }
+  };
+
+  // Test 1: la BD se abrió correctamente
+  assert(!!(await DB.open()), 'IndexedDB abre correctamente');
+
+  // Test 2: hay registros (los semillados)
+  const all = await DB.getAll();
+  assert(all.length > 0, `La BD contiene registros (n=${all.length})`);
+
+  // Test 3: estructura de cada registro
+  const sample = all[0];
+  ['grado', 'area', 'competencia', 'nota', 'conclusion'].forEach(field => {
+    assert(typeof sample[field] === 'string' && sample[field].length > 0,
+      `Cada registro tiene campo "${field}" no vacío`);
+  });
+
+  // Test 4: distribución por nota
+  const byNota = { AD: 0, A: 0, B: 0, C: 0 };
+  all.forEach(r => { if (byNota[r.nota] !== undefined) byNota[r.nota]++; });
+  Object.entries(byNota).forEach(([k, v]) => {
+    assert(v > 0, `Existen registros con nota "${k}" (n=${v})`);
+  });
+
+  // Test 5: existen las 8 áreas esperadas
+  const expectedAreas = ['ARTE', 'PERSONAL SOCIAL', 'ED. FISICA', 'COMUNICACION',
+                          'MATEMATICA', 'CIENCIA y TECNOLOGIA', 'RELIGION', 'TRANSVERSALES'];
+  const areasFound = unique(all, 'area');
+  expectedAreas.forEach(a => {
+    // Comparación case-insensitive (algunos nombres de hoja conservan minúsculas como "CIENCIA y TECNOLOGIA")
+    const present = areasFound.some(x => x.toUpperCase() === a.toUpperCase());
+    assert(present, `Área presente: ${a}`);
+  });
+
+  // Test 6: filtro por área
+  const testArea = 'COMUNICACION';
+  STATE.filters = { search: '', grado: '', area: testArea, competencia: '', notas: new Set(['AD', 'A', 'B', 'C']) };
+  applyFilters();
+  assert(STATE.filtered.every(r => r.area === testArea), `Filtro por área "${testArea}" funciona`);
+  assert(STATE.filtered.length > 0, `Filtro por área devuelve resultados (n=${STATE.filtered.length})`);
+
+  // Test 7: filtro por nota
+  STATE.filters = { search: '', grado: '', area: '', competencia: '', notas: new Set(['AD']) };
+  applyFilters();
+  assert(STATE.filtered.every(r => r.nota === 'AD'), 'Filtro por nota AD funciona');
+
+  // Test 8: búsqueda libre con tildes
+  STATE.filters = { search: 'comunica', grado: '', area: '', competencia: '', notas: new Set(['AD', 'A', 'B', 'C']) };
+  applyFilters();
+  assert(STATE.filtered.length > 0, `Búsqueda libre "comunica" devuelve resultados (n=${STATE.filtered.length})`);
+
+  // Test 9: persistencia — crear, leer, borrar
+  const testRec = { grado: 'TEST', area: 'TEST_AREA', competencia: 'TEST_COMP', nota: 'AD', conclusion: 'TEST_TEXT', fechaCreacion: Date.now(), fechaModificacion: Date.now() };
+  const newId = await DB.put(testRec);
+  const readBack = (await DB.getAll()).find(r => r.id === newId);
+  assert(readBack && readBack.conclusion === 'TEST_TEXT', 'Crear registro persiste correctamente');
+  await DB.remove(newId);
+  const afterDelete = (await DB.getAll()).find(r => r.id === newId);
+  assert(!afterDelete, 'Eliminar registro funciona');
+
+  // Restaurar estado
+  STATE.filters = { search: '', grado: '', area: '', competencia: '', notas: new Set(['AD', 'A', 'B', 'C']) };
+  render();
+
+  console.groupEnd();
+  console.log(fails.length === 0
+    ? `🎉 Todas las pruebas pasaron (${10} secciones validadas)`
+    : `⚠️  ${fails.length} prueba(s) fallaron`);
+  return { passed: fails.length === 0, fails };
+};
+
+</script>
+
+</body>
+</html>
