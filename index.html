@@ -6105,20 +6105,6 @@ function doLogout() {
 
 // Escuchar cambios de sesión
 auth.onAuthStateChanged(async user => {
-  let forceLogout = false;
-  try {
-    forceLogout = localStorage.getItem('asmqr_auto_logout_on_leave') === '1';
-    if(forceLogout) localStorage.removeItem('asmqr_auto_logout_on_leave');
-  } catch(e) {}
-  if(forceLogout && user) {
-    try { sessionStorage.removeItem('asmqr_haySession'); sessionStorage.removeItem('asmqr_lastSection'); } catch(e) {}
-    try { localStorage.removeItem('asmqr_lastTab'); } catch(e) {}
-    try { localStorage.removeItem('asmqr_lastSection'); } catch(e) {}
-    if(_alumnosTsUnsubscribe) { _alumnosTsUnsubscribe(); _alumnosTsUnsubscribe = null; }
-    if(_configUnsubscribe) { _configUnsubscribe(); _configUnsubscribe = null; }
-    try { auth.signOut(); } catch(e) {}
-    return;
-  }
   if(user) {
     // Detectar si es apoderado por rol en JWT (correo real o ficticio)
     let esApo = false;
@@ -6538,13 +6524,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 window.addEventListener('beforeunload', function(e) {
+  if(window.ASMQR_CONFIRM_ON_LEAVE !== true) return;
   e.preventDefault();
   e.returnValue = '';
   return '';
-});
-
-window.addEventListener('pagehide', function() {
-  try { localStorage.setItem('asmqr_auto_logout_on_leave', '1'); } catch(e) {}
 });
 
 // ============================================================
