@@ -6627,7 +6627,9 @@ async function cargarDashboardInicio() {
       bienvenida.textContent = 'Bienvenido' + (nombre ? ', ' + nombre.split(' ')[0] : '');
     }
 
-    const [alumnos, regsHoy] = await Promise.all([DB.getAlumnos(), DB.getRegistros({fecha:hoy()})]);
+    const _hoy = hoy();
+    try { if(window.DB && typeof DB.invalidarRegistros === 'function') DB.invalidarRegistros(_hoy); } catch(e) {}
+    const [alumnos, regsHoy] = await Promise.all([DB.getAlumnos(), DB.getRegistros({fecha:_hoy})]);
     const total = alumnos.length;
     const presentes = new Set(regsHoy.filter(r=>r.tipo==='INGRESO').map(r=>r.alumnoId)).size;
     const ausentes = Math.max(0, total - presentes);
